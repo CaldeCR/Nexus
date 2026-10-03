@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Arquitectura de Nexus, gestor de proyectos TI personal y colaborativo con enfoque seguro y escalable."
+    />
+    <title>Nexus | Arquitectura</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container nav">
+        <div class="brand">
+          <span class="brand-mark">N</span>
+          <span>Nexus</span>
+        </div>
+        <nav class="nav-links">
+          <a href="#overview">Resumen</a>
+          <a href="#stack">Stack</a>
+          <a href="#architecture">Arquitectura</a>
+          <a href="#model">Modelo</a>
+          <a href="#checklist">Checklist</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div>
+            <p class="eyebrow">Arquitectura propuesta · MVP</p>
+            <h1>Gestor de proyectos TI para uso personal y de equipo pequeño</h1>
+            <p class="lead">
+              Plataforma web para administrar proyectos personales y laborales con
+              soporte para Kanban, Scrum, PMI y workflows personalizados,
+              diseñada con foco en seguridad, trazabilidad y evolución incremental.
+            </p>
+            <div class="cta-row">
+              <a class="btn btn-primary" href="#architecture">Ver arquitectura</a>
+              <a class="btn btn-secondary" href="#stack">Revisar stack</a>
+            </div>
+            <ul class="hero-stats">
+              <li><strong>1–10</strong><span>usuarios</span></li>
+              <li><strong>4</strong><span>metodologías</span></li>
+              <li><strong>11</strong><span>dominios de evaluación</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-panel">
+            <div class="panel-header">
+              <span class="dot green"></span>
+              <span class="dot yellow"></span>
+              <span class="dot red"></span>
+            </div>
+            <div class="panel-body">
+              <div class="mini-card">
+                <label>Estado del sistema</label>
+                <strong>Operación segura</strong>
+              </div>
+              <div class="mini-chart">
+                <span class="bar h-70"></span>
+                <span class="bar h-90"></span>
+                <span class="bar h-60"></span>
+                <span class="bar h-100"></span>
+                <span class="bar h-80"></span>
+              </div>
+              <div class="list-bullets">
+                <span>Workspaces</span>
+                <span>Proyectos</span>
+                <span>Work items</span>
+                <span>Auditoría</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="overview" class="section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Resumen</p>
+            <h2>Idea central y alcance</h2>
+          </div>
+
+          <div class="info-grid">
+            <article class="info-card">
+              <h3>Objetivo</h3>
+              <p>
+                Centralizar la gestión de trabajo de TI personal y de un equipo
+                pequeño, manteniendo control de dependencias, prioridades,
+                entregables y riesgo.
+              </p>
+            </article>
+            <article class="info-card">
+              <h3>Incluido en MVP</h3>
+              <ul>
+                <li>Workspaces, proyectos y plantillas</li>
+                <li>Tablero Kanban, backlog y sprints</li>
+                <li>Campos personalizados y comentarios</li>
+                <li>Roles, MFA y auditoría</li>
+              </ul>
+            </article>
+            <article class="info-card">
+              <h3>Fuera de alcance</h3>
+              <ul>
+                <li>Tiempo real colaborativo</li>
+                <li>Integraciones externas</li>
+                <li>IA y facturación</li>
+                <li>Multi-organización</li>
+              </ul>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section dashboard-section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Producto</p>
+            <h2>Vista del dashboard del MVP</h2>
+          </div>
+
+          <div class="dashboard-shell">
+            <aside class="sidebar">
+              <div class="sidebar-brand">
+                <span class="brand-mark">N</span>
+                <span>Nexus</span>
+              </div>
+              <nav class="sidebar-nav">
+                <a class="active" href="#">Overview</a>
+                <a href="#">Proyectos</a>
+                <a href="#">Tablero</a>
+                <a href="#">Sprints</a>
+                <a href="#">Hitos</a>
+                <a href="#">Reportes</a>
+              </nav>
+            </aside>
+
+            <div class="dashboard-main">
+              <header class="dashboard-topbar">
+                <div>
+                  <p class="mini-label">Workspace</p>
+                  <h3>Jorge / Proyecto TI</h3>
+                </div>
+                <button class="btn btn-primary small">+ Nuevo item</button>
+              </header>
+
+              <div class="metric-row">
+                <div class="metric-card">
+                  <span>Total tareas</span>
+                  <strong>128</strong>
+                  <em>+12% esta semana</em>
+                </div>
+                <div class="metric-card accent">
+                  <span>En progreso</span>
+                  <strong>34</strong>
+                  <em>7 con bloqueos</em>
+                </div>
+                <div class="metric-card success">
+                  <span>Completadas</span>
+                  <strong>72</strong>
+                  <em>89% del sprint</em>
+                </div>
+              </div>
+
+              <div class="board-preview">
+                <div class="lane">
+                  <h4>Backlog</h4>
+                  <div class="ticket">API de proyectos</div>
+                  <div class="ticket">MFA auth</div>
+                  <div class="ticket">Campos personalizables</div>
+                </div>
+                <div class="lane">
+                  <h4>En curso</h4>
+                  <div class="ticket highlight">Sprint 7</div>
+                  <div class="ticket">Integración de riesgos</div>
+                </div>
+                <div class="lane">
+                  <h4>Validación</h4>
+                  <div class="ticket">Reporte de auditoría</div>
+                  <div class="ticket">Export CSV</div>
+                </div>
+                <div class="lane">
+                  <h4>Hecho</h4>
+                  <div class="ticket done">Arquitectura base</div>
+                  <div class="ticket done">Roles por proyecto</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section feature-section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Flujo del producto</p>
+            <h2>Cómo opera el MVP en la práctica</h2>
+          </div>
+
+          <div class="feature-grid">
+            <article class="feature-card">
+              <span class="feature-step">01</span>
+              <h3>Configura tu espacio</h3>
+              <p>Crea workspaces, define roles por proyecto y elige una plantilla: Kanban, Scrum o PMI.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-step">02</span>
+              <h3>Gestiona el trabajo</h3>
+              <p>Asigna épicas, historias, tareas, riesgos y dependencias con control de estados y prioridad.</p>
+            </article>
+            <article class="feature-card">
+              <span class="feature-step">03</span>
+              <h3>Audita y protege</h3>
+              <p>Registra cambios, activa MFA, valida adjuntos y mantiene trazabilidad de accesos sensibles.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="stack" class="section alt">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Stack recomendado</p>
+            <h2>Arquitectura tecnológica</h2>
+          </div>
+
+          <div class="stack-grid">
+            <article class="stack-card">
+              <span class="tag">Frontend</span>
+              <h3>Next.js + TypeScript</h3>
+              <p>React con App Router, Tailwind, shadcn/ui y dnd-kit para dashboards y tableros.</p>
+            </article>
+            <article class="stack-card">
+              <span class="tag">Backend</span>
+              <h3>NestJS</h3>
+              <p>API REST modular con OpenAPI, validación y capa de negocio clara y extensible.</p>
+            </article>
+            <article class="stack-card">
+              <span class="tag">Datos</span>
+              <h3>PostgreSQL + Prisma</h3>
+              <p>Relacional, transaccional y seguro, con JSONB para campos personalizables.</p>
+            </article>
+            <article class="stack-card">
+              <span class="tag">Jobs</span>
+              <h3>pg-boss</h3>
+              <p>Recordatorios, exportación y procesamiento asíncrono sobre el mismo motor de datos.</p>
+            </article>
+            <article class="stack-card">
+              <span class="tag">Auth</span>
+              <h3>Sesiones + TOTP</h3>
+              <p>Autenticación segura por proyecto, roles y auditoría con atención a datos sensibles.</p>
+            </article>
+            <article class="stack-card">
+              <span class="tag">Infra</span>
+              <h3>Docker + Caddy</h3>
+              <p>Despliegue local portable, con HTTPS local y preparación para migración futura.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Patrón de arquitectura</p>
+            <h2>Monolito modular con separación por dominio</h2>
+          </div>
+
+          <div class="architecture-flow">
+            <div class="node user">Usuario / PWA</div>
+            <div class="arrow">HTTPS</div>
+            <div class="node proxy">Caddy</div>
+            <div class="arrow">REST</div>
+            <div class="node app">Next.js Web</div>
+            <div class="arrow">Cookies + API</div>
+            <div class="node api">NestJS API</div>
+            <div class="node db">PostgreSQL</div>
+            <div class="node jobs">pg-boss jobs</div>
+          </div>
+
+          <div class="modules-panel">
+            <div class="module-header">
+              <span>Monolito modular</span>
+            </div>
+            <div class="module-grid">
+              <span>auth</span>
+              <span>projects</span>
+              <span>workitems</span>
+              <span>sprints</span>
+              <span>workflows</span>
+              <span>timetracking</span>
+              <span>attachments</span>
+              <span>audit</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="model" class="section alt">
+        <div class="container split-layout">
+          <div>
+            <div class="section-heading left">
+              <p class="eyebrow">Estructura propuesta</p>
+              <h2>Organización de carpetas</h2>
+            </div>
+            <pre class="code-block">nexus/
+├── apps/
+│   ├── web/
+│   │   ├── src/app/
+│   │   ├── src/features/
+│   │   ├── src/components/ui/
+│   │   └── src/lib/
+│   └── api/
+│       ├── src/modules/
+│       │   ├── auth/
+│       │   ├── projects/
+│       │   ├── workitems/
+│       │   ├── sprints/
+│       │   ├── workflows/
+│       │   ├── timetracking/
+│       │   ├── attachments/
+│       │   └── audit/
+│       └── prisma/
+├── packages/
+│   └── contracts/
+├── infra/
+│   ├── docker/
+│   ├── caddy/
+│   └── compose.yml
+├── docs/
+│   ├── adr/
+│   └── security.md
+├── .github/workflows/
+├── .env.example
+└── CLAUDE.md</pre>
+          </div>
+
+          <div>
+            <div class="section-heading left">
+              <p class="eyebrow">Entidades núcleo</p>
+              <h2>Modelo de dominio</h2>
+            </div>
+            <ul class="entity-list">
+              <li>Workspace</li>
+              <li>User</li>
+              <li>Membership (rol)</li>
+              <li>Project</li>
+              <li>WorkflowTemplate</li>
+              <li>WorkItem</li>
+              <li>Sprint</li>
+              <li>Milestone</li>
+              <li>Dependency</li>
+              <li>Risk</li>
+              <li>TimeEntry</li>
+              <li>AuditLog</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="checklist" class="section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Evaluación</p>
+            <h2>Checklist de 11 dominios</h2>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Dominio</th>
+                  <th>Estado</th>
+                  <th>Notas</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>Alcance y requisitos</td><td class="ok">✅</td><td>Metodologías y sensibilidad confirmadas.</td></tr>
+                <tr><td>2</td><td>Modelo de datos</td><td class="warn">⚠️</td><td>Validar campos custom y dependencias.</td></tr>
+                <tr><td>3</td><td>Auth/Authz</td><td class="ok">✅</td><td>Roles por proyecto, MFA y colaboradores.</td></tr>
+                <tr><td>4</td><td>Diseño de API</td><td class="warn">⚠️</td><td>REST + OpenAPI con consumidor propio.</td></tr>
+                <tr><td>5</td><td>Frontend</td><td class="warn">⚠️</td><td>SPA/SSR con PWA aún por decidir.</td></tr>
+                <tr><td>6</td><td>Escalabilidad</td><td class="ok">✅</td><td>Índices y paginación suficientes.</td></tr>
+                <tr><td>7</td><td>Seguridad</td><td class="ok">✅</td><td>Cifrado de campos y auditoría.</td></tr>
+                <tr><td>8</td><td>Infraestructura</td><td class="danger">❌</td><td>Nube objetivo aún no definida.</td></tr>
+                <tr><td>9</td><td>Observabilidad</td><td class="warn">⚠️</td><td>Logs JSON y OTel preparados.</td></tr>
+                <tr><td>10</td><td>Testing</td><td class="ok">✅</td><td>Unit, integración y E2E.</td></tr>
+                <tr><td>11</td><td>Costo/complejidad</td><td class="ok">✅</td><td>Monolito adecuado para 1–10 usuarios.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-row">
+        <p>Nexus</p>
+        <p>Arquitectura orientada a seguridad, trazabilidad y evolución gradual.</p>
+      </div>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,611 @@
+{
+  "users": [
+    {
+      "id": "u-1",
+      "email": "jorge@nexus.local",
+      "name": "Jorge",
+      "password": "123456",
+      "role": "owner"
+    }
+  ],
+  "projects": [
+    {
+      "id": "p-1790951494828",
+      "name": "ACTUALIZACIÓN SOFTLAND",
+      "description": "Hacienda solicitó cambios en los documentos electrónicos. Para esto se requiere que se hagan pruebas en el ambiente de producción de Softland para que contabilidad pruebe y se ejecute la actualización en todo el departamento. ",
+      "template": "kanban",
+      "status": "review",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [
+        "Jerry Contabilidad",
+        "Jean Paul TI"
+      ],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790951494828",
+          "name": "Jorge",
+          "role": "admin"
+        },
+        {
+          "id": "mem-1790951585315",
+          "name": "Jerry Contabilidad",
+          "role": "collaborator"
+        },
+        {
+          "id": "mem-1790951770198",
+          "name": "Jean Paul TI",
+          "role": "collaborator"
+        }
+      ],
+      "targetDate": "2026-10-24"
+    },
+    {
+      "id": "p-1790895374161",
+      "name": "VIAJA EXTRA - ZOHO",
+      "description": "Crear el sitio de Viaja Extra para el manejo de clientes en el CRM de Zoho",
+      "template": "kanban",
+      "status": "preproject",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [
+        "Josué B"
+      ],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790895374161",
+          "name": "Jorge",
+          "role": "admin"
+        },
+        {
+          "id": "mem-1790895398499",
+          "name": "Josué B",
+          "role": "collaborator"
+        }
+      ],
+      "targetDate": "2026-10-15"
+    },
+    {
+      "id": "p-1790894640083",
+      "name": "RESPALDO MÁQUINAS VIRTUALES SOFTLAND",
+      "description": "Hacer una copia completa de las máquinas virtuales donde está la base de datos de softland y opera el sistema actualmente. ",
+      "template": "pmi",
+      "status": "execution",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [
+        "Jean Paul"
+      ],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790894640083",
+          "name": "Jorge",
+          "role": "admin"
+        },
+        {
+          "id": "mem-1790894708874",
+          "name": "Jean Paul",
+          "role": "collaborator"
+        }
+      ],
+      "targetDate": "2026-10-02"
+    },
+    {
+      "id": "p-1790886001488",
+      "name": "ENTRA ID - GRUPO EXTRA",
+      "description": "Validar la implementación de ENTRA ID como nuevo gestionar de recursos como un directorio activo. ",
+      "template": "pmi",
+      "status": "preproject",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [
+        "Max-Redinet"
+      ],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790886001488",
+          "name": "Jorge",
+          "role": "admin"
+        },
+        {
+          "id": "mem-usr-0-p-1790886001488",
+          "name": "Max-Redinet",
+          "role": "vendor",
+          "email": ""
+        }
+      ],
+      "targetDate": "2026-11-01"
+    },
+    {
+      "id": "p-1790876475367",
+      "name": "SISTEMA DE CONTROL DE FLOTILLA - GRUPO EXTRA",
+      "description": "Crear un sistema que permita gestionar la salida e ingreso de las móviles del canal.",
+      "template": "pmi",
+      "status": "execution",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [],
+      "targetDate": "2026-10-15",
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790876475367",
+          "name": "Jorge",
+          "role": "admin"
+        }
+      ]
+    },
+    {
+      "id": "p-1790876119003",
+      "name": "Gestión de Suscripciones-Pagos Grupo Extra",
+      "description": "Migrar todos los clientes actuales que ya tienen una suscripción con Grupo Extra al cobro recurrente de las suscripciones que han adquirido con nosotros y de las futuras.",
+      "template": "kanban",
+      "status": "review",
+      "role": "lead",
+      "admins": [
+        "Jorge",
+        "Marco"
+      ],
+      "members": [],
+      "targetDate": "2026-10-15",
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1790876119003",
+          "name": "Jorge",
+          "role": "admin"
+        },
+        {
+          "id": "mem-adm-1-p-1790876119003",
+          "name": "Marco",
+          "role": "admin"
+        }
+      ]
+    }
+  ],
+  "workItems": [
+    {
+      "id": "wi-1790980071621",
+      "projectId": "p-1790894640083",
+      "title": "02. Ejecutar el proceso de backup con Maq Virtuales funcionando usando el export. ",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T22:27:51.621Z"
+    },
+    {
+      "id": "wi-1790980018870",
+      "projectId": "p-1790894640083",
+      "title": "01. Asegurarse que todos los usuaros están desconectados",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T22:26:58.870Z"
+    },
+    {
+      "id": "wi-1790957476255",
+      "projectId": "p-1790876119003",
+      "title": "Solicitar Credenciales Greenpay",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T16:11:16.255Z"
+    },
+    {
+      "id": "wi-1790956814686",
+      "projectId": "p-1790876119003",
+      "title": "Validar el rendimiento de equipos en AWS",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T16:00:14.687Z"
+    },
+    {
+      "id": "wi-1790951746922",
+      "projectId": "p-1790951494828",
+      "title": "Solicitar los archivos necesarios para crear el ambiente de pruebas de Softland",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jean Paul TI, Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T14:35:46.922Z",
+      "assignees": [
+        "Jean Paul TI",
+        "Jorge"
+      ]
+    },
+    {
+      "id": "wi-1790951627176",
+      "projectId": "p-1790951494828",
+      "title": "Alistar nuevo servidor o equipo de pruebas para Softland.",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T14:33:47.176Z"
+    },
+    {
+      "id": "wi-1790951562630",
+      "projectId": "p-1790951494828",
+      "title": "Validar con Jerry los cambios que trae la nueva actualización.",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jerry Contabilidad",
+      "assigneeType": "team",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T14:32:42.632Z"
+    },
+    {
+      "id": "wi-1790951528205",
+      "projectId": "p-1790951494828",
+      "title": "Solicitar información de la actualización a Softland. ",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T14:32:08.205Z"
+    },
+    {
+      "id": "wi-1790950296101",
+      "projectId": "p-1790895374161",
+      "title": "Solicitar datos para la creación de clientes de Viaja Extra",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-02T14:11:36.101Z"
+    },
+    {
+      "id": "wi-1790895474009",
+      "projectId": "p-1790895374161",
+      "title": "Validar compra de licencias Viaja Extra",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-08",
+      "createdAt": "2026-10-01T22:57:54.009Z"
+    },
+    {
+      "id": "wi-1790895446521",
+      "projectId": "p-1790895374161",
+      "title": "Definir roles para usuarios de Viaja Extra",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-08",
+      "createdAt": "2026-10-01T22:57:26.521Z"
+    },
+    {
+      "id": "wi-1790895425777",
+      "projectId": "p-1790895374161",
+      "title": "Definir la forma de trabajo en Zoho para Viaja Extra",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-01",
+      "createdAt": "2026-10-01T22:57:05.777Z"
+    },
+    {
+      "id": "wi-1790894954882",
+      "projectId": "p-1790894640083",
+      "title": "Reinicio de servidores y pruebas de funcionamiento. ",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-01T22:49:14.882Z"
+    },
+    {
+      "id": "wi-1790894928766",
+      "projectId": "p-1790894640083",
+      "title": "Crear la copia del Servidor de producción ",
+      "description": "",
+      "type": "milestone",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-01T22:48:48.766Z"
+    },
+    {
+      "id": "wi-1790894879220",
+      "projectId": "p-1790894640083",
+      "title": "Crear la copia del Servidor de base de datos",
+      "description": "",
+      "type": "milestone",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-01T22:47:59.220Z"
+    },
+    {
+      "id": "wi-1790894856121",
+      "projectId": "p-1790894640083",
+      "title": "Enviar correo a departamento de Contabilidad informar el apagado de servicios.",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-01",
+      "createdAt": "2026-10-01T22:47:36.121Z"
+    },
+    {
+      "id": "wi-1790894797262",
+      "projectId": "p-1790894640083",
+      "title": "Definir ubicación de los respaldos con JP",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "Jean Paul",
+      "assigneeType": "team",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-01T22:46:37.262Z"
+    },
+    {
+      "id": "wi-1790894759993",
+      "projectId": "p-1790894640083",
+      "title": "Solicitar a Jerry espacio para hacer el respaldo de los servidores después de las 5pm",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-09-29",
+      "createdAt": "2026-10-01T22:45:59.993Z"
+    },
+    {
+      "id": "wi-1790894687305",
+      "projectId": "p-1790894640083",
+      "title": "Coodinar respaldo y definir estrategia con Jean Paul.",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jean Paul",
+      "assigneeType": "team",
+      "dueDate": "2026-09-28",
+      "createdAt": "2026-10-01T22:44:47.305Z"
+    },
+    {
+      "id": "wi-1790886168080",
+      "projectId": "p-1790886001488",
+      "title": "Atender reunión de evaluación del sistema con Reditet",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-05",
+      "createdAt": "2026-10-01T20:22:48.080Z"
+    },
+    {
+      "id": "wi-1790886082435",
+      "projectId": "p-1790886001488",
+      "title": "Gestionar consulta con proveedor y definir reunión para validar propuesta de implementación",
+      "description": "",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-01",
+      "createdAt": "2026-10-01T20:21:22.435Z"
+    },
+    {
+      "id": "wi-1790876235180",
+      "projectId": "p-1790876119003",
+      "title": "Obtener confirmación de Marco para iniciar",
+      "description": "Revisar alcance y visto bueno.",
+      "type": "milestone",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Marco",
+      "assigneeType": "team",
+      "dueDate": "2026-10-02",
+      "createdAt": "2026-10-01T17:37:15.180Z"
+    },
+    {
+      "id": "wi-vendor-1",
+      "projectId": "p-1790876119003",
+      "title": "Pasarela BAC: Validar credenciales y llaves de webhook para cobro recurrente",
+      "description": "Estamos a la espera de que el soporte técnico del BAC entregue el merchant ID definitivo.",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Pasarela BAC Credomatic",
+      "assigneeType": "vendor",
+      "dueDate": "2026-10-03",
+      "createdAt": "2026-10-01T17:40:00.000Z"
+    },
+    {
+      "id": "wi-1790876187626",
+      "projectId": "p-1790876119003",
+      "title": "Enviar Propuesta para aprobación",
+      "description": "Documento con esquema de cobro recurrente.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-01",
+      "createdAt": "2026-10-01T17:36:27.626Z"
+    },
+    {
+      "id": "wi-1790876161411",
+      "projectId": "p-1790876119003",
+      "title": "Preparar estrategia de cambio",
+      "description": "Mapeo de clientes actuales y canales de cobro.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-01",
+      "createdAt": "2026-10-01T17:36:01.411Z"
+    },
+    {
+      "id": "wi-flot-1",
+      "projectId": "p-1790876475367",
+      "title": "Definir campos y flujo del formulario de salida/ingreso",
+      "description": "Kilometraje inicial, conductor, motivo y hora estimada de retorno.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-04",
+      "createdAt": "2026-10-01T17:42:00.000Z"
+    },
+    {
+      "id": "wi-flot-2",
+      "projectId": "p-1790876475367",
+      "title": "Proveedor GPS: Cotización y viabilidad de integración con API de telemetría",
+      "description": "Esperando propuesta económica y documentación de endpoints del proveedor de GPS.",
+      "type": "task",
+      "status": "done",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assigneeType": "me",
+      "dueDate": "2026-10-05",
+      "createdAt": "2026-10-01T17:42:30.000Z",
+      "assignees": [
+        "Jorge"
+      ]
+    }
+  ],
+  "teamDirectory": [
+    {
+      "id": "dir-jorge",
+      "name": "Jorge",
+      "role": "admin",
+      "email": "jorge@nexus.local",
+      "organization": "Líder TI / Dirección",
+      "createdAt": "2026-09-01T00:00:00.000Z"
+    },
+    {
+      "id": "dir-1790958097378-p5cvu",
+      "name": "Jerry Contabilidad",
+      "role": "collaborator",
+      "email": "",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-9s9kp",
+      "name": "Jean Paul TI",
+      "role": "collaborator",
+      "email": "",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-sn2v0",
+      "name": "Josué B",
+      "role": "collaborator",
+      "email": "",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-0wc46",
+      "name": "Jean Paul",
+      "role": "collaborator",
+      "email": "",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-4ghlj",
+      "name": "Max-Redinet",
+      "role": "vendor",
+      "email": "",
+      "organization": "Proveedor / Tercero",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-9a0dq",
+      "name": "Marco",
+      "role": "admin",
+      "email": "",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1790958097378-vwb82",
+      "name": "Pasarela BAC Credomatic",
+      "role": "collaborator",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-02T16:21:37.378Z"
+    }
+  ]
+}

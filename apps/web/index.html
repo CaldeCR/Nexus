@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nexus | Track your goals, drive your moves</title>
+    <link rel="icon" type="image/png" href="/logobase01.png" />
+    <link rel="apple-touch-icon" href="/logobase01.png" />
+    <meta property="og:title" content="Nexus | Track your goals, drive your moves" />
+    <meta property="og:image" content="/logobase01.png" />
+    <meta name="description" content="Nexus - Sistema integral de gestión de proyectos, metas y roles para líderes de TI." />
+    <style>
+      :root {
+        --bg: #07141f;
+        --panel: #0d1d2d;
+        --panel-alt: #12273b;
+        --text: #edf6ff;
+        --muted: #acd0e5;
+        --primary: #5ad2ff;
+        --success: #4ade80;
+        --warning: #fbbf24;
+        --danger: #f87171;
+        --border: rgba(160, 193, 222, 0.14);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: linear-gradient(180deg, #06111b 0%, #0a1724 100%);
+        color: var(--text);
+        font-family: Arial, sans-serif;
+      }
+      .app-shell {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+      .auth-box, .panel {
+        background: rgba(15, 29, 45, 0.95);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        box-shadow: 0 20px 48px rgba(0,0,0,0.3);
+      }
+      .auth-box {
+        max-width: 420px;
+        margin: 80px auto 0;
+        padding: 28px;
+      }
+      h1, h2, h3, p { margin-top: 0; }
+      input, select, button {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        padding: 12px 14px;
+        font-size: 1rem;
+      }
+      input, select {
+        background: rgba(255,255,255,0.03);
+        color: var(--text);
+        margin-bottom: 14px;
+      }
+      button {
+        background: linear-gradient(135deg, var(--primary), #7cf0d0);
+        color: #081722;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+      }
+      .error {
+        color: var(--danger);
+        margin-bottom: 12px;
+        min-height: 20px;
+      }
+      .success {
+        color: var(--success);
+        margin-bottom: 12px;
+        min-height: 20px;
+      }
+      .hidden { display: none; }
+      .dashboard {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 20px;
+      }
+      .sidebar {
+        background: rgba(12, 21, 31, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 20px;
+      }
+      .nav-item {
+        display: block;
+        padding: 10px 12px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      .nav-item.active {
+        background: rgba(90, 210, 255, 0.12);
+        color: var(--text);
+      }
+      .main-panel {
+        padding: 20px;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+      .stat {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+      }
+      .lane {
+        background: rgba(6, 17, 28, 0.72);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 14px;
+      }
+      .ticket {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 10px;
+      }
+      .project-form {
+        margin-top: 18px;
+        display: grid;
+        gap: 10px;
+      }
+      .small {
+        width: auto;
+        padding: 10px 18px;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .muted { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
