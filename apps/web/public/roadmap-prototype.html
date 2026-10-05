@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus - Prototipo: Vista Cronograma de Proyectos</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/src/styles/tokens.css">
+  <style>
+    :root {
+      --bg-dark: #070b12;
+      --bg-card: #0f1623;
+      --bg-card-hover: #141e2e;
+      --bg-elevated: #182438;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-strong: rgba(255, 255, 255, 0.16);
+      --accent-blue: #3b82f6;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --accent-purple: #a855f7;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP NOTIFICATION BANNER */
+    .prototype-banner {
+      background: linear-gradient(90deg, #1e3a8a 0%, #1e1b4b 50%, #311042 100%);
+      border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.88rem;
+    }
+    .prototype-badge {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.76rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .prototype-badge::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      background: var(--accent-cyan);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--accent-cyan);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* NAVBAR */
+    .top-nav {
+      height: 64px;
+      background: rgba(15, 22, 35, 0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, #2563eb, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+    .nav-title {
+      font-weight: 700;
+      font-size: 1.25rem;
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+    .nav-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .nav-item:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    .nav-item.active {
+      color: #fff;
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    /* VIEW SUB-NAV SWITCHER (MIS PROYECTOS TABS) */
+    .view-subbar {
+      padding: 20px 32px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(11, 16, 26, 0.4);
+    }
+    .view-heading h1 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .view-heading p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* TABS TOGGLE (CARDS VS TIMELINE) */
+    .tabs-pill-group {
+      display: flex;
+      background: #0b111a;
+      padding: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border-subtle);
+      gap: 4px;
+    }
+    .tab-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .tab-pill:hover {
+      color: var(--text-main);
+    }
+    .tab-pill.active {
+      background: #1e293b;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .tab-pill-badge {
+      font-size: 0.7rem;
+      padding: 2px 6px;
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--accent-cyan);
+      border-radius: 4px;
+      font-weight: 700;
+    }
+
+    /* MAIN CONTAINER */
+    .main-content {
+      padding: 24px 32px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* METRICS / SUMMARY BAR */
+    .summary-cards-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 16px;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .summary-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-strong);
+    }
+    .summary-card__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+    .icon--blue { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .icon--emerald { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .icon--amber { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .icon--purple { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    .summary-card__content h4 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .summary-card__content p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* TOOLBAR CONTROLS */
+    .timeline-toolbar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .toolbar-left, .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filter-chip {
+      background: #111a28;
+      border: 1px solid var(--border-subtle);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .filter-chip:hover {
+      color: var(--text-main);
+      border-color: var(--border-strong);
+    }
+    .filter-chip.active {
+      background: rgba(59, 130, 246, 0.18);
+      color: #93c5fd;
+      border-color: rgba(59, 130, 246, 0.45);
+    }
+    .filter-chip--warning.active {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fde68a;
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+
+    .btn-action {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.84rem;
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s ease;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .btn-action:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #182233;
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      font-weight: 600;
+      font-size: 0.84rem;
+      padding: 8px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary:hover {
+      background: #202d42;
+      border-color: var(--border-strong);
+    }
+
+    /* LEGEND GUIDE */
+    .timeline-legend {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      padding: 2px 4px;
+      flex-wrap: wrap;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .legend-box {
+      width: 18px;
+      height: 10px;
+      border-radius: 3px;
+    }
+    .legend-box--fill {
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+    }
+    .legend-box--remaining {
+      background: #1c2738;
+      border: 1px solid #28374d;
+    }
+    .legend-box--extension {
+      background: repeating-linear-gradient(
+        -45deg,
+        #f59e0b,
+        #f59e0b 4px,
+        #b45309 4px,
+        #b45309 8px
+      );
+      box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+    }
+    .legend-line--today {
+      width: 14px;
+      height: 2px;
+      background: #f43f5e;
+      border-radius: 2px;
+      box-shadow: 0 0 6px #f43f5e;
+    }
+
+    /* ========================================================
+       TIMELINE BOARD (ABSTRACT GANTT ROADMAP)
+       ======================================================== */
+    .timeline-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .timeline-layout {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      min-height: 480px;
+    }
+
+    /* LEFT SIDEBAR: PROJECTS LIST */
+    .timeline-sidebar {
+      border-right: 1px solid var(--border-subtle);
+      background: #0d131f;
+      display: flex;
+      flex-direction: column;
+      z-index: 10;
+    }
+    .sidebar-header {
+      height: 54px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: #0c121d;
+    }
+    .sidebar-project-item {
+      height: 92px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+      cursor: pointer;
+    }
+    .sidebar-project-item:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .sidebar-project-item.active-item {
+      background: rgba(59, 130, 246, 0.08);
+      border-left: 3px solid var(--accent-blue);
+    }
+    .project-name-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .project-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .stage-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      flex-shrink: 0;
+    }
+    .stage-tag--review { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .stage-tag--execution { background: rgba(56, 189, 248, 0.18); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .stage-tag--completed { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+
+    .project-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .task-ratio-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-main);
+      font-weight: 600;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+    }
+    .extension-alert-pill {
+      background: rgba(245, 158, 11, 0.18);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .extension-alert-pill:hover {
+      background: rgba(245, 158, 11, 0.3);
+      transform: scale(1.04);
+    }
+
+    /* RIGHT SIDE: INTERACTIVE TIMELINE GRID */
+    .timeline-view {
+      position: relative;
+      overflow-x: auto;
+      overflow-y: hidden;
+      background: #090e17;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* TIMELINE HEADER (MONTHS & WEEKS) */
+    .timeline-header-track {
+      height: 54px;
+      min-width: 960px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: #0d131f;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      position: relative;
+    }
+    .month-col-header {
+      padding: 8px 12px;
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .month-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .month-sub {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+
+    /* TIMELINE BODY WITH ROWS */
+    .timeline-body-track {
+      min-width: 960px;
+      position: relative;
+      flex: 1;
+    }
+
+    /* BACKGROUND GRID LINES */
+    .timeline-grid-lines {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .grid-col-line {
+      border-right: 1px dashed rgba(255, 255, 255, 0.05);
+      height: 100%;
+    }
+
+    /* "HOY" (TODAY) VERTICAL INDICATOR LINE */
+    .today-line-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 45.5%; /* Represents 05 Oct 2026 within Aug-Dec window */
+      width: 2px;
+      background: #f43f5e;
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.7);
+      z-index: 15;
+      pointer-events: none;
+    }
+    .today-badge-flag {
+      position: absolute;
+      top: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #f43f5e;
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(244, 63, 94, 0.5);
+    }
+
+    /* TIMELINE ROW */
+    .timeline-row {
+      height: 92px;
+      border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 5;
+    }
+    .timeline-row:hover {
+      background: rgba(255, 255, 255, 0.015);
+    }
+
+    /* THE COMPOSITE PROJECT BAR CONTAINER */
+    .project-bar-composite {
+      position: absolute;
+      height: 44px;
+      display: flex;
+      align-items: stretch;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      z-index: 10;
+    }
+    .project-bar-composite:hover {
+      transform: translateY(-2px);
+      z-index: 20;
+    }
+
+    /* BASE BAR (START TO ORIGINAL TARGET DATE) */
+    .bar-base-segment {
+      position: relative;
+      background: #131c2a;
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: 8px 0 0 8px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+    }
+    .bar-base-segment.is-single-pill {
+      border-radius: 8px;
+    }
+
+    /* COMPLETED TASKS FILL */
+    .bar-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #2563eb 0%, #06b6d4 60%, #10b981 100%);
+      display: flex;
+      align-items: center;
+      padding-left: 12px;
+      position: relative;
+      transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    }
+    .bar-progress-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.15) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      animation: shimmer 2.5s infinite;
+    }
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(200%); }
+    }
+
+    .bar-content-label {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ffffff;
+      font-size: 0.78rem;
+      font-weight: 700;
+      pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      z-index: 5;
+    }
+    .bar-dates-hint {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      opacity: 0.85;
+      font-weight: 500;
+    }
+
+    /* ORIGINAL TARGET DATE MARKER PIN */
+    .original-target-divider {
+      position: absolute;
+      right: 0;
+      top: -6px;
+      bottom: -6px;
+      width: 2px;
+      background: #f59e0b;
+      z-index: 12;
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+    }
+    .original-target-divider::before {
+      content: 'Límite pactado';
+      position: absolute;
+      bottom: 100%;
+      right: -30px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #fbbf24;
+      background: #1b170c;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: all 0.15s ease;
+      pointer-events: none;
+    }
+    .project-bar-composite:hover .original-target-divider::before {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ========================================================
+       EXTENDED TIME RANGE SECTION (PRÓRROGA / TIEMPO ADICIONAL)
+       ======================================================== */
+    .bar-extension-segment {
+      position: relative;
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(245, 158, 11, 0.25),
+        rgba(245, 158, 11, 0.25) 8px,
+        rgba(180, 83, 9, 0.45) 8px,
+        rgba(180, 83, 9, 0.45) 16px
+      );
+      border: 1px dashed #f59e0b;
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      overflow: visible;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+    }
+
+    .bar-extension-segment:hover {
+      background: repeating-linear-gradient(
+        -45deg,
+        rgba(245, 158, 11, 0.4),
+        rgba(245, 158, 11, 0.4) 8px,
+        rgba(180, 83, 9, 0.65) 8px,
+        rgba(180, 83, 9, 0.65) 16px
+      );
+      border-color: #fde68a;
+      box-shadow: 0 0 20px rgba(245, 158, 11, 0.6);
+      transform: scaleY(1.06);
+    }
+
+    .extension-label-badge {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #f59e0b;
+      color: #fde68a;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+
+    /* HOVER TOOLTIP ON EXTENDED BAR */
+    .extension-tooltip {
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(6px);
+      background: #0f172a;
+      border: 1px solid #f59e0b;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.65), 0 0 16px rgba(245, 158, 11, 0.35);
+      border-radius: 10px;
+      padding: 12px 16px;
+      width: 270px;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      z-index: 99;
+      color: var(--text-main);
+    }
+    .extension-tooltip::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: #f59e0b transparent transparent transparent;
+    }
+    .bar-extension-segment:hover .extension-tooltip {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .tooltip-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: #fbbf24;
+      font-size: 0.82rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .tooltip-body {
+      font-size: 0.77rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+    .tooltip-dates {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.72rem;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      font-family: var(--font-mono);
+    }
+    .tooltip-click-cta {
+      margin-top: 8px;
+      background: rgba(245, 158, 11, 0.15);
+      color: #fde68a;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    /* ========================================================
+       MODAL: JUSTIFICACIÓN DE CAMBIO DE FECHA / PRÓRROGA
+       ======================================================== */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(3, 7, 18, 0.78);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      padding: 20px;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      border-radius: 18px;
+      width: 100%;
+      max-width: 620px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 158, 11, 0.2);
+      overflow: hidden;
+      transform: translateY(16px) scale(0.97);
+      transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+    .modal-backdrop.open .modal-dialog {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.15) 0%, rgba(15, 23, 42, 0.6) 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .modal-header-info h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-header-info p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .modal-close-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: all 0.15s ease;
+    }
+    .modal-close-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-height: 75vh;
+      overflow-y: auto;
+    }
+
+    /* EXTENSION TIMELINE COMPARISON BOX */
+    .delta-comparison-card {
+      background: #141e30;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+    .date-step-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .date-step-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-dim);
+    }
+    .date-step-val {
+      font-size: 0.95rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-main);
+    }
+    .delta-arrow-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .delta-tag {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      font-family: var(--font-mono);
+    }
+
+    /* JUSTIFICATION CONTENT */
+    .justification-section {
+      background: rgba(11, 17, 27, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .section-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--accent-cyan);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .justification-text {
+      font-size: 0.92rem;
+      color: #e2e8f0;
+      line-height: 1.6;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 14px;
+      border-radius: 8px;
+      border-left: 3px solid #f59e0b;
+    }
+
+    .meta-audit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 14px;
+    }
+    .audit-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .audit-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .audit-val {
+      font-size: 0.85rem;
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    /* SIMULATION DRAWER/FORM */
+    .simulation-box {
+      background: rgba(59, 130, 246, 0.06);
+      border: 1px dashed rgba(59, 130, 246, 0.35);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .simulation-box h4 {
+      font-size: 0.88rem;
+      color: #93c5fd;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .input-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    .input-group input, .input-group textarea, .input-group select {
+      width: 100%;
+      background: #0b111a;
+      border: 1px solid var(--border-subtle);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.85rem;
+    }
+    .input-group input:focus, .input-group textarea:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      background: #0c121d;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 900px) {
+      .timeline-layout {
+        grid-template-columns: 240px 1fr;
+      }
+      .view-subbar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- PROTOTYPE CALLOUT BANNER -->
+  <div class="prototype-banner">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="prototype-badge">Prototipo Interactivo</span>
+      <span><strong>Vista de Cronograma Ejecutivo:</strong> Barras de progreso de tareas + Detección visual de prórroga con justificación al hacer clic.</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <button class="btn-secondary" onclick="resetPrototypeData()" style="padding: 4px 10px; font-size: 0.75rem;">
+        Restablecer datos
+      </button>
+      <span style="color: var(--text-dim); font-size: 0.76rem;">ProjectM / Nexus</span>
+    </div>
+  </div>
+
+  <!-- TOP NAVBAR -->
+  <header class="top-nav">
+    <div class="nav-brand">
+      <div class="nav-logo">N</div>
+      <div>
+        <div class="nav-title">Nexus</div>
+        <div class="nav-subtitle">Track your goals, drive your moves</div>
+      </div>
+    </div>
+
+    <nav class="nav-links">
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="9" /><path d="M12 3v18M3 12h18" opacity="0.4" /></svg>
+        <span>Mis Proyectos</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+        <span>Agenda & Calendario</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="7" height="16" rx="1.5" /><rect x="14" y="4" width="7" height="11" rx="1.5" /></svg>
+        <span>Tablero Kanban</span>
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M144 160A80 80 0 1 0 144 0a80 80 0 1 0 0 160zm368 0A80 80 0 1 0 512 0a80 80 0 1 0 0 160zM0 298.7C0 310.4 9.6 320 21.3 320l213.3 0c.2 0 .4 0 .7 0c-26.6-23.5-43.3-57.8-43.3-96c0-7.6 .7-15 1.9-22.3c-13.6-6.3-28.7-9.7-44.6-9.7l-42.7 0C47.8 192 0 239.8 0 298.7z" /></svg>
+        <span>Directorio</span>
+      </div>
+    </nav>
+  </header>
+
+  <!-- SUBHEADER: VIEW SWITCHER (CARDS VS TIMELINE) -->
+  <div class="view-subbar">
+    <div class="view-heading">
+      <p style="text-transform: uppercase; font-size: 0.74rem; font-weight: 700; color: var(--accent-cyan); letter-spacing: 0.05em;">Control de Portafolio</p>
+      <h1>
+        Mis Proyectos
+        <span style="font-size: 0.85rem; font-weight: 500; color: var(--text-muted); background: #131d2b; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border-subtle);">4 proyectos activos</span>
+      </h1>
+    </div>
+
+    <!-- TABS TO SWITCH VIEWS INSIDE "MIS PROYECTOS" -->
+    <div class="tabs-pill-group">
+      <button class="tab-pill" onclick="simulateCardViewAlert()">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Vista Tarjetas</span>
+      </button>
+
+      <button class="tab-pill active">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <span>Cronograma & Avance</span>
+        <span class="tab-pill-badge">NUEVA VISTA</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN BODY -->
+  <main class="main-content">
+
+    <!-- SUMMARY KPI TILES -->
+    <div class="summary-cards-row">
+      <div class="summary-card">
+        <div class="summary-card__icon icon--blue">📊</div>
+        <div class="summary-card__content">
+          <h4 id="kpi-total">4</h4>
+          <p>Total de Proyectos</p>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__icon icon--emerald">🎯</div>
+        <div class="summary-card__content">
+          <h4 id="kpi-progress">58%</h4>
+          <p>Avance Global de Tareas</p>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__icon icon--amber">⚠️</div>
+        <div class="summary-card__content">
+          <h4 id="kpi-extended" style="color: #fbbf24;">2</h4>
+          <p>Con Prórroga / Plazo Extendido</p>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-card__icon icon--purple">⚡</div>
+        <div class="summary-card__content">
+          <h4>26/42</h4>
+          <p>Tareas Cumplidas</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIMELINE CONTROLS AND LEGEND -->
+    <div class="timeline-toolbar">
+      <div class="toolbar-left">
+        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase;">Filtrar:</span>
+        <button class="filter-chip active" id="filter-all" onclick="setFilter('all')">Todos (4)</button>
+        <button class="filter-chip filter-chip--warning" id="filter-extended" onclick="setFilter('extended')">
+          <span>⚠️ Con Plazo Extendido</span>
+          <span style="background: rgba(245, 158, 11, 0.3); border-radius: 999px; padding: 0 6px; font-size: 0.72rem;">2</span>
+        </button>
+        <button class="filter-chip" id="filter-ontrack" onclick="setFilter('ontrack')">En Tiempo Pactado (2)</button>
+      </div>
+
+      <div class="toolbar-right">
+        <!-- SIMULATE ADDING EXTENSION -->
+        <button class="btn-action" onclick="openSimulateModal()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <span>Simular Nueva Prórroga</span>
+        </button>
+
+        <!-- LEGEND -->
+        <div class="timeline-legend">
+          <div class="legend-item">
+            <span class="legend-box legend-box--fill"></span>
+            <span>% Tareas cumplidas</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box legend-box--remaining"></span>
+            <span>Tiempo pactado</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-box legend-box--extension"></span>
+            <span style="color: #fbbf24; font-weight: 600;">Tiempo extendido (Prórroga)</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-line--today"></span>
+            <span style="color: #f43f5e; font-weight: 700;">Línea de Hoy (05 Oct)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN TIMELINE GANTT ABSTRACT BOARD -->
+    <div class="timeline-card">
+      <div class="timeline-layout">
+
+        <!-- SIDEBAR: PROJECT DETAILS -->
+        <div class="timeline-sidebar">
+          <div class="sidebar-header">
+            <span>Proyecto & Metas</span>
+            <span>Cumplimiento</span>
+          </div>
+
+          <div id="project-sidebar-list">
+            <!-- Dynamically populated via JS -->
+          </div>
+        </div>
+
+        <!-- RIGHT: TIMELINE GRID -->
+        <div class="timeline-view" id="timeline-scroll-container">
+          <!-- HEADER WITH MONTHS -->
+          <div class="timeline-header-track">
+            <div class="month-col-header">
+              <span class="month-name">Agosto 2026</span>
+              <span class="month-sub">Sem 31 - 35</span>
+            </div>
+            <div class="month-col-header">
+              <span class="month-name">Septiembre 2026</span>
+              <span class="month-sub">Sem 36 - 39</span>
+            </div>
+            <div class="month-col-header" style="background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
+              <span class="month-name" style="color: #93c5fd;">Octubre 2026</span>
+              <span class="month-sub" style="color: #60a5fa;">Mes Actual (Sem 40 - 44)</span>
+            </div>
+            <div class="month-col-header">
+              <span class="month-name">Noviembre 2026</span>
+              <span class="month-sub">Sem 45 - 48</span>
+            </div>
+            <div class="month-col-header">
+              <span class="month-name">Diciembre 2026</span>
+              <span class="month-sub">Sem 49 - 52</span>
+            </div>
+          </div>
+
+          <!-- BODY WITH ROWS & GRID -->
+          <div class="timeline-body-track" id="timeline-body-track">
+            <!-- Grid Lines -->
+            <div class="timeline-grid-lines">
+              <div class="grid-col-line"></div>
+              <div class="grid-col-line"></div>
+              <div class="grid-col-line"></div>
+              <div class="grid-col-line"></div>
+              <div class="grid-col-line"></div>
+            </div>
+
+            <!-- "HOY" (TODAY) MARKER -->
+            <div class="today-line-marker" title="Línea temporal de hoy: 05 de Octubre 2026">
+              <div class="today-badge-flag">Hoy: 05 Oct</div>
+            </div>
+
+            <!-- ROWS -->
+            <div id="timeline-rows-container">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- MODAL: JUSTIFICACIÓN DE CAMBIO DE FECHA -->
+  <div class="modal-backdrop" id="justificationModal" onclick="handleBackdropClick(event)">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.1rem;">📋</span>
+            <h3 id="modalProjectName">ACTUALIZACIÓN SOFTLAND</h3>
+          </div>
+          <p>Registro y Justificación de Prórroga / Cambio de Fecha</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeJustificationModal()" title="Cerrar modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- COMPARISON DELTA -->
+        <div class="delta-comparison-card">
+          <div class="date-step-box">
+            <span class="date-step-label">Fecha Inicial Pactada</span>
+            <span class="date-step-val" id="modalOriginalDate">30 Sep 2026</span>
+          </div>
+
+          <div class="delta-arrow-indicator">
+            <span class="delta-tag" id="modalDeltaDuration">+2 semanas (+15 días)</span>
+            <span style="font-size: 1.1rem; color: var(--accent-amber);">➔</span>
+          </div>
+
+          <div class="date-step-box">
+            <span class="date-step-label" style="color: #fbbf24;">Nueva Fecha Objetivo</span>
+            <span class="date-step-val" id="modalExtendedDate" style="color: #fde68a;">15 Oct 2026</span>
+          </div>
+        </div>
+
+        <!-- JUSTIFICATION TEXT -->
+        <div class="justification-section">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <span>Motivo Oficial del Cambio</span>
+          </div>
+          <p class="justification-text" id="modalJustificationText">
+            Hacienda solicitó cambios en los documentos electrónicos de última hora con nuevas reglas de validación XML. Se requirió coordinar una ventana de pruebas controlada con el departamento de Contabilidad antes de desplegar la actualización al resto de la organización.
+          </p>
+
+          <div class="meta-audit-grid">
+            <div class="audit-item">
+              <span class="audit-label">Solicitado por:</span>
+              <span class="audit-val" id="modalRequestedBy">Jerry Contabilidad & Jean Paul TI</span>
+            </div>
+            <div class="audit-item">
+              <span class="audit-label">Aprobado / Registrado por:</span>
+              <span class="audit-val" id="modalApprovedBy">Jorge (Lead TI)</span>
+            </div>
+            <div class="audit-item">
+              <span class="audit-label">Fecha de modificación:</span>
+              <span class="audit-val" id="modalModifiedDate">28 Sep 2026, 14:35</span>
+            </div>
+            <div class="audit-item">
+              <span class="audit-label">Impacto en entregables:</span>
+              <span class="audit-val" id="modalImpact" style="color: #fbbf24;">2 tareas reprogramadas</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TASKS AFFECTED -->
+        <div style="background: #0d1420; border: 1px solid var(--border-subtle); border-radius: 10px; padding: 14px;">
+          <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 8px;">
+            Tareas del proyecto asociadas al período extendido:
+          </span>
+          <div id="modalTasksList" style="display: flex; flex-direction: column; gap: 6px;">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeJustificationModal()">Entendido</button>
+        <button class="btn-action" onclick="alert('En el sistema final, esto te redirigirá a la pestaña de gestión del proyecto o te permitirá editar la prórroga si eres Administrador.');">
+          Editar Justificación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SIMULAR PRÓRROGA -->
+  <div class="modal-backdrop" id="simulateModal" onclick="handleSimulateBackdrop(event)">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <h3>⚡ Simular Cambio de Fecha en Proyecto</h3>
+          <p>Prueba cómo reacciona la barra de cronograma y el tooltip en tiempo real</p>
+        </div>
+        <button class="modal-close-btn" onclick="closeSimulateModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="simulation-box">
+          <div class="input-group">
+            <label>Selecciona el proyecto a extender:</label>
+            <select id="simProjectSelect" onchange="onSimProjectChange()">
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="input-group">
+              <label>Fecha Límite Original:</label>
+              <input type="text" id="simOriginalDate" readonly style="opacity: 0.7;" />
+            </div>
+            <div class="input-group">
+              <label>Semanas adicionales a extender:</label>
+              <select id="simWeeksAdd">
+                <option value="1">+1 semana (7 días)</option>
+                <option value="2" selected>+2 semanas (14 días)</option>
+                <option value="3">+3 semanas (21 días)</option>
+                <option value="4">+4 semanas (1 mes)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="input-group">
+            <label>Justificación o Motivo del cambio de fecha:</label>
+            <textarea id="simJustification" rows="3" placeholder="Ej: Retraso en entrega del proveedor de infraestructura o cambio de alcance solicitado por dirección..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeSimulateModal()">Cancelar</button>
+        <button class="btn-action" onclick="applySimulatedExtension()">Aplicar Prórroga al Cronograma</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       PROTOTYPE DATA STORE (Representing Nexus Workspace Projects)
+       ======================================================== */
+    const DEFAULT_PROJECTS = [
+      {
+        id: 'p-1',
+        name: 'ACTUALIZACIÓN SOFTLAND',
+        stage: 'review',
+        stageLabel: 'En revisión',
+        lead: 'Jorge',
+        totalTasks: 8,
+        completedTasks: 6, // 75%
+        startDate: '2026-08-25',
+        originalTargetDate: '2026-09-30',
+        hasExtension: true,
+        extendedTargetDate: '2026-10-15',
+        extensionDurationText: '2 semanas',
+        justification: {
+          reason: 'Hacienda solicitó cambios en los documentos electrónicos de última hora con nuevas reglas de validación XML. Se requirió coordinar una ventana de pruebas en ambiente pre-productivo con Contabilidad antes de desplegar masivamente en la organización.',
+          requestedBy: 'Jerry Contabilidad & Jean Paul TI',
+          approvedBy: 'Jorge (Lead TI)',
+          dateModified: '28 Sep 2026, 14:35',
+          impact: '2 tareas reprogramadas',
+          tasks: [
+            { title: 'Pruebas de validación tributaria XML v4.3', status: 'done' },
+            { title: 'Aprobación formal de jefatura contable', status: 'in_progress' }
+          ]
+        }
+      },
+      {
+        id: 'p-2',
+        name: 'MIGRACIÓN SERVIDOR CORREO Y CLOUD',
+        stage: 'execution',
+        stageLabel: 'En ejecución',
+        lead: 'Jorge',
+        totalTasks: 12,
+        completedTasks: 5, // 41.6%
+        startDate: '2026-08-10',
+        originalTargetDate: '2026-11-20',
+        hasExtension: false,
+        extendedTargetDate: null,
+        extensionDurationText: null,
+        justification: null
+      },
+      {
+        id: 'p-3',
+        name: 'SISTEMA FACTURACIÓN ELECTRÓNICA V4.3',
+        stage: 'execution',
+        stageLabel: 'En ejecución',
+        lead: 'Jorge',
+        totalTasks: 10,
+        completedTasks: 3, // 30%
+        startDate: '2026-09-15',
+        originalTargetDate: '2026-10-25',
+        hasExtension: true,
+        extendedTargetDate: '2026-11-18',
+        extensionDurationText: '3 semanas',
+        justification: {
+          reason: 'Demora del proveedor externo en la emisión de certificados de firma criptográfica y retraso de 12 días en la entrega del entorno de homologación por parte del Ministerio de Hacienda.',
+          requestedBy: 'Proveedor Tercero Tech & Jorge',
+          approvedBy: 'Jorge (Lead TI)',
+          dateModified: '02 Oct 2026, 09:15',
+          impact: 'Homologación de certificados y pase a producción postergados',
+          tasks: [
+            { title: 'Integración de firma digital SHA-256', status: 'in_progress' },
+            { title: 'Recepción de credenciales de homologación API', status: 'backlog' }
+          ]
+        }
+      },
+      {
+        id: 'p-4',
+        name: 'DESPLIEGUE NUEVA VPN & ZERO-TRUST',
+        stage: 'completed',
+        stageLabel: 'Finalizado',
+        lead: 'Jean Paul TI',
+        totalTasks: 12,
+        completedTasks: 12, // 100%
+        startDate: '2026-08-01',
+        originalTargetDate: '2026-09-20',
+        hasExtension: false,
+        extendedTargetDate: null,
+        extensionDurationText: null,
+        justification: null
+      }
+    ];
+
+    let projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+    let activeFilter = 'all';
+
+    // Global timeline scale: Aug 01, 2026 to Dec 31, 2026 (153 days total)
+    const TIMELINE_START = new Date('2026-08-01T00:00:00').getTime();
+    const TIMELINE_END = new Date('2026-12-31T23:59:59').getTime();
+    const TIMELINE_TOTAL_MS = TIMELINE_END - TIMELINE_START;
+
+    function dateToPercent(dateStr) {
+      const ms = new Date(dateStr + 'T12:00:00').getTime();
+      const pct = ((ms - TIMELINE_START) / TIMELINE_TOTAL_MS) * 100;
+      return Math.max(0, Math.min(100, pct));
+    }
+
+    function formatDateShort(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr + 'T12:00:00');
+      const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+      return `${d.getDate()} ${months[d.getMonth()]}`;
+    }
+
+    /* ========================================================
+       RENDER LOGIC
+       ======================================================== */
+    function renderApp() {
+      const sidebarContainer = document.getElementById('project-sidebar-list');
+      const rowsContainer = document.getElementById('timeline-rows-container');
+
+      sidebarContainer.innerHTML = '';
+      rowsContainer.innerHTML = '';
+
+      const filtered = projects.filter(p => {
+        if (activeFilter === 'extended') return p.hasExtension;
+        if (activeFilter === 'ontrack') return !p.hasExtension;
+        return true;
+      });
+
+      // Update KPIs
+      document.getElementById('kpi-total').textContent = projects.length;
+      const extendedCount = projects.filter(p => p.hasExtension).length;
+      document.getElementById('kpi-extended').textContent = extendedCount;
+
+      let totalTasksAll = 0;
+      let completedTasksAll = 0;
+      projects.forEach(p => {
+        totalTasksAll += p.totalTasks;
+        completedTasksAll += p.completedTasks;
+      });
+      const avgPct = Math.round((completedTasksAll / totalTasksAll) * 100);
+      document.getElementById('kpi-progress').textContent = `${avgPct}%`;
+
+      filtered.forEach(p => {
+        const progressPct = Math.round((p.completedTasks / p.totalTasks) * 100);
+
+        /* 1. Sidebar Project Row */
+        const sidebarRow = document.createElement('div');
+        sidebarRow.className = 'sidebar-project-item';
+        sidebarRow.onclick = () => {
+          if (p.hasExtension) openJustificationModal(p.id);
+        };
+
+        sidebarRow.innerHTML = `
+          <div class="project-name-row">
+            <span class="project-title" title="${p.name}">${p.name}</span>
+            <span class="stage-tag stage-tag--${p.stage}">${p.stageLabel}</span>
+          </div>
+          <div class="project-meta-row">
+            <span class="task-ratio-badge">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="${progressPct === 100 ? '#34d399' : '#38bdf8'}" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              <span>${p.completedTasks}/${p.totalTasks} tareas (${progressPct}%)</span>
+            </span>
+            ${p.hasExtension ? `
+              <span class="extension-alert-pill" title="Clic para ver justificación técnica de la prórroga">
+                ⚠️ +${p.extensionDurationText}
+              </span>
+            ` : `
+              <span style="font-size: 0.72rem; color: var(--text-dim);">En plazo</span>
+            `}
+          </div>
+        `;
+        sidebarContainer.appendChild(sidebarRow);
+
+        /* 2. Timeline Bar Track Row */
+        const timelineRow = document.createElement('div');
+        timelineRow.className = 'timeline-row';
+
+        // Coordinates
+        const startPct = dateToPercent(p.startDate);
+        const originalEndPct = dateToPercent(p.originalTargetDate);
+        const baseWidthPct = originalEndPct - startPct;
+
+        let compositeBarHtml = '';
+
+        if (!p.hasExtension) {
+          // Normal single bar
+          compositeBarHtml = `
+            <div class="project-bar-composite" style="left: ${startPct}%; width: ${baseWidthPct}%;">
+              <div class="bar-base-segment is-single-pill" style="width: 100%;">
+                <div class="bar-progress-fill" style="width: ${progressPct}%;"></div>
+                <div class="bar-content-label">
+                  <span>${progressPct}% cumplido</span>
+                  <span class="bar-dates-hint">${formatDateShort(p.startDate)} ➔ ${formatDateShort(p.originalTargetDate)}</span>
+                </div>
+              </div>
+            </div>
+          `;
+        } else {
+          // Extended bar with extension segment
+          const extendedEndPct = dateToPercent(p.extendedTargetDate);
+          const extensionWidthPct = extendedEndPct - originalEndPct;
+          const totalCompositeWidth = baseWidthPct + extensionWidthPct;
+
+          compositeBarHtml = `
+            <div class="project-bar-composite" style="left: ${startPct}%; width: ${totalCompositeWidth}%;">
+              <!-- BASE SEGMENT (ORIGINAL TIME) -->
+              <div class="bar-base-segment" style="width: ${(baseWidthPct / totalCompositeWidth) * 100}%;">
+                <div class="bar-progress-fill" style="width: ${progressPct}%;"></div>
+                <div class="bar-content-label">
+                  <span>${progressPct}% cumplido (${p.completedTasks}/${p.totalTasks})</span>
+                  <span class="bar-dates-hint">${formatDateShort(p.startDate)}</span>
+                </div>
+                <!-- Pin marker for original deadline -->
+                <div class="original-target-divider" title="Fecha límite original: ${formatDateShort(p.originalTargetDate)}"></div>
+              </div>
+
+              <!-- EXTENSION SEGMENT (ADDED TIME) -->
+              <div class="bar-extension-segment" 
+                   style="width: ${(extensionWidthPct / totalCompositeWidth) * 100}%;"
+                   onclick="openJustificationModal('${p.id}')">
+                <span class="extension-label-badge">
+                  <span>⚠️ +${p.extensionDurationText}</span>
+                </span>
+
+                <!-- HOVER TOOLTIP (As requested by user!) -->
+                <div class="extension-tooltip">
+                  <div class="tooltip-header">
+                    <span>> Tiempo extendido, ${p.extensionDurationText}</span>
+                  </div>
+                  <div class="tooltip-body">
+                    El plazo original fue extendido. Se requiere justificación técnica documentada.
+                  </div>
+                  <div class="tooltip-dates">
+                    <div><strong>Original:</strong> ${formatDateShort(p.originalTargetDate)} 2026</div>
+                    <div style="color: #fbbf24;"><strong>Nueva fecha:</strong> ${formatDateShort(p.extendedTargetDate)} 2026</div>
+                  </div>
+                  <div class="tooltip-click-cta">
+                    🖱️ Haz clic para ver la justificación
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        timelineRow.innerHTML = compositeBarHtml;
+        rowsContainer.appendChild(timelineRow);
+      });
+    }
+
+    /* ========================================================
+       MODAL INTERACTIONS
+       ======================================================== */
+    function openJustificationModal(projectId) {
+      const p = projects.find(item => item.id === projectId);
+      if (!p || !p.hasExtension || !p.justification) return;
+
+      document.getElementById('modalProjectName').textContent = p.name;
+      document.getElementById('modalOriginalDate').textContent = `${formatDateShort(p.originalTargetDate)} 2026`;
+      document.getElementById('modalExtendedDate').textContent = `${formatDateShort(p.extendedTargetDate)} 2026`;
+      document.getElementById('modalDeltaDuration').textContent = `+${p.extensionDurationText} prórroga`;
+      document.getElementById('modalJustificationText').textContent = p.justification.reason;
+      document.getElementById('modalRequestedBy').textContent = p.justification.requestedBy;
+      document.getElementById('modalApprovedBy').textContent = p.justification.approvedBy;
+      document.getElementById('modalModifiedDate').textContent = p.justification.dateModified;
+      document.getElementById('modalImpact').textContent = p.justification.impact;
+
+      const tasksContainer = document.getElementById('modalTasksList');
+      tasksContainer.innerHTML = '';
+      p.justification.tasks.forEach(t => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.alignItems = 'center';
+        item.style.justifyContent = 'space-between';
+        item.style.background = '#131b28';
+        item.style.padding = '8px 12px';
+        item.style.borderRadius = '6px';
+        item.style.fontSize = '0.82rem';
+
+        item.innerHTML = `
+          <span>${t.title}</span>
+          <span style="font-size: 0.72rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; ${t.status === 'done' ? 'background: rgba(16, 185, 129, 0.2); color: #34d399;' : 'background: rgba(56, 189, 248, 0.2); color: #38bdf8;'}">
+            ${t.status === 'done' ? 'Completada' : 'En progreso'}
+          </span>
+        `;
+        tasksContainer.appendChild(item);
+      });
+
+      document.getElementById('justificationModal').classList.add('open');
+    }
+
+    function closeJustificationModal() {
+      document.getElementById('justificationModal').classList.remove('open');
+    }
+
+    function handleBackdropClick(e) {
+      if (e.target.id === 'justificationModal') {
+        closeJustificationModal();
+      }
+    }
+
+    /* ========================================================
+       SIMULATE EXTENSION MODAL
+       ======================================================== */
+    function openSimulateModal() {
+      const select = document.getElementById('simProjectSelect');
+      select.innerHTML = '';
+
+      projects.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.name} (${p.hasExtension ? 'Ya tiene prórroga' : 'Sin prórroga'})`;
+        select.appendChild(opt);
+      });
+
+      onSimProjectChange();
+      document.getElementById('simulateModal').classList.add('open');
+    }
+
+    function closeSimulateModal() {
+      document.getElementById('simulateModal').classList.remove('open');
+    }
+
+    function handleSimulateBackdrop(e) {
+      if (e.target.id === 'simulateModal') {
+        closeSimulateModal();
+      }
+    }
+
+    function onSimProjectChange() {
+      const id = document.getElementById('simProjectSelect').value;
+      const p = projects.find(item => item.id === id);
+      if (p) {
+        document.getElementById('simOriginalDate').value = p.originalTargetDate;
+      }
+    }
+
+    function applySimulatedExtension() {
+      const id = document.getElementById('simProjectSelect').value;
+      const p = projects.find(item => item.id === id);
+      const weeks = parseInt(document.getElementById('simWeeksAdd').value, 10);
+      const justificationText = document.getElementById('simJustification').value.trim() || 
+        'Ajuste de cronograma solicitado para absorber nuevas dependencias técnicas e integración con infraestructura.';
+
+      if (p) {
+        const origDate = new Date(p.originalTargetDate + 'T12:00:00');
+        origDate.setDate(origDate.getDate() + (weeks * 7));
+        const newDateStr = origDate.toISOString().split('T')[0];
+
+        p.hasExtension = true;
+        p.extendedTargetDate = newDateStr;
+        p.extensionDurationText = `${weeks} semanas`;
+        p.justification = {
+          reason: justificationText,
+          requestedBy: 'Equipo de Proyecto TI',
+          approvedBy: 'Jorge (Lead TI)',
+          dateModified: '05 Oct 2026, 11:30 (Recién actualizado)',
+          impact: `${weeks * 2} entregables sincronizados`,
+          tasks: [
+            { title: 'Revisión técnica de avance y nuevas dependencias', status: 'in_progress' },
+            { title: 'Entrega final y pruebas de aceptación', status: 'backlog' }
+          ]
+        };
+
+        closeSimulateModal();
+        renderApp();
+
+        // Highlight and open the modal so user sees it right away!
+        setTimeout(() => {
+          openJustificationModal(p.id);
+        }, 300);
+      }
+    }
+
+    function resetPrototypeData() {
+      projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+      activeFilter = 'all';
+      updateFilterButtons();
+      renderApp();
+    }
+
+    function setFilter(filter) {
+      activeFilter = filter;
+      updateFilterButtons();
+      renderApp();
+    }
+
+    function updateFilterButtons() {
+      document.getElementById('filter-all').className = `filter-chip ${activeFilter === 'all' ? 'active' : ''}`;
+      document.getElementById('filter-extended').className = `filter-chip filter-chip--warning ${activeFilter === 'extended' ? 'active' : ''}`;
+      document.getElementById('filter-ontrack').className = `filter-chip ${activeFilter === 'ontrack' ? 'active' : ''}`;
+    }
+
+    function simulateCardViewAlert() {
+      alert('En la versión final, este botón alterna entre la vista actual de tarjetas de "Mis Proyectos" y esta nueva vista de "Cronograma Ejecutivo & Avance".');
+    }
+
+    // Initial render
+    renderApp();
+  </script>
+</body>
+</html>

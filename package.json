@@ -7,9 +7,13 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "concurrently -n \"API,WEB\" -c \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:web\"",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:api": "npm run start:dev --workspace apps/api",
     "build:web": "npm run build --workspace apps/web",
     "build:api": "npm run build --workspace apps/api"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
   }
 }

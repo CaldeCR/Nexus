@@ -35,15 +35,20 @@ Este proyecto está configurado como un monorepo con npm workspaces:
 
 3. **Iniciar los servidores de desarrollo:**
 
-   - **Terminal 1 - Servidor API (Backend en puerto 4001):**
+   - **Opción recomendada (Ambos servidores en una sola terminal):**
      ```bash
-     npm run dev:api
+     npm run dev
      ```
 
-   - **Terminal 2 - Cliente Web (Frontend en puerto 5173):**
-     ```bash
-     npm run dev:web
-     ```
+   - **O por separado en terminales independientes:**
+     - **Terminal 1 - Servidor API (Backend en puerto 4001):**
+       ```bash
+       npm run dev:api
+       ```
+     - **Terminal 2 - Cliente Web (Frontend en puerto 5173):**
+       ```bash
+       npm run dev:web
+       ```
 
 4. **Acceder a la aplicación:**
    Abre tu navegador en [http://localhost:5173](http://localhost:5173).
@@ -54,6 +59,7 @@ Este proyecto está configurado como un monorepo con npm workspaces:
 
 Desde la raíz del proyecto puedes ejecutar:
 
+- `npm run dev`: Inicia simultáneamente el backend API y el frontend Web.
 - `npm run dev:web`: Inicia el servidor de desarrollo de Vite para la interfaz web.
 - `npm run dev:api`: Inicia la API con recarga automática en desarrollo.
 - `npm run build:web`: Compila el frontend para producción.

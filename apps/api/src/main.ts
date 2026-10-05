@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { z } from 'zod';
-import { readDb, writeDb, syncProjectMembers, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole } from './data/store';
+import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension } from './data/store';
 
 const app = express();
 app.use(cors());
@@ -15,6 +15,13 @@ const loginSchema = z.object({
 });
 
 const memberRoleSchema = z.enum(['admin', 'collaborator', 'vendor', 'viewer']);
+
+const dateExtensionSchema = z.object({
+  newTargetDate: z.string().min(1, 'La nueva fecha es obligatoria'),
+  reason: z.string().min(3, 'El motivo o justificación es obligatorio'),
+  requestedBy: z.string().optional(),
+  approvedBy: z.string().optional()
+});
 
 const createGlobalMemberSchema = z.object({
   name: z.string().min(1, 'El nombre o entidad es obligatorio'),
@@ -52,6 +59,7 @@ const updateMemberSchema = z.object({
 });
 
 const projectSchema = z.object({
+  code: z.string().optional(),
   name: z.string().min(2),
   description: z.string().optional(),
   template: z.enum(['kanban', 'scrum', 'pmi', 'custom']),
@@ -60,7 +68,9 @@ const projectSchema = z.object({
   admins: z.array(z.string()).optional(),
   members: z.array(z.string()).optional(),
   teamMembers: z.array(projectMemberSchema).optional(),
-  targetDate: z.string().optional()
+  startDate: z.string().optional(),
+  targetDate: z.string().optional(),
+  originalTargetDate: z.string().optional()
 });
 
 const projectStatusSchema = z.object({
@@ -68,6 +78,7 @@ const projectStatusSchema = z.object({
 });
 
 const workItemSchema = z.object({
+  code: z.string().optional(),
   projectId: z.string().min(1),
   title: z.string().min(2),
   description: z.string().optional(),
@@ -77,10 +88,15 @@ const workItemSchema = z.object({
   assignee: z.string().optional(),
   assignees: z.array(z.string()).optional(),
   assigneeType: z.enum(['me', 'team', 'vendor']).default('me'),
-  dueDate: z.string().optional()
+  dueDate: z.string().optional(),
+  completionType: z.enum(['full', 'partial']).optional(),
+  completionReport: z.string().optional(),
+  continuationTaskId: z.string().optional(),
+  completedAt: z.string().optional()
 });
 
 const workItemUpdateSchema = z.object({
+  code: z.string().optional(),
   projectId: z.string().min(1).optional(),
   title: z.string().min(2).optional(),
   description: z.string().optional(),
@@ -90,7 +106,11 @@ const workItemUpdateSchema = z.object({
   assignee: z.string().optional(),
   assignees: z.array(z.string()).optional(),
   assigneeType: z.enum(['me', 'team', 'vendor']).optional(),
-  dueDate: z.string().optional()
+  dueDate: z.string().optional(),
+  completionType: z.enum(['full', 'partial']).optional(),
+  completionReport: z.string().optional(),
+  continuationTaskId: z.string().optional(),
+  completedAt: z.string().optional()
 });
 
 const workItemStatusSchema = z.object({
@@ -177,6 +197,7 @@ app.post('/api/projects', (req, res) => {
   const db = readDb();
   let newProject: Project = {
     id: `p-${Date.now()}`,
+    code: parsed.data.code || getNextProjectCode(db.projects),
     name: parsed.data.name,
     description: parsed.data.description,
     template: parsed.data.template,
@@ -192,7 +213,10 @@ app.post('/api/projects', (req, res) => {
           ...(m.email ? { email: m.email } : {})
         }))
       : undefined,
-    targetDate: parsed.data.targetDate
+    startDate: parsed.data.startDate || new Date().toISOString().split('T')[0],
+    targetDate: parsed.data.targetDate,
+    originalTargetDate: parsed.data.originalTargetDate || parsed.data.targetDate,
+    dateExtensions: []
   };
 
   newProject = syncProjectMembers(newProject);
@@ -215,6 +239,7 @@ app.put('/api/projects/:id', (req, res) => {
 
   let updated = {
     ...db.projects[projectIndex],
+    ...(req.body.code !== undefined && { code: req.body.code }),
     ...(req.body.name && { name: req.body.name }),
     ...(req.body.description !== undefined && { description: req.body.description }),
     ...(req.body.status && { status: req.body.status }),
@@ -230,13 +255,67 @@ app.put('/api/projects/:id', (req, res) => {
         ...(m.email ? { email: m.email } : {})
       }))
     }),
-    ...(req.body.targetDate !== undefined && { targetDate: req.body.targetDate })
+    ...(req.body.startDate !== undefined && { startDate: req.body.startDate }),
+    ...(req.body.targetDate !== undefined && { targetDate: req.body.targetDate }),
+    ...(req.body.originalTargetDate !== undefined && { originalTargetDate: req.body.originalTargetDate }),
+    ...(Array.isArray(req.body.dateExtensions) && { dateExtensions: req.body.dateExtensions })
   };
 
   updated = syncProjectMembers(updated);
   db.projects[projectIndex] = updated;
   writeDb(db);
   return res.json(db.projects[projectIndex]);
+});
+
+app.post('/api/projects/:id/extensions', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  const parsed = dateExtensionSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Datos de prórroga inválidos', errors: parsed.error.flatten() });
+  }
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) {
+    return res.status(404).json({ message: 'Proyecto no encontrado' });
+  }
+
+  const project = db.projects[projectIndex];
+  const currentTarget = project.targetDate || new Date().toISOString().split('T')[0];
+  const newTarget = parsed.data.newTargetDate;
+
+  const d1 = new Date(currentTarget + 'T12:00:00').getTime();
+  const d2 = new Date(newTarget + 'T12:00:00').getTime();
+  const diffDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+  const weeks = Math.round(diffDays / 7);
+  const durationText = weeks >= 1 ? `${weeks} semana${weeks > 1 ? 's' : ''}` : `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+
+  const extension: DateExtension = {
+    id: `ext-${Date.now()}`,
+    originalTargetDate: currentTarget,
+    newTargetDate: newTarget,
+    durationText,
+    reason: parsed.data.reason.trim(),
+    requestedBy: parsed.data.requestedBy?.trim() || user.name || 'Jorge',
+    approvedBy: parsed.data.approvedBy?.trim() || user.name || 'Jorge',
+    createdAt: new Date().toISOString()
+  };
+
+  if (!project.originalTargetDate) {
+    project.originalTargetDate = currentTarget;
+  }
+  if (!Array.isArray(project.dateExtensions)) {
+    project.dateExtensions = [];
+  }
+  project.dateExtensions.push(extension);
+  project.targetDate = newTarget;
+
+  writeDb(db);
+  return res.status(201).json({ extension, project });
 });
 
 app.put('/api/projects/:id/status', (req, res) => {
@@ -628,8 +707,13 @@ app.post('/api/work-items', (req, res) => {
   }
   const assigneeStr = assigneesList.join(', ');
 
+  const targetProject = db.projects.find((p) => p.id === parsed.data.projectId);
+  const projCode = targetProject?.code || 'P1';
+  const code = parsed.data.code || getNextWorkItemCode(db.workItems, projCode);
+
   const newItem: WorkItem = {
     id: `wi-${Date.now()}`,
+    code,
     projectId: parsed.data.projectId,
     title: parsed.data.title,
     description: parsed.data.description,
@@ -640,7 +724,11 @@ app.post('/api/work-items', (req, res) => {
     assignees: assigneesList,
     assigneeType: parsed.data.assigneeType || 'me',
     dueDate: parsed.data.dueDate || '',
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    completionType: parsed.data.completionType || (parsed.data.status === 'done' ? 'full' : undefined),
+    completionReport: parsed.data.completionReport || '',
+    continuationTaskId: parsed.data.continuationTaskId,
+    completedAt: parsed.data.completedAt || (parsed.data.status === 'done' ? new Date().toISOString() : undefined)
   };
 
   workItems.unshift(newItem);
@@ -679,6 +767,15 @@ app.put('/api/work-items/:id', (req, res) => {
     updateData.assignees = parsed.data.assignee.split(',').map((s) => s.trim()).filter(Boolean);
   }
 
+  if (updateData.status === 'done') {
+    if (!updateData.completedAt && !db.workItems[itemIndex].completedAt) {
+      updateData.completedAt = new Date().toISOString();
+    }
+    if (!updateData.completionType && !db.workItems[itemIndex].completionType) {
+      updateData.completionType = 'full';
+    }
+  }
+
   db.workItems[itemIndex] = {
     ...db.workItems[itemIndex],
     ...updateData
@@ -705,9 +802,13 @@ app.put('/api/work-items/:id/status', (req, res) => {
     return res.status(404).json({ message: 'Tarea no encontrada' });
   }
 
+  const isNowDone = parsed.data.status === 'done';
+
   db.workItems[itemIndex] = {
     ...db.workItems[itemIndex],
-    status: parsed.data.status
+    status: parsed.data.status,
+    ...(isNowDone && !db.workItems[itemIndex].completedAt ? { completedAt: new Date().toISOString() } : {}),
+    ...(isNowDone && !db.workItems[itemIndex].completionType ? { completionType: 'full' } : {})
   };
 
   writeDb(db);

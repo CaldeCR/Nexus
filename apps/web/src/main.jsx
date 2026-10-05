@@ -6,6 +6,7 @@ import './styles/gantt.css';
 import './styles/kanban.css';
 import './styles/portfolio.css';
 import './styles/agenda.css';
+import './styles/roadmap.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -203,6 +204,21 @@ const Icons = {
       <circle cx="11" cy="11" r="8" />
       <line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
+  ),
+  FileText: () => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  ),
+  Tasks: () => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+    </svg>
   )
 };
 
@@ -245,6 +261,22 @@ function formatDateYMD(d) {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return String(dateStr);
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+function formatDateFull(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T12:00:00');
+  if (isNaN(d.getTime())) return String(dateStr);
+  const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  return `${d.getDate()} de ${months[d.getMonth()]}, ${d.getFullYear()}`;
 }
 
 function getTaskAssignees(item) {
@@ -477,6 +509,16 @@ function App() {
 
   // Navigation
   const [activeView, setActiveView] = useState('portfolio');
+  const [portfolioSubView, setPortfolioSubView] = useState('cards'); // 'cards' | 'timeline'
+  const [timelineFilter, setTimelineFilter] = useState('all'); // 'all' | 'extended' | 'ontrack'
+  const [justificationModalProject, setJustificationModalProject] = useState(null);
+  const [newExtensionModalProject, setNewExtensionModalProject] = useState(null);
+  const [extensionForm, setExtensionForm] = useState({
+    newTargetDate: '',
+    reason: '',
+    requestedBy: '',
+    approvedBy: 'Jorge'
+  });
   const [agendaSubView, setAgendaSubView] = useState('day');
   const [agendaFilter, setAgendaFilter] = useState('all');
   const [highlightedProjectId, setHighlightedProjectId] = useState(null);
@@ -505,6 +547,9 @@ function App() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [isDoneReportModalOpen, setIsDoneReportModalOpen] = useState(false);
+  const [doneReportFilter, setDoneReportFilter] = useState('all'); // 'all' | 'full' | 'partial'
+  const [doneReportSearch, setDoneReportSearch] = useState('');
   const [editingTask, setEditingTask] = useState(null);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
@@ -516,6 +561,7 @@ function App() {
     template: 'kanban',
     status: 'execution',
     role: 'lead',
+    startDate: '',
     targetDate: ''
   });
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -566,6 +612,7 @@ function App() {
     role: 'lead',
     admins: 'Jorge',
     members: '',
+    startDate: '',
     targetDate: ''
   });
 
@@ -592,7 +639,12 @@ function App() {
     assignees: ['Jorge'],
     assignee: 'Jorge',
     assigneeType: 'me',
-    dueDate: ''
+    dueDate: '',
+    code: '',
+    completionType: 'full',
+    completionReport: '',
+    continuationTaskId: '',
+    completedAt: ''
   });
 
   const todayStr = useMemo(() => formatDateYMD(new Date()), []);
@@ -893,6 +945,7 @@ function App() {
           role: projectForm.role,
           admins: adminsArray,
           members: membersArray,
+          startDate: projectForm.startDate || todayStr,
           targetDate: projectForm.targetDate
         })
       });
@@ -908,6 +961,7 @@ function App() {
         role: 'lead',
         admins: 'Jorge',
         members: '',
+        startDate: '',
         targetDate: ''
       });
       await fetchProjects();
@@ -967,6 +1021,7 @@ function App() {
       template: project.template || 'kanban',
       status: project.status || 'execution',
       role: project.role || 'lead',
+      startDate: project.startDate || project.effectiveStartDate || '',
       targetDate: project.targetDate || ''
     });
   };
@@ -988,6 +1043,7 @@ function App() {
           template: editProjectForm.template,
           status: editProjectForm.status,
           role: editProjectForm.role,
+          startDate: editProjectForm.startDate,
           targetDate: editProjectForm.targetDate
         })
       });
@@ -1223,7 +1279,12 @@ function App() {
       assignees: list,
       assignee: list.join(', '),
       assigneeType: task.assigneeType || (list.some(isAssigneeMine) ? 'me' : 'team'),
-      dueDate: task.dueDate || ''
+      dueDate: task.dueDate || '',
+      code: task.code || '',
+      completionType: task.completionType || 'full',
+      completionReport: task.completionReport || '',
+      continuationTaskId: task.continuationTaskId || '',
+      completedAt: task.completedAt || ''
     });
     setIsEditTaskModalOpen(true);
   };
@@ -1242,6 +1303,10 @@ function App() {
             return dirM ? dirM.role === 'vendor' : isAssigneeVendor(a);
           }) ? 'vendor' : 'team');
 
+      const completedAtToSave = editTaskForm.status === 'done'
+        ? (editTaskForm.completedAt || editingTask.completedAt || new Date().toISOString())
+        : (editTaskForm.completedAt || undefined);
+
       const res = await fetch(`${API_BASE}/work-items/${editingTask.id}`, {
         method: 'PUT',
         headers: {
@@ -1252,7 +1317,8 @@ function App() {
           ...editTaskForm,
           assignees: assigneesToSave,
           assignee: finalAssigneeStr,
-          assigneeType: finalAssigneeType
+          assigneeType: finalAssigneeType,
+          completedAt: completedAtToSave
         })
       });
       const data = await res.json();
@@ -1364,6 +1430,29 @@ function App() {
       }).length;
       const isOverdue = p.targetDate && p.targetDate < todayStr && p.status !== 'completed';
 
+      // Cálculo de extensión / prórroga
+      const hasExtension = Boolean(
+        (Array.isArray(p.dateExtensions) && p.dateExtensions.length > 0) ||
+        (p.originalTargetDate && p.targetDate && p.originalTargetDate < p.targetDate)
+      );
+
+      let extensionDurationText = '';
+      if (hasExtension) {
+        if (Array.isArray(p.dateExtensions) && p.dateExtensions.length > 0) {
+          extensionDurationText = p.dateExtensions[p.dateExtensions.length - 1].durationText;
+        } else if (p.originalTargetDate && p.targetDate) {
+          const d1 = new Date(p.originalTargetDate + 'T12:00:00').getTime();
+          const d2 = new Date(p.targetDate + 'T12:00:00').getTime();
+          const diffDays = Math.max(1, Math.round((d2 - d1) / (1000 * 60 * 60 * 24)));
+          const weeks = Math.round(diffDays / 7);
+          extensionDurationText = weeks >= 1 ? `${weeks} semana${weeks > 1 ? 's' : ''}` : `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+        }
+      }
+
+      const effectiveStartDate = p.startDate || (p.createdAt ? p.createdAt.split('T')[0] : '2026-08-15');
+      const effectiveOriginalTargetDate = p.originalTargetDate || p.targetDate || '2026-10-15';
+      const effectiveTargetDate = p.targetDate || '2026-10-15';
+
       return {
         ...p,
         totalTasks: total,
@@ -1372,18 +1461,134 @@ function App() {
         myPending,
         teamPending,
         vendorPending,
-        isOverdue
+        isOverdue,
+        hasExtension,
+        extensionDurationText,
+        effectiveStartDate,
+        effectiveOriginalTargetDate,
+        effectiveTargetDate
       };
     });
   }, [projects, workItems, todayStr]);
 
   const filteredProjects = useMemo(() => {
     return enrichedProjects.filter((p) => {
-      if (roleFilter !== 'all' && p.role !== roleFilter) return false;
+      if (portfolioSubView === 'cards') {
+        if (roleFilter !== 'all' && p.role !== roleFilter) return false;
+      }
       if (stageFilter !== 'all' && (p.status || 'execution') !== stageFilter) return false;
+      if (portfolioSubView === 'timeline') {
+        if (timelineFilter === 'extended' && !p.hasExtension) return false;
+        if (timelineFilter === 'ontrack' && p.hasExtension) return false;
+      }
       return true;
     });
-  }, [enrichedProjects, roleFilter, stageFilter]);
+  }, [enrichedProjects, roleFilter, stageFilter, portfolioSubView, timelineFilter]);
+
+  const timelineScale = useMemo(() => {
+    const now = new Date(todayStr + 'T12:00:00');
+    let startMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    let endMonth = new Date(now.getFullYear(), now.getMonth() + 2, 28);
+
+    enrichedProjects.forEach((p) => {
+      if (p.effectiveStartDate) {
+        const d = new Date(p.effectiveStartDate + 'T12:00:00');
+        if (!isNaN(d.getTime()) && d < startMonth) {
+          startMonth = new Date(d.getFullYear(), d.getMonth(), 1);
+        }
+      }
+      if (p.effectiveTargetDate) {
+        const d = new Date(p.effectiveTargetDate + 'T12:00:00');
+        if (!isNaN(d.getTime()) && d > endMonth) {
+          endMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+        }
+      }
+    });
+
+    const monthCols = [];
+    const cur = new Date(startMonth.getFullYear(), startMonth.getMonth(), 1);
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+    while (cur <= endMonth && monthCols.length < 12) {
+      const yr = cur.getFullYear();
+      const mo = cur.getMonth();
+      const isCur = yr === now.getFullYear() && mo === now.getMonth();
+      const daysInMonth = new Date(yr, mo + 1, 0).getDate();
+      monthCols.push({
+        year: yr,
+        month: mo,
+        daysInMonth,
+        label: `${monthNames[mo]} ${yr}`,
+        isCurrent: isCur
+      });
+      cur.setMonth(cur.getMonth() + 1);
+    }
+
+    const numCols = Math.max(1, monthCols.length);
+    const colWidthPct = 100 / numCols;
+
+    const dateToPercent = (dateStr) => {
+      if (!dateStr || monthCols.length === 0) return 0;
+      const d = new Date(dateStr + 'T12:00:00');
+      if (isNaN(d.getTime())) return 0;
+
+      const yr = d.getFullYear();
+      const mo = d.getMonth();
+      const day = d.getDate();
+
+      const colIdx = monthCols.findIndex((c) => c.year === yr && c.month === mo);
+      if (colIdx === -1) {
+        const first = monthCols[0];
+        if (yr < first.year || (yr === first.year && mo < first.month)) return 0;
+        return 100;
+      }
+
+      const daysInMo = monthCols[colIdx].daysInMonth;
+      const dayFraction = Math.max(0, Math.min(1, (day - 0.5) / daysInMo));
+      const pct = (colIdx + dayFraction) * colWidthPct;
+      return Math.max(0, Math.min(100, pct));
+    };
+
+    const todayPct = dateToPercent(todayStr);
+
+    return { monthCols, dateToPercent, todayPct };
+  }, [enrichedProjects, todayStr]);
+
+  const handleCreateExtension = async (e) => {
+    e.preventDefault();
+    if (!newExtensionModalProject || !token) return;
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE}/projects/${newExtensionModalProject.id}/extensions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          newTargetDate: extensionForm.newTargetDate,
+          reason: extensionForm.reason,
+          requestedBy: extensionForm.requestedBy,
+          approvedBy: extensionForm.approvedBy
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Error al registrar prórroga');
+      }
+
+      setProjects((prev) =>
+        prev.map((p) => (p.id === newExtensionModalProject.id ? data.project : p))
+      );
+      setSuccess('Prórroga y cambio de fecha registrados exitosamente');
+      setNewExtensionModalProject(null);
+      setJustificationModalProject(data.project);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const globalKpis = useMemo(() => {
     const total = enrichedProjects.length;
@@ -1749,7 +1954,29 @@ function App() {
                   <p className="eyebrow">Control de Portafolio</p>
                   <h2>Mis Proyectos</h2>
                 </div>
-                <div className="header-actions">
+                <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div className="portfolio-subview-toggle">
+                    <button
+                      type="button"
+                      className={`subview-toggle-btn ${portfolioSubView === 'cards' ? 'active' : ''}`}
+                      onClick={() => setPortfolioSubView('cards')}
+                      title="Vista tradicional de tarjetas"
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                      <span>Tarjetas</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`subview-toggle-btn ${portfolioSubView === 'timeline' ? 'active' : ''}`}
+                      onClick={() => setPortfolioSubView('timeline')}
+                      title="Vista abstracta de cronograma con avance y prórrogas"
+                    >
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                      <span>Cronograma & Avance</span>
+                      <span className="subview-pill-badge">NUEVO</span>
+                    </button>
+                  </div>
+
                   <button
                     className="ui-btn ui-btn--primary"
                     type="button"
@@ -1760,112 +1987,43 @@ function App() {
                 </div>
               </div>
 
-              {/* KPI CARDS CON ICONOS TÉCNICOS */}
-              <div className="portfolio-metrics-grid">
-                <div className="kpi-card">
-                  <div className="kpi-card__icon kpi-card__icon--brand">
-                    <Icons.Portfolio />
-                  </div>
-                  <div className="kpi-card__value">{globalKpis.total}</div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">Total Proyectos</span>
-                    <span className="kpi-card__sub">Activos en el espacio</span>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card__icon kpi-card__icon--brand">
-                    <Icons.Lead />
-                  </div>
-                  <div className="kpi-card__value">{globalKpis.leadCount}</div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">Soy Encargado</span>
-                    <span className="kpi-card__sub">Liderazgo directo</span>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card__icon kpi-card__icon--success">
-                    <Icons.Collaborator />
-                  </div>
-                  <div className="kpi-card__value">{globalKpis.collabCount}</div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">En Colaboración</span>
-                    <span className="kpi-card__sub">Equipo conjunto</span>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card__icon kpi-card__icon--danger">
-                    <Icons.Alert />
-                  </div>
-                  <div className="kpi-card__value" style={{ color: globalKpis.totalMyPending > 0 ? 'var(--danger-600)' : 'var(--success-600)' }}>
-                    {globalKpis.totalMyPending}
-                  </div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">Mis Pendientes</span>
-                    <span className="kpi-card__sub">Asignados a mí</span>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card__icon" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)' }}>
-                    <Icons.Vendor />
-                  </div>
-                  <div className="kpi-card__value" style={{ color: globalKpis.totalVendorPending > 0 ? '#c084fc' : 'var(--ink-500)' }}>
-                    {globalKpis.totalVendorPending}
-                  </div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">En Proveedores</span>
-                    <span className="kpi-card__sub">Esperando terceros</span>
-                  </div>
-                </div>
-
-                <div className="kpi-card">
-                  <div className="kpi-card__icon kpi-card__icon--warning">
-                    <Icons.TargetPulse />
-                  </div>
-                  <div className="kpi-card__value">{globalKpis.avgProg}%</div>
-                  <div className="kpi-card__details">
-                    <span className="kpi-card__label">Avance Promedio</span>
-                    <span className="kpi-card__sub">Consolidado general</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* TOOLBAR Y FILTROS */}
+              {/* TOOLBAR Y FILTROS HORIZONTALES COMPACTOS */}
               <div className="portfolio-toolbar">
-                <div className="filter-group">
-                  <span className="filter-label">Mi Rol:</span>
-                  <button
-                    type="button"
-                    className={`pill-btn ${roleFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setRoleFilter('all')}
-                  >
-                    Todos ({enrichedProjects.length})
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${roleFilter === 'lead' ? 'active' : ''}`}
-                    onClick={() => setRoleFilter('lead')}
-                  >
-                    <Icons.Lead /> <span>Encargado ({globalKpis.leadCount})</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${roleFilter === 'collaborator' ? 'active' : ''}`}
-                    onClick={() => setRoleFilter('collaborator')}
-                  >
-                    <Icons.Collaborator /> <span>Colaborador ({globalKpis.collabCount})</span>
-                  </button>
-                </div>
+                {portfolioSubView === 'cards' && (
+                  <div className="filter-group-inline">
+                    <span className="compact-filter-label">Mi Rol:</span>
+                    <div className="compact-btn-group">
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${roleFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setRoleFilter('all')}
+                      >
+                        Todos ({enrichedProjects.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${roleFilter === 'lead' ? 'active' : ''}`}
+                        onClick={() => setRoleFilter('lead')}
+                      >
+                        <Icons.Lead /> <span>Encargado ({globalKpis.leadCount})</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${roleFilter === 'collaborator' ? 'active' : ''}`}
+                        onClick={() => setRoleFilter('collaborator')}
+                      >
+                        <Icons.Collaborator /> <span>Colaborador ({globalKpis.collabCount})</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
 
-                <div className="filter-group">
-                  <span className="filter-label">Etapa:</span>
+                <div className="filter-group-inline">
+                  <span className="compact-filter-label">Etapa:</span>
                   <select
+                    className="compact-filter-select"
                     value={stageFilter}
                     onChange={(e) => setStageFilter(e.target.value)}
-                    style={{ padding: '6px 12px' }}
                   >
                     <option value="all">Todas las etapas</option>
                     {projectStages.map((st) => (
@@ -1873,10 +2031,67 @@ function App() {
                     ))}
                   </select>
                 </div>
+
+                {portfolioSubView === 'timeline' && (
+                  <div className="filter-group-inline">
+                    <span className="compact-filter-label">Plazos:</span>
+                    <div className="compact-btn-group">
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${timelineFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setTimelineFilter('all')}
+                      >
+                        Todos ({enrichedProjects.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${timelineFilter === 'extended' ? 'active-warning' : ''}`}
+                        onClick={() => setTimelineFilter('extended')}
+                      >
+                        ⚠️ Con Prórroga ({enrichedProjects.filter((p) => p.hasExtension).length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`compact-pill-btn ${timelineFilter === 'ontrack' ? 'active' : ''}`}
+                        onClick={() => setTimelineFilter('ontrack')}
+                      >
+                        En Plazo ({enrichedProjects.filter((p) => !p.hasExtension).length})
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {portfolioSubView === 'cards' && (
+                  <div className="portfolio-toolbar-counter" style={{ marginLeft: 'auto' }}>
+                    Mostrando <strong>{filteredProjects.length}</strong> de {enrichedProjects.length} proyectos
+                  </div>
+                )}
+
+                {portfolioSubView === 'timeline' && (
+                  <div className="roadmap-legend-row" style={{ marginLeft: 'auto' }}>
+                    <div className="roadmap-legend-item">
+                      <span className="roadmap-legend-color roadmap-legend-color--fill" />
+                      <span>% Tareas</span>
+                    </div>
+                    <div className="roadmap-legend-item">
+                      <span className="roadmap-legend-color roadmap-legend-color--time" />
+                      <span>Plazo pactado</span>
+                    </div>
+                    <div className="roadmap-legend-item">
+                      <span className="roadmap-legend-color roadmap-legend-color--ext" />
+                      <span style={{ color: '#fbbf24', fontWeight: 600 }}>Prórroga</span>
+                    </div>
+                    <div className="roadmap-legend-item">
+                      <span className="roadmap-legend-color roadmap-legend-color--today" />
+                      <span style={{ color: '#f43f5e', fontWeight: 700 }}>Hoy ({formatDateShort(todayStr)})</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* LISTA DE PROYECTOS */}
-              <div className="projects-portfolio-grid">
+              {/* VISTA 1: TARJETAS TRADICIONALES */}
+              {portfolioSubView === 'cards' && (
+                <div className="projects-portfolio-grid">
                 {filteredProjects.length === 0 ? (
                   <div className="panel-card" style={{ textAlign: 'center', padding: '40px' }}>
                     <p className="muted">No hay proyectos que coincidan con los filtros seleccionados.</p>
@@ -1922,6 +2137,7 @@ function App() {
                         {/* SECCIÓN PRINCIPAL: TÍTULO, BADGES, DESCRIPCIÓN Y MIEMBROS */}
                         <div className="project-card-main-info">
                           <div className="project-card-title-row">
+                            {project.code && <span className="project-code-badge">{project.code}</span>}
                             <h3>{project.name}</h3>
 
                             <span className={`role-badge ${project.role === 'lead' ? 'role-badge--lead' : 'role-badge--collaborator'}`}>
@@ -2049,7 +2265,419 @@ function App() {
                     </article>
                   ))
                 )}
-              </div>
+                </div>
+              )}
+
+              {/* VISTA 2: CRONOGRAMA ABSTRACTO & AVANCE DE METAS */}
+              {portfolioSubView === 'timeline' && (
+                <div className="roadmap-board-card">
+                  <div className="roadmap-layout">
+                    {/* SIDEBAR DE PROYECTOS */}
+                    <div className="roadmap-sidebar">
+                      <div className="roadmap-sidebar-header">
+                        <span>Proyecto & Metas</span>
+                        <span>Cumplimiento</span>
+                      </div>
+
+                      <div className="roadmap-sidebar-list">
+                        {filteredProjects.length === 0 ? (
+                          <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--ink-500)', fontSize: '0.84rem' }}>
+                            No hay proyectos que coincidan con los filtros seleccionados.
+                          </div>
+                        ) : (
+                          filteredProjects.map((project) => (
+                            <div
+                              key={`sidebar-${project.id}`}
+                              className="roadmap-project-item"
+                              onClick={() => {
+                                if (project.hasExtension) {
+                                  setJustificationModalProject(project);
+                                } else {
+                                  setSelectedProjectId(project.id);
+                                  setActiveView('kanban');
+                                }
+                              }}
+                            >
+                              <div className="roadmap-item-title-row">
+                                <span className="roadmap-project-name" title={project.name} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {project.code && <span className="project-code-badge">{project.code}</span>}
+                                  <span>{project.name}</span>
+                                </span>
+                                <span className={`stage-tag stage-tag--${project.status || 'execution'}`}>
+                                  {stageLabelMap[project.status || 'execution'] || 'En ejecución'}
+                                </span>
+                              </div>
+
+                              <div className="roadmap-item-meta-row">
+                                <span className="roadmap-task-ratio">
+                                  <Icons.Check />
+                                  <span>
+                                    {project.doneTasks}/{project.totalTasks} tareas ({project.progressPct}%)
+                                  </span>
+                                </span>
+
+                                {project.hasExtension ? (
+                                  <button
+                                    type="button"
+                                    className="roadmap-extension-badge"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setJustificationModalProject(project);
+                                    }}
+                                    title="Ver justificación técnica de la prórroga"
+                                  >
+                                    <span>⚠️ +{project.extensionDurationText}</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="ui-btn ui-btn--ghost ui-btn--small"
+                                    style={{ fontSize: '0.72rem', padding: '2px 8px', color: 'var(--ink-500)', border: '1px solid var(--line-200)' }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setNewExtensionModalProject(project);
+                                      setExtensionForm({
+                                        newTargetDate: project.targetDate || todayStr,
+                                        reason: '',
+                                        requestedBy: '',
+                                        approvedBy: 'Jorge'
+                                      });
+                                    }}
+                                    title="Registrar una prórroga para este proyecto"
+                                  >
+                                    + Prórroga
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* TIMELINE INTERACTIVO */}
+                    <div className="roadmap-timeline-view">
+                      {/* ENCABEZADOS DE MESES */}
+                      <div
+                        className="roadmap-header-track"
+                        style={{ gridTemplateColumns: `repeat(${timelineScale.monthCols.length}, 1fr)` }}
+                      >
+                        {timelineScale.monthCols.map((m, idx) => (
+                          <div
+                            key={`m-${idx}`}
+                            className={`roadmap-month-col ${m.isCurrent ? 'is-current-month' : ''}`}
+                          >
+                            <span className="roadmap-month-title" style={{ color: m.isCurrent ? 'var(--brand-300)' : 'inherit' }}>
+                              {m.label}
+                            </span>
+                            <span className="roadmap-month-sub">{m.isCurrent ? 'Mes Actual' : ''}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* CUERPO DEL CRONOGRAMA */}
+                      <div className="roadmap-body-track">
+                        {/* LÍNEAS DE CUADRÍCULA */}
+                        <div
+                          className="roadmap-grid-overlay"
+                          style={{ gridTemplateColumns: `repeat(${timelineScale.monthCols.length}, 1fr)` }}
+                        >
+                          {timelineScale.monthCols.map((_, idx) => (
+                            <div key={`grid-${idx}`} className="roadmap-grid-line" />
+                          ))}
+                        </div>
+
+                        {/* LÍNEA DE HOY */}
+                        {timelineScale.todayPct >= 0 && timelineScale.todayPct <= 100 && (
+                          <div
+                            className="roadmap-today-marker"
+                            style={{ left: `${timelineScale.todayPct}%` }}
+                            title={`Línea temporal de hoy (${todayStr})`}
+                          >
+                            <div className="roadmap-today-flag">Hoy: {formatDateShort(todayStr)}</div>
+                          </div>
+                        )}
+
+                        {/* FILAS DE BARRAS DE PROYECTOS */}
+                        {filteredProjects.map((project, index) => {
+                          const startPct = timelineScale.dateToPercent(project.effectiveStartDate);
+                          const origEndPct = timelineScale.dateToPercent(project.effectiveOriginalTargetDate);
+                          const baseWidth = Math.max(3, origEndPct - startPct);
+                          const isNearTop = index < 2;
+                          const maxEndPct = project.hasExtension ? timelineScale.dateToPercent(project.effectiveTargetDate) : origEndPct;
+                          const alignH = startPct < 15 ? 'align-left' : (maxEndPct > 85 ? 'align-right' : 'align-center');
+                          const tooltipClass = `${isNearTop ? 'tooltip-down' : 'tooltip-up'} ${alignH}`;
+
+                          if (!project.hasExtension) {
+                            return (
+                              <div key={`row-${project.id}`} className="roadmap-timeline-row">
+                                <div
+                                  className="roadmap-bar-composite"
+                                  style={{ left: `${startPct}%`, width: `${baseWidth}%` }}
+                                  onClick={() => {
+                                    setSelectedProjectId(project.id);
+                                    setActiveView('kanban');
+                                  }}
+                                >
+                                  {/* PIN DE FECHA DE INICIO */}
+                                  <div
+                                    className="roadmap-start-pin"
+                                    data-date={`Inicio: ${formatDateShort(project.effectiveStartDate)}`}
+                                    title={`Iniciado: ${formatDateFull(project.effectiveStartDate)}`}
+                                  />
+
+                                  <div className="roadmap-bar-base is-single-pill" style={{ width: '100%' }}>
+                                    <div
+                                      className="roadmap-progress-fill"
+                                      style={{ width: `${project.progressPct}%` }}
+                                    />
+                                    <div className="roadmap-bar-labels">
+                                      <span className="roadmap-bar-start-label">▶ {formatDateShort(project.effectiveStartDate)}</span>
+                                      <span className="roadmap-bar-prog-label">{project.progressPct}%</span>
+                                      <span className="roadmap-bar-end-label">🏁 {formatDateShort(project.effectiveOriginalTargetDate)}</span>
+                                    </div>
+
+                                    {/* PIN DE FECHA PACTADA */}
+                                    <div
+                                      className="roadmap-original-pin"
+                                      data-date={`Meta: ${formatDateShort(project.effectiveOriginalTargetDate)}`}
+                                      title={`Límite pactado: ${formatDateFull(project.effectiveOriginalTargetDate)}`}
+                                    />
+
+                                    {/* TOOLTIP ON HOVER CON FECHAS DE INICIO Y FINALIZACIÓN */}
+                                    <div className={`roadmap-bar-hover-tooltip ${tooltipClass}`}>
+                                      <div className="roadmap-tooltip-header">
+                                        {project.code && <span className="project-code-badge" style={{ fontSize: '0.68rem', padding: '0 5px' }}>{project.code}</span>}
+                                        <span>{project.name}</span>
+                                      </div>
+                                      <div className="roadmap-tooltip-dates-grid">
+                                        <div className="tooltip-date-row">
+                                          <span className="tooltip-date-label">📅 Fecha de Inicio:</span>
+                                          <span className="tooltip-date-val is-start">{formatDateFull(project.effectiveStartDate)}</span>
+                                        </div>
+                                        <div className="tooltip-date-row">
+                                          <span className="tooltip-date-label">🏁 Fecha de Finalización:</span>
+                                          <span className="tooltip-date-val is-end">{formatDateFull(project.effectiveOriginalTargetDate)}</span>
+                                        </div>
+                                      </div>
+                                      <div className="roadmap-tooltip-progress-row">
+                                        <span>Avance: <strong>{project.progressPct}%</strong> ({project.doneTasks}/{project.totalTasks} tareas)</span>
+                                      </div>
+                                      <div className="roadmap-tooltip-cta">
+                                        🖱️ Clic para ver tareas en Kanban
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Barra con tramo extendido (prórroga)
+                          const extEndPct = timelineScale.dateToPercent(project.effectiveTargetDate);
+                          const extWidth = Math.max(2, extEndPct - origEndPct);
+                          const totalWidth = baseWidth + extWidth;
+                          const baseRatio = (baseWidth / totalWidth) * 100;
+                          const extRatio = (extWidth / totalWidth) * 100;
+
+                          return (
+                            <div key={`row-${project.id}`} className="roadmap-timeline-row">
+                              <div
+                                className="roadmap-bar-composite"
+                                style={{ left: `${startPct}%`, width: `${totalWidth}%` }}
+                              >
+                                {/* PIN DE FECHA DE INICIO */}
+                                <div
+                                  className="roadmap-start-pin"
+                                  data-date={`Inicio: ${formatDateShort(project.effectiveStartDate)}`}
+                                  title={`Iniciado: ${formatDateFull(project.effectiveStartDate)}`}
+                                />
+
+                                {/* TRAMO BASE (TIEMPO PACTADO ORIGINAL) */}
+                                <div
+                                  className="roadmap-bar-base"
+                                  style={{ width: `${baseRatio}%` }}
+                                  onClick={() => {
+                                    setSelectedProjectId(project.id);
+                                    setActiveView('kanban');
+                                  }}
+                                >
+                                  <div
+                                    className="roadmap-progress-fill"
+                                    style={{ width: `${project.progressPct}%` }}
+                                  />
+                                  <div className="roadmap-bar-labels">
+                                    <span className="roadmap-bar-start-label">▶ {formatDateShort(project.effectiveStartDate)}</span>
+                                    <span className="roadmap-bar-prog-label">{project.progressPct}%</span>
+                                    <span className="roadmap-bar-end-label">{formatDateShort(project.effectiveOriginalTargetDate)}</span>
+                                  </div>
+
+                                  {/* PIN DE FECHA PACTADA */}
+                                  <div
+                                    className="roadmap-original-pin"
+                                    data-date={`Pactado: ${formatDateShort(project.effectiveOriginalTargetDate)}`}
+                                    title={`Límite pactado original: ${formatDateFull(project.effectiveOriginalTargetDate)}`}
+                                  />
+
+                                  {/* TOOLTIP ON HOVER CON FECHAS DE INICIO Y FINALIZACIÓN */}
+                                  <div className={`roadmap-bar-hover-tooltip ${tooltipClass}`}>
+                                    <div className="roadmap-tooltip-header">
+                                      {project.code && <span className="project-code-badge" style={{ fontSize: '0.68rem', padding: '0 5px' }}>{project.code}</span>}
+                                      <span>{project.name}</span>
+                                    </div>
+                                    <div className="roadmap-tooltip-dates-grid">
+                                      <div className="tooltip-date-row">
+                                        <span className="tooltip-date-label">📅 Fecha de Inicio:</span>
+                                        <span className="tooltip-date-val is-start">{formatDateFull(project.effectiveStartDate)}</span>
+                                      </div>
+                                      <div className="tooltip-date-row">
+                                        <span className="tooltip-date-label">🏁 Pactado Original:</span>
+                                        <span className="tooltip-date-val is-end">{formatDateFull(project.effectiveOriginalTargetDate)}</span>
+                                      </div>
+                                      <div className="tooltip-date-row">
+                                        <span className="tooltip-date-label">⚠️ Nueva Meta (Prórroga):</span>
+                                        <span className="tooltip-date-val is-ext">{formatDateFull(project.effectiveTargetDate)} (+{project.extensionDurationText})</span>
+                                      </div>
+                                    </div>
+                                    <div className="roadmap-tooltip-progress-row">
+                                      <span>Avance: <strong>{project.progressPct}%</strong> ({project.doneTasks}/{project.totalTasks} tareas)</span>
+                                    </div>
+                                    <div className="roadmap-tooltip-cta">
+                                      🖱️ Clic en barra para Kanban / Clic en prórroga para justificación
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* TRAMO EXTENDIDO (PRÓRROGA) */}
+                                <div
+                                  className="roadmap-bar-extension"
+                                  style={{ width: `${extRatio}%` }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setJustificationModalProject(project);
+                                  }}
+                                >
+                                  <span className="roadmap-extension-pill">
+                                    <span>⚠️ +{project.extensionDurationText}</span>
+                                  </span>
+
+                                  {/* TOOLTIP INTERACTIVO AL PASAR EL CURSOR */}
+                                  <div className={`roadmap-extension-tooltip ${tooltipClass}`}>
+                                    <div className="roadmap-tooltip-header">
+                                      <span>&gt; Tiempo extendido, {project.extensionDurationText}</span>
+                                    </div>
+                                    <div className="roadmap-tooltip-body">
+                                      {project.dateExtensions && project.dateExtensions.length > 0
+                                        ? project.dateExtensions[project.dateExtensions.length - 1].reason
+                                        : 'El plazo original fue extendido. Clic para ver detalles.'}
+                                    </div>
+                                    <div className="roadmap-tooltip-dates">
+                                      <div>
+                                        <strong>Pactado original:</strong> {formatDateShort(project.effectiveOriginalTargetDate)}
+                                      </div>
+                                      <div style={{ color: '#fbbf24' }}>
+                                        <strong>Nueva meta:</strong> {formatDateShort(project.effectiveTargetDate)}
+                                      </div>
+                                    </div>
+                                    <div className="roadmap-tooltip-cta">
+                                      🖱️ Clic para ver la justificación técnica
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECCIÓN INFERIOR: RESUMEN */}
+              <section className="portfolio-summary-section">
+                <div className="portfolio-summary-header">
+                  <div>
+                    <p className="eyebrow" style={{ marginBottom: '2px' }}>Métricas & Indicadores</p>
+                    <h3 className="portfolio-summary-title">Resumen</h3>
+                  </div>
+                  <span className="portfolio-summary-badge">
+                    Consolidado de {globalKpis.total} proyectos
+                  </span>
+                </div>
+
+                <div className="portfolio-metrics-grid">
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon kpi-card__icon--brand">
+                      <Icons.Portfolio />
+                    </div>
+                    <div className="kpi-card__value">{globalKpis.total}</div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">Total Proyectos</span>
+                      <span className="kpi-card__sub">Activos en el espacio</span>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon kpi-card__icon--brand">
+                      <Icons.Lead />
+                    </div>
+                    <div className="kpi-card__value">{globalKpis.leadCount}</div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">Soy Encargado</span>
+                      <span className="kpi-card__sub">Liderazgo directo</span>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon kpi-card__icon--success">
+                      <Icons.Collaborator />
+                    </div>
+                    <div className="kpi-card__value">{globalKpis.collabCount}</div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">En Colaboración</span>
+                      <span className="kpi-card__sub">Equipo conjunto</span>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon kpi-card__icon--danger">
+                      <Icons.Alert />
+                    </div>
+                    <div className="kpi-card__value" style={{ color: globalKpis.totalMyPending > 0 ? 'var(--danger-600)' : 'var(--success-600)' }}>
+                      {globalKpis.totalMyPending}
+                    </div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">Mis Pendientes</span>
+                      <span className="kpi-card__sub">Asignados a mí</span>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)' }}>
+                      <Icons.Vendor />
+                    </div>
+                    <div className="kpi-card__value" style={{ color: globalKpis.totalVendorPending > 0 ? '#c084fc' : 'var(--ink-500)' }}>
+                      {globalKpis.totalVendorPending}
+                    </div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">En Proveedores</span>
+                      <span className="kpi-card__sub">Esperando terceros</span>
+                    </div>
+                  </div>
+
+                  <div className="kpi-card">
+                    <div className="kpi-card__icon kpi-card__icon--warning">
+                      <Icons.TargetPulse />
+                    </div>
+                    <div className="kpi-card__value">{globalKpis.avgProg}%</div>
+                    <div className="kpi-card__details">
+                      <span className="kpi-card__label">Avance Promedio</span>
+                      <span className="kpi-card__sub">Consolidado general</span>
+                    </div>
+                  </div>
+                </div>
+              </section>
             </>
           )}
 
@@ -2166,6 +2794,7 @@ function App() {
                             </button>
                             <div className="task-info-block">
                               <div className="task-meta-top">
+                                {task.code && <span className="task-code-badge">{task.code}</span>}
                                 <span className="project-tag">{task.projectName}</span>
                                 <span className="task-badge">{task.type}</span>
                                 <span className="task-priority priority-high">Urgente</span>
@@ -2224,6 +2853,7 @@ function App() {
                             </button>
                             <div className="task-info-block">
                               <div className="task-meta-top">
+                                {task.code && <span className="task-code-badge">{task.code}</span>}
                                 <span className="project-tag">{task.projectName}</span>
                                 <span className="task-badge">{task.type}</span>
                                 <span className={`task-priority priority-${task.priority || 'medium'}`}>
@@ -2272,6 +2902,7 @@ function App() {
                           />
                           <div className="task-info-block">
                             <div className="task-meta-top">
+                              {task.code && <span className="task-code-badge">{task.code}</span>}
                               <span className="project-tag">{task.projectName}</span>
                               <span className="task-badge">{task.type}</span>
                             </div>
@@ -2391,6 +3022,7 @@ function App() {
                                 title="Clic para alternar estado completado"
                               >
                                 <div className="week-card-top">
+                                  {task.code && <span className="task-code-badge" style={{ fontSize: '0.66rem', padding: '0 4px' }}>{task.code}</span>}
                                   <span className="project-tag" style={{ fontSize: '0.68rem' }}>
                                     {task.projectName}
                                   </span>
@@ -2634,7 +3266,7 @@ function App() {
                   >
                     {projects.map((proj) => (
                       <option key={proj.id} value={proj.id}>
-                        {proj.name} ({proj.role === 'lead' ? 'Encargado' : 'Colaborador'})
+                        {proj.code ? `[${proj.code}] ` : ''}{proj.name} ({proj.role === 'lead' ? 'Encargado' : 'Colaborador'})
                       </option>
                     ))}
                   </select>
@@ -2652,6 +3284,23 @@ function App() {
                       >
                         <Icons.Team />
                         <span>Equipo & Roles ({membersCount})</span>
+                      </button>
+                    );
+                  })()}
+
+                  {(() => {
+                    const activeProj = projects.find((p) => p.id === selectedProjectId) || projects[0];
+                    const doneCount = workItems.filter((w) => w.projectId === (activeProj ? activeProj.id : '') && w.status === 'done').length;
+                    return (
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn--secondary ui-btn--small"
+                        onClick={() => setIsDoneReportModalOpen(true)}
+                        title="Ver reporte ejecutivo de tareas realizadas, entregables y continuaciones"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Icons.Tasks />
+                        <span>Reporte de Hechos ({doneCount})</span>
                       </button>
                     );
                   })()}
@@ -2722,6 +3371,7 @@ function App() {
                             <div key={item.id} className="kanban-card">
                               <div className="task-topline">
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                  {item.code && <span className="task-code-badge">{item.code}</span>}
                                   <span className="task-badge">{item.type}</span>
                                   <span className={`task-priority priority-${item.priority || 'medium'}`}>
                                     {item.priority || 'medium'}
@@ -2745,6 +3395,30 @@ function App() {
                                 {item.title}
                               </strong>
                               <p>{item.description || 'Sin descripción'}</p>
+
+                              {item.status === 'done' && (
+                                <div
+                                  className={`kanban-completion-badge ${item.completionType === 'partial' ? 'is-partial' : 'is-full'}`}
+                                  onClick={() => openEditTaskModal(item)}
+                                  title="Clic para ver o editar el reporte de lo realizado"
+                                >
+                                  {item.completionType === 'partial' ? (
+                                    <>
+                                      <span className="completion-tag partial">⚠️ Continuada</span>
+                                      <span className="completion-snippet">
+                                        {item.completionReport || 'Clic para detallar por qué se continuó'}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span className="completion-tag full">✓ Hecho</span>
+                                      <span className="completion-snippet">
+                                        {item.completionReport || 'Clic para reportar qué se hizo'}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
 
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
                                 <AssigneeBadge item={item} />
@@ -3115,26 +3789,37 @@ function App() {
                 </div>
               </div>
 
+              <div className="form-field">
+                <label>Etapa inicial</label>
+                <select
+                  value={projectForm.status}
+                  onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
+                >
+                  {projectStages.map((st) => (
+                    <option key={st.key} value={st.key}>{st.label}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="form-grid-2">
                 <div className="form-field">
-                  <label>Etapa inicial</label>
-                  <select
-                    value={projectForm.status}
-                    onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
-                  >
-                    {projectStages.map((st) => (
-                      <option key={st.key} value={st.key}>{st.label}</option>
-                    ))}
-                  </select>
+                  <label>Fecha de inicio</label>
+                  <input
+                    type="date"
+                    value={projectForm.startDate}
+                    onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
+                  />
+                  <small className="muted" style={{ fontSize: '0.72rem' }}>Día de arranque del proyecto</small>
                 </div>
 
                 <div className="form-field">
-                  <label>Fecha meta / límite</label>
+                  <label>Fecha meta / finalización</label>
                   <input
                     type="date"
                     value={projectForm.targetDate}
                     onChange={(e) => setProjectForm({ ...projectForm, targetDate: e.target.value })}
                   />
+                  <small className="muted" style={{ fontSize: '0.72rem' }}>Compromiso pactado de entrega</small>
                 </div>
               </div>
 
@@ -3271,10 +3956,13 @@ function App() {
         <div className="modal-overlay" onClick={() => setIsEditTaskModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <img src="/logobase01.png" alt="" style={{ width: '22px', height: '22px', borderRadius: '5px', objectFit: 'contain' }} />
-                <span>Editar Tarea o Compromiso</span>
-              </h3>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Editar Tarea o Compromiso</span>
+                  {editingTask.code && <span className="task-code-badge">{editingTask.code}</span>}
+                </h3>
+              </div>
               <button className="close-btn modal-close-btn" onClick={() => setIsEditTaskModalOpen(false)} aria-label="Cerrar ventana" title="Cerrar">
                 <Icons.Close />
               </button>
@@ -3398,6 +4086,112 @@ function App() {
                 </div>
               </div>
 
+              {/* SECCIÓN: REPORTE DE CUMPLIMIENTO / CONTINUACIÓN */}
+              {editTaskForm.status === 'done' && (
+                <div className="task-completion-section">
+                  <div className="completion-section-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className="completion-icon-badge"><Icons.Check /></span>
+                      <strong style={{ fontSize: '0.88rem' }}>Reporte de Cumplimiento y Cierre</strong>
+                    </div>
+                    <span className="completion-header-hint">Documenta lo realizado o la justificación si continuó</span>
+                  </div>
+
+                  <div className="completion-type-selector">
+                    <label className={`completion-radio-card ${editTaskForm.completionType !== 'partial' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="completionType"
+                        value="full"
+                        checked={editTaskForm.completionType !== 'partial'}
+                        onChange={() => setEditTaskForm({ ...editTaskForm, completionType: 'full', continuationTaskId: '' })}
+                      />
+                      <div className="radio-text">
+                        <strong>Completada Totalmente</strong>
+                        <small>El entregable o alcance se finalizó satisfactoriamente</small>
+                      </div>
+                    </label>
+
+                    <label className={`completion-radio-card ${editTaskForm.completionType === 'partial' ? 'active' : ''}`}>
+                      <input
+                        type="radio"
+                        name="completionType"
+                        value="partial"
+                        checked={editTaskForm.completionType === 'partial'}
+                        onChange={() => setEditTaskForm({ ...editTaskForm, completionType: 'partial' })}
+                      />
+                      <div className="radio-text">
+                        <strong>Completada Parcialmente / Continuada</strong>
+                        <small>Cambió requerimiento o continúa en otra tarea</small>
+                      </div>
+                    </label>
+                  </div>
+
+                  {editTaskForm.completionType === 'partial' && (
+                    <div className="form-field" style={{ marginTop: '4px' }}>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Tarea sucesora / continuación vinculada</label>
+                      <select
+                        value={editTaskForm.continuationTaskId || ''}
+                        onChange={(e) => setEditTaskForm({ ...editTaskForm, continuationTaskId: e.target.value })}
+                        style={{ fontSize: '0.82rem' }}
+                      >
+                        <option value="">-- Seleccionar tarea que continúa el requerimiento --</option>
+                        {workItems
+                          .filter((w) => w.projectId === editTaskForm.projectId && w.id !== editingTask.id)
+                          .map((w) => (
+                            <option key={w.id} value={w.id}>
+                              {w.code ? `[${w.code}] ` : ''}{w.title} ({w.status === 'done' ? 'Hecha' : 'Pendiente'})
+                            </option>
+                          ))}
+                      </select>
+                      <small style={{ color: 'var(--ink-500)', fontSize: '0.74rem' }}>
+                        Permite enlazar qué tarea asume el nuevo alcance para mantener la trazabilidad.
+                      </small>
+                    </div>
+                  )}
+
+                  <div className="form-field" style={{ marginTop: '4px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                      {editTaskForm.completionType === 'partial'
+                        ? 'Detalle de lo realizado y motivo de continuación *'
+                        : 'Reporte de lo realizado / entregables entregados'}
+                    </label>
+                    <textarea
+                      rows="3"
+                      value={editTaskForm.completionReport || ''}
+                      onChange={(e) => setEditTaskForm({ ...editTaskForm, completionReport: e.target.value })}
+                      placeholder={
+                        editTaskForm.completionType === 'partial'
+                          ? 'Ej. Tarea se continúa con la tarea X ya que cambió el requerimiento...'
+                          : 'Ej. Se implementó la vista, se integró el API y se validó en ambiente de pruebas sin incidencias...'
+                      }
+                      style={{
+                        width: '100%',
+                        background: 'var(--surface-elevated)',
+                        border: '1px solid var(--line-200)',
+                        color: 'var(--ink-900)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '8px 12px',
+                        fontFamily: 'inherit',
+                        fontSize: '0.84rem',
+                        resize: 'vertical',
+                        minHeight: '56px'
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-field" style={{ marginTop: '2px' }}>
+                    <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>Fecha de finalización</label>
+                    <input
+                      type="date"
+                      value={editTaskForm.completedAt ? editTaskForm.completedAt.split('T')[0] : formatDateYMD(new Date())}
+                      onChange={(e) => setEditTaskForm({ ...editTaskForm, completedAt: e.target.value })}
+                      style={{ maxWidth: '200px' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="modal-actions" style={{ justifyContent: 'space-between', width: '100%' }}>
                 <button
                   type="button"
@@ -3421,6 +4215,249 @@ function App() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: REPORTE DE TAREAS HECHAS Y CUMPLIMIENTO */}
+      {isDoneReportModalOpen && (
+        <div className="modal-overlay" onClick={() => setIsDoneReportModalOpen(false)}>
+          <div
+            className="modal-card modal-card--report"
+            style={{ maxWidth: '980px', width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header del Modal */}
+            <div className="modal-header" style={{ paddingBottom: '12px', borderBottom: '1px solid var(--line-200)' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <img src="/logobase01.png" alt="" style={{ width: '24px', height: '24px', borderRadius: '6px', objectFit: 'contain' }} />
+                  <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Reporte de Tareas Realizadas y Cierres</h3>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                  <small style={{ color: 'var(--ink-500)', fontSize: '0.82rem' }}>
+                    Proyecto: <strong>{projects.find((p) => p.id === selectedProjectId)?.name || 'Todos los proyectos'}</strong>
+                  </small>
+                  {projects.find((p) => p.id === selectedProjectId)?.code && (
+                    <span className="project-code-badge">
+                      {projects.find((p) => p.id === selectedProjectId)?.code}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  className="close-btn modal-close-btn"
+                  onClick={() => setIsDoneReportModalOpen(false)}
+                  aria-label="Cerrar ventana"
+                  title="Cerrar"
+                >
+                  <Icons.Close />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido Dinámico */}
+            {(() => {
+              const allDoneTasks = workItems.filter(
+                (w) => (!selectedProjectId || w.projectId === selectedProjectId) && w.status === 'done'
+              );
+
+              const fullCount = allDoneTasks.filter((t) => t.completionType !== 'partial').length;
+              const partialCount = allDoneTasks.filter((t) => t.completionType === 'partial').length;
+
+              const filteredTasks = allDoneTasks.filter((task) => {
+                if (doneReportFilter === 'full' && task.completionType === 'partial') return false;
+                if (doneReportFilter === 'partial' && task.completionType !== 'partial') return false;
+                if (doneReportSearch.trim()) {
+                  const q = doneReportSearch.toLowerCase();
+                  const matchCode = (task.code || '').toLowerCase().includes(q);
+                  const matchTitle = (task.title || '').toLowerCase().includes(q);
+                  const matchReport = (task.completionReport || '').toLowerCase().includes(q);
+                  const matchAssignee = (task.assignee || '').toLowerCase().includes(q);
+                  return matchCode || matchTitle || matchReport || matchAssignee;
+                }
+                return true;
+              });
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflow: 'hidden', paddingTop: '10px' }}>
+                  {/* Fila de Filtros y Búsqueda */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className={`pill-btn ${doneReportFilter === 'all' ? 'active' : ''}`}
+                        onClick={() => setDoneReportFilter('all')}
+                      >
+                        Todas ({allDoneTasks.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`pill-btn ${doneReportFilter === 'full' ? 'active-success' : ''}`}
+                        onClick={() => setDoneReportFilter('full')}
+                      >
+                        ✓ Totalmente completas ({fullCount})
+                      </button>
+                      <button
+                        type="button"
+                        className={`pill-btn ${doneReportFilter === 'partial' ? 'active-warning' : ''}`}
+                        onClick={() => setDoneReportFilter('partial')}
+                      >
+                        ⚠️ Continuadas / Parciales ({partialCount})
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={doneReportSearch}
+                        onChange={(e) => setDoneReportSearch(e.target.value)}
+                        placeholder="Buscar por código, título, detalle..."
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.82rem',
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--line-200)',
+                          background: 'var(--surface-elevated)',
+                          color: 'var(--ink-900)',
+                          minWidth: '220px'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Tabla de tareas hechas */}
+                  <div style={{ flex: 1, overflowY: 'auto', border: '1px solid var(--line-200)', borderRadius: 'var(--radius-md)', background: 'var(--surface-elevated)' }}>
+                    {filteredTasks.length === 0 ? (
+                      <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--ink-500)' }}>
+                        <p style={{ margin: '8px 0 0 0', fontSize: '0.9rem', fontWeight: 600 }}>
+                          {allDoneTasks.length === 0
+                            ? 'Aún no hay tareas marcadas como completadas en este proyecto.'
+                            : 'No se encontraron tareas con los filtros aplicados.'}
+                        </p>
+                        <small style={{ fontSize: '0.78rem', color: 'var(--ink-500)' }}>
+                          Al mover tareas a la columna "Hecho" en el Kanban o marcarlas en la agenda, aparecerán aquí.
+                        </small>
+                      </div>
+                    ) : (
+                      <table className="done-report-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: '90px' }}>Código</th>
+                            <th style={{ minWidth: '220px' }}>Tarea y Entregable</th>
+                            <th style={{ width: '130px' }}>Responsable</th>
+                            <th style={{ width: '110px' }}>Fecha</th>
+                            <th style={{ width: '140px' }}>Tipo de Cierre</th>
+                            <th style={{ minWidth: '240px' }}>Reporte de lo Realizado / Causa de Continuación</th>
+                            <th style={{ width: '60px', textAlign: 'center' }}>Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredTasks.map((task) => {
+                            const continuationTask = task.continuationTaskId
+                              ? workItems.find((w) => w.id === task.continuationTaskId)
+                              : null;
+                            const isPartial = task.completionType === 'partial';
+
+                            return (
+                              <tr key={task.id} className={isPartial ? 'row-partial' : 'row-full'}>
+                                <td>
+                                  <span className="task-code-badge">
+                                    {task.code || 'S/C'}
+                                  </span>
+                                </td>
+                                <td>
+                                  <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--ink-900)' }}>
+                                    {task.title}
+                                  </strong>
+                                  {task.description && (
+                                    <small style={{ color: 'var(--ink-500)', fontSize: '0.75rem', display: 'block', marginTop: '2px', lineHeight: 1.3 }}>
+                                      {task.description.length > 70 ? `${task.description.slice(0, 70)}...` : task.description}
+                                    </small>
+                                  )}
+                                </td>
+                                <td>
+                                  <AssigneeBadge item={task} />
+                                </td>
+                                <td style={{ fontSize: '0.78rem', color: 'var(--ink-600)', whiteSpace: 'nowrap' }}>
+                                  {task.completedAt ? task.completedAt.split('T')[0] : (task.dueDate || '-')}
+                                </td>
+                                <td>
+                                  {isPartial ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                                      <span className="completion-tag partial" style={{ width: 'fit-content' }}>
+                                        ⚠️ Continuada
+                                      </span>
+                                      {continuationTask && (
+                                        <small style={{ fontSize: '0.72rem', color: 'var(--warning-600)', lineHeight: 1.2 }}>
+                                          ↳ {continuationTask.code ? `[${continuationTask.code}] ` : ''}{continuationTask.title}
+                                        </small>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="completion-tag full" style={{ width: 'fit-content' }}>
+                                      ✓ Total
+                                    </span>
+                                  )}
+                                </td>
+                                <td>
+                                  {task.completionReport ? (
+                                    <div className="report-quote-box">
+                                      "{task.completionReport}"
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      className="add-report-quick-btn"
+                                      onClick={() => {
+                                        setIsDoneReportModalOpen(false);
+                                        openEditTaskModal(task);
+                                      }}
+                                    >
+                                      + Reportar lo realizado
+                                    </button>
+                                  )}
+                                </td>
+                                <td style={{ textAlign: 'center' }}>
+                                  <button
+                                    type="button"
+                                    className="card-edit-btn"
+                                    onClick={() => {
+                                      setIsDoneReportModalOpen(false);
+                                      openEditTaskModal(task);
+                                    }}
+                                    title="Editar detalle o reporte de la tarea"
+                                  >
+                                    <Icons.Edit />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+
+                  {/* Footer del Modal */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--line-200)' }}>
+                    <small style={{ color: 'var(--ink-500)', fontSize: '0.78rem' }}>
+                      Mostrando {filteredTasks.length} de {allDoneTasks.length} tareas completadas
+                    </small>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn--secondary"
+                      onClick={() => setIsDoneReportModalOpen(false)}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -3586,13 +4623,26 @@ function App() {
                 </div>
               </div>
 
-              <div className="form-field">
-                <label>Fecha meta / límite</label>
-                <input
-                  type="date"
-                  value={editProjectForm.targetDate}
-                  onChange={(e) => setEditProjectForm({ ...editProjectForm, targetDate: e.target.value })}
-                />
+              <div className="form-grid-2">
+                <div className="form-field">
+                  <label>Fecha de inicio</label>
+                  <input
+                    type="date"
+                    value={editProjectForm.startDate}
+                    onChange={(e) => setEditProjectForm({ ...editProjectForm, startDate: e.target.value })}
+                  />
+                  <small className="muted" style={{ fontSize: '0.72rem' }}>Día de arranque del proyecto</small>
+                </div>
+
+                <div className="form-field">
+                  <label>Fecha meta / finalización</label>
+                  <input
+                    type="date"
+                    value={editProjectForm.targetDate}
+                    onChange={(e) => setEditProjectForm({ ...editProjectForm, targetDate: e.target.value })}
+                  />
+                  <small className="muted" style={{ fontSize: '0.72rem' }}>Compromiso pactado de entrega</small>
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
@@ -4186,6 +5236,311 @@ function App() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1: JUSTIFICACIÓN DE CAMBIO DE FECHA / PRÓRROGA */}
+      {justificationModalProject && (
+        <div className="modal-overlay" onClick={() => setJustificationModalProject(null)}>
+          <div className="modal-card" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+            <div
+              className="modal-header"
+              style={{
+                background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(15, 23, 42, 0.6))',
+                borderBottom: '1px solid rgba(245, 158, 11, 0.35)'
+              }}
+            >
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+                  <span>📋</span>
+                  <span>{justificationModalProject.name}</span>
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--ink-500)' }}>
+                  Registro Oficial de Prórroga & Justificación de Cambio de Fecha
+                </p>
+              </div>
+              <button
+                className="close-btn modal-close-btn"
+                onClick={() => setJustificationModalProject(null)}
+                aria-label="Cerrar ventana"
+                title="Cerrar"
+              >
+                <Icons.Close />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '18px', padding: '22px' }}>
+              {/* COMPARADOR VISUAL DE FECHAS */}
+              <div
+                style={{
+                  background: 'var(--surface-muted, #141e30)',
+                  border: '1px solid var(--line-200, rgba(255, 255, 255, 0.08))',
+                  borderRadius: '12px',
+                  padding: '16px 20px',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr auto 1fr',
+                  alignItems: 'center',
+                  gap: '16px',
+                  textAlign: 'center'
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--ink-500)' }}>
+                    Fecha Inicial Pactada
+                  </div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--ink-900)' }}>
+                    {formatDateShort(justificationModalProject.originalTargetDate || justificationModalProject.targetDate)}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                  <span
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.2)',
+                      color: '#fbbf24',
+                      border: '1px solid rgba(245, 158, 11, 0.45)',
+                      padding: '3px 10px',
+                      borderRadius: '999px',
+                      fontSize: '0.74rem',
+                      fontWeight: 800
+                    }}
+                  >
+                    +{justificationModalProject.extensionDurationText || 'Prórroga'}
+                  </span>
+                  <span style={{ fontSize: '1.1rem', color: 'var(--accent-amber, #fbbf24)' }}>➔</span>
+                </div>
+
+                <div>
+                  <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, color: '#fbbf24' }}>
+                    Nueva Fecha Objetivo
+                  </div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, fontFamily: 'monospace', color: '#fde68a' }}>
+                    {formatDateShort(justificationModalProject.targetDate)}
+                  </div>
+                </div>
+              </div>
+
+              {/* MOTIVO / JUSTIFICACIÓN DOCUMENTADA */}
+              <div
+                style={{
+                  background: 'rgba(11, 17, 27, 0.6)',
+                  border: '1px solid var(--line-200, rgba(255, 255, 255, 0.08))',
+                  borderRadius: '12px',
+                  padding: '18px'
+                }}
+              >
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--brand-300, #38bdf8)', marginBottom: '10px' }}>
+                  Motivo / Justificación Documentada
+                </div>
+
+                {Array.isArray(justificationModalProject.dateExtensions) && justificationModalProject.dateExtensions.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {justificationModalProject.dateExtensions.map((ext, idx) => (
+                      <div
+                        key={ext.id || idx}
+                        style={{
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          padding: '14px',
+                          borderRadius: '8px',
+                          borderLeft: '3px solid #f59e0b'
+                        }}
+                      >
+                        <p style={{ fontSize: '0.9rem', color: '#e2e8f0', lineHeight: 1.6, margin: 0 }}>
+                          "{ext.reason}"
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px', marginTop: '12px', fontSize: '0.78rem', color: 'var(--ink-500)' }}>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--ink-300)' }}>Solicitado por:</span>
+                            <strong style={{ color: 'var(--ink-900)' }}>{ext.requestedBy || 'Equipo TI'}</strong>
+                          </div>
+                          <div>
+                            <span style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--ink-300)' }}>Autorizado por:</span>
+                            <strong style={{ color: 'var(--ink-900)' }}>{ext.approvedBy || 'Jorge'}</strong>
+                          </div>
+                          {ext.createdAt && (
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <span style={{ display: 'block', fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--ink-300)' }}>Fecha de registro:</span>
+                              <span>{ext.createdAt.split('T')[0]} ({new Date(ext.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '0.88rem', color: 'var(--ink-500)', margin: 0, fontStyle: 'italic' }}>
+                    La fecha meta fue postergada respecto a la fecha original pactada. No se encontró un motivo textual registrado.
+                  </p>
+                )}
+              </div>
+
+              {/* TAREAS DEL PROYECTO */}
+              <div style={{ background: 'var(--surface-muted, #0d1420)', border: '1px solid var(--line-200, rgba(255, 255, 255, 0.08))', borderRadius: '10px', padding: '14px' }}>
+                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700, color: 'var(--ink-500)', marginBottom: '8px' }}>
+                  Estado de Tareas del Proyecto ({workItems.filter((w) => w.projectId === justificationModalProject.id).length} totales)
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '160px', overflowY: 'auto' }}>
+                  {workItems.filter((w) => w.projectId === justificationModalProject.id).length === 0 ? (
+                    <span style={{ fontSize: '0.8rem', color: 'var(--ink-300)' }}>Sin tareas registradas aún.</span>
+                  ) : (
+                    workItems.filter((w) => w.projectId === justificationModalProject.id).map((w) => (
+                      <div key={w.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255, 255, 255, 0.02)', padding: '6px 10px', borderRadius: '6px', fontSize: '0.8rem' }}>
+                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '380px' }}>{w.title}</span>
+                        <span
+                          style={{
+                            fontSize: '0.7rem',
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            background: w.status === 'done' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(56, 189, 248, 0.2)',
+                            color: w.status === 'done' ? '#34d399' : '#38bdf8'
+                          }}
+                        >
+                          {w.status === 'done' ? 'Completada' : w.status === 'in_progress' ? 'En curso' : 'Pendiente'}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', padding: '14px 22px', borderTop: '1px solid var(--line-200)' }}>
+              <button
+                type="button"
+                className="ui-btn ui-btn--secondary"
+                onClick={() => setJustificationModalProject(null)}
+              >
+                Cerrar
+              </button>
+              <button
+                type="button"
+                className="ui-btn ui-btn--secondary"
+                style={{ border: '1px solid rgba(245, 158, 11, 0.45)', color: '#fbbf24' }}
+                onClick={() => {
+                  const proj = justificationModalProject;
+                  setJustificationModalProject(null);
+                  setNewExtensionModalProject(proj);
+                  setExtensionForm({
+                    newTargetDate: proj.targetDate || todayStr,
+                    reason: '',
+                    requestedBy: '',
+                    approvedBy: 'Jorge'
+                  });
+                }}
+              >
+                + Registrar Nueva Prórroga
+              </button>
+              <button
+                type="button"
+                className="ui-btn ui-btn--primary"
+                onClick={() => {
+                  setSelectedProjectId(justificationModalProject.id);
+                  setActiveView('kanban');
+                  setJustificationModalProject(null);
+                }}
+              >
+                Ir al Tablero del Proyecto
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: REGISTRAR PRÓRROGA / CAMBIO DE FECHA */}
+      {newExtensionModalProject && (
+        <div className="modal-overlay" onClick={() => setNewExtensionModalProject(null)}>
+          <div className="modal-card" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚡</span>
+                  <span>Registrar Prórroga / Cambio de Fecha</span>
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--ink-500)' }}>
+                  Proyecto: <strong>{newExtensionModalProject.name}</strong>
+                </p>
+              </div>
+              <button
+                className="close-btn modal-close-btn"
+                onClick={() => setNewExtensionModalProject(null)}
+                aria-label="Cerrar ventana"
+                title="Cerrar"
+              >
+                <Icons.Close />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateExtension} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-field">
+                  <label>Fecha Meta Actual</label>
+                  <input
+                    type="date"
+                    value={newExtensionModalProject.targetDate || ''}
+                    disabled
+                    style={{ opacity: 0.65 }}
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Nueva Fecha Objetivo *</label>
+                  <input
+                    type="date"
+                    value={extensionForm.newTargetDate}
+                    onChange={(e) => setExtensionForm({ ...extensionForm, newTargetDate: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label>Motivo o Justificación del cambio de fecha *</label>
+                <textarea
+                  rows="3"
+                  value={extensionForm.reason}
+                  onChange={(e) => setExtensionForm({ ...extensionForm, reason: e.target.value })}
+                  placeholder="Describe el motivo técnico, dependencia externa, solicitud de gerencia o cliente..."
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-field">
+                  <label>Solicitado por</label>
+                  <input
+                    type="text"
+                    value={extensionForm.requestedBy}
+                    onChange={(e) => setExtensionForm({ ...extensionForm, requestedBy: e.target.value })}
+                    placeholder="Ej. Contabilidad, Proveedor, Cliente"
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Autorizado por</label>
+                  <input
+                    type="text"
+                    value={extensionForm.approvedBy}
+                    onChange={(e) => setExtensionForm({ ...extensionForm, approvedBy: e.target.value })}
+                    placeholder="Ej. Jorge (Lead TI)"
+                  />
+                </div>
+              </div>
+
+              <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--secondary"
+                  onClick={() => setNewExtensionModalProject(null)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="ui-btn ui-btn--primary">
+                  Guardar Prórroga
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

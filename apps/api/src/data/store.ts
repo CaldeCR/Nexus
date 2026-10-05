@@ -18,8 +18,20 @@ export type ProjectMember = {
   email?: string;
 };
 
+export type DateExtension = {
+  id: string;
+  originalTargetDate: string;
+  newTargetDate: string;
+  durationText: string;
+  reason: string;
+  requestedBy?: string;
+  approvedBy?: string;
+  createdAt: string;
+};
+
 export type Project = {
   id: string;
+  code?: string;
   name: string;
   description?: string;
   template: 'kanban' | 'scrum' | 'pmi' | 'custom';
@@ -28,11 +40,15 @@ export type Project = {
   admins?: string[];
   members?: string[];
   teamMembers?: ProjectMember[];
+  startDate?: string;
   targetDate?: string;
+  originalTargetDate?: string;
+  dateExtensions?: DateExtension[];
 };
 
 export type WorkItem = {
   id: string;
+  code?: string;
   projectId: string;
   title: string;
   description?: string;
@@ -44,6 +60,10 @@ export type WorkItem = {
   assigneeType?: 'me' | 'team' | 'vendor';
   dueDate?: string;
   createdAt: string;
+  completionType?: 'full' | 'partial';
+  completionReport?: string;
+  continuationTaskId?: string;
+  completedAt?: string;
 };
 
 export type GlobalMemberRole = 'admin' | 'collaborator' | 'vendor' | 'viewer';
@@ -411,28 +431,106 @@ export function harvestTeamDirectory(projects: Project[] = [], workItems: WorkIt
   return Array.from(memberMap.values());
 }
 
+export function getNextProjectCode(projects: Project[]): string {
+  let maxNum = 0;
+  for (const p of projects) {
+    if (p.code) {
+      const match = p.code.match(/^P(\d+)$/i);
+      if (match) {
+        const n = parseInt(match[1], 10);
+        if (n > maxNum) maxNum = n;
+      }
+    }
+  }
+  return `P${maxNum + 1}`;
+}
+
+export function getNextWorkItemCode(workItems: WorkItem[], projectCode: string): string {
+  const cleanCode = projectCode ? projectCode.toUpperCase() : 'P1';
+  const prefix = `${cleanCode}-T`;
+  let maxNum = 0;
+  for (const w of workItems) {
+    if (w.code && w.code.toUpperCase().startsWith(prefix)) {
+      const numPart = w.code.substring(prefix.length);
+      const n = parseInt(numPart, 10);
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+  }
+  return `${prefix}${maxNum + 1}`;
+}
+
 function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
   const defaults = createDefaultDb();
-  const projects = Array.isArray(raw?.projects) && raw.projects.length
-    ? raw.projects.map((project) =>
-        syncProjectMembers({
-          ...project,
-          status: project.status || 'execution',
-          role: project.role || 'lead',
-          targetDate: project.targetDate || '',
-          admins: project.admins || ['Jorge'],
-          members: project.members || []
-        })
-      )
-    : defaults.projects.map(syncProjectMembers);
+  
+  // 1. Normalizar proyectos y asignarles código P# secuencial si no lo tienen
+  const rawProjects = Array.isArray(raw?.projects) && raw.projects.length
+    ? raw.projects
+    : defaults.projects;
 
-  const workItems = Array.isArray(raw?.workItems) && raw.workItems.length
-    ? raw.workItems.map((item) => ({
-        ...item,
-        assignee: item.assignee || 'Jorge',
-        dueDate: item.dueDate || ''
-      }))
+  let projectCounter = 1;
+  const projectCodeMap = new Map<string, string>();
+
+  const projects = rawProjects.map((project) => {
+    let code = project.code;
+    if (!code) {
+      code = `P${projectCounter++}`;
+    } else {
+      const m = code.match(/^P(\d+)$/i);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num >= projectCounter) projectCounter = num + 1;
+      }
+    }
+    projectCodeMap.set(project.id, code);
+
+    return syncProjectMembers({
+      ...project,
+      code,
+      status: project.status || 'execution',
+      role: project.role || 'lead',
+      targetDate: project.targetDate || '',
+      admins: project.admins || ['Jorge'],
+      members: project.members || []
+    });
+  });
+
+  // 2. Normalizar tareas y asignarles código P#-T# correlativo por proyecto
+  const rawWorkItems = Array.isArray(raw?.workItems) && raw.workItems.length
+    ? raw.workItems
     : defaults.workItems;
+
+  const projectTaskCounters = new Map<string, number>();
+
+  const workItems = rawWorkItems.map((item) => {
+    const projCode = projectCodeMap.get(item.projectId) || 'P1';
+    let code = item.code;
+
+    if (!code) {
+      const currentCounter = (projectTaskCounters.get(projCode) || 0) + 1;
+      projectTaskCounters.set(projCode, currentCounter);
+      code = `${projCode}-T${currentCounter}`;
+    } else {
+      const prefix = `${projCode}-T`;
+      if (code.toUpperCase().startsWith(prefix.toUpperCase())) {
+        const num = parseInt(code.substring(prefix.length), 10);
+        const cur = projectTaskCounters.get(projCode) || 0;
+        if (!isNaN(num) && num > cur) {
+          projectTaskCounters.set(projCode, num);
+        }
+      }
+    }
+
+    return {
+      ...item,
+      code,
+      assignee: item.assignee || 'Jorge',
+      dueDate: item.dueDate || '',
+      completionType: item.completionType || (item.status === 'done' ? 'full' : undefined),
+      completionReport: item.completionReport || '',
+      continuationTaskId: item.continuationTaskId || undefined,
+      completedAt: item.completedAt || (item.status === 'done' ? (item.createdAt || new Date().toISOString()) : undefined)
+    };
+  });
 
   const teamDirectory = Array.isArray(raw?.teamDirectory) && raw.teamDirectory.length > 0
     ? raw.teamDirectory.map((m) => ({
