@@ -219,6 +219,18 @@ const Icons = {
       <path d="M9 11l3 3L22 4" />
       <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
     </svg>
+  ),
+  MessageSquare: () => (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  ),
+  History: () => (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l4 2" />
+    </svg>
   )
 };
 
@@ -277,6 +289,21 @@ function formatDateFull(dateStr) {
   if (isNaN(d.getTime())) return String(dateStr);
   const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   return `${d.getDate()} de ${months[d.getMonth()]}, ${d.getFullYear()}`;
+}
+
+function formatDateTime(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  if (isNaN(d.getTime())) return String(isoStr);
+  const day = d.getDate();
+  const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  let hours = d.getHours();
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  hours = hours % 12 || 12;
+  return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
 }
 
 function getTaskAssignees(item) {
@@ -500,6 +527,7 @@ function App() {
     return raw ? JSON.parse(raw) : null;
   });
   const [token, setToken] = useState(() => localStorage.getItem('nexus-token') || '');
+  const user = session;
 
   // MODO OSCURO COMO DEFAULT
   const [darkMode, setDarkMode] = useState(() => {
@@ -551,6 +579,9 @@ function App() {
   const [doneReportFilter, setDoneReportFilter] = useState('all'); // 'all' | 'full' | 'partial'
   const [doneReportSearch, setDoneReportSearch] = useState('');
   const [editingTask, setEditingTask] = useState(null);
+  const [newProgressText, setNewProgressText] = useState('');
+  const [newProgressAuthor, setNewProgressAuthor] = useState('');
+  const [isAddingProgress, setIsAddingProgress] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
@@ -644,7 +675,8 @@ function App() {
     completionType: 'full',
     completionReport: '',
     continuationTaskId: '',
-    completedAt: ''
+    completedAt: '',
+    progressLogs: []
   });
 
   const todayStr = useMemo(() => formatDateYMD(new Date()), []);
@@ -1269,6 +1301,8 @@ function App() {
   const openEditTaskModal = (task) => {
     const list = getTaskAssignees(task);
     setEditingTask(task);
+    setNewProgressText('');
+    setNewProgressAuthor(session?.name || 'Jorge');
     setEditTaskForm({
       projectId: task.projectId || selectedProjectId || (projects[0] && projects[0].id) || '',
       title: task.title || '',
@@ -1284,9 +1318,70 @@ function App() {
       completionType: task.completionType || 'full',
       completionReport: task.completionReport || '',
       continuationTaskId: task.continuationTaskId || '',
-      completedAt: task.completedAt || ''
+      completedAt: task.completedAt || '',
+      progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : []
     });
     setIsEditTaskModalOpen(true);
+  };
+
+  const handleAddProgressLog = async (e) => {
+    if (e) e.preventDefault();
+    if (!editingTask || !newProgressText.trim()) return;
+    setIsAddingProgress(true);
+    setError('');
+    try {
+      const authorToUse = newProgressAuthor.trim() || session?.name || 'Jorge';
+      const res = await fetch(`${API_BASE}/work-items/${editingTask.id}/progress-logs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          text: newProgressText.trim(),
+          author: authorToUse
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al registrar avance');
+      const updated = data.workItem || data;
+      setEditingTask(updated);
+      setEditTaskForm((prev) => ({
+        ...prev,
+        progressLogs: updated.progressLogs || []
+      }));
+      setWorkItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setNewProgressText('');
+      setSuccess('Avance registrado exitosamente');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsAddingProgress(false);
+    }
+  };
+
+  const handleDeleteProgressLog = async (logId) => {
+    if (!editingTask || !logId) return;
+    try {
+      const res = await fetch(`${API_BASE}/work-items/${editingTask.id}/progress-logs/${logId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al eliminar avance');
+      const updated = data.workItem || data;
+      setEditingTask(updated);
+      setEditTaskForm((prev) => ({
+        ...prev,
+        progressLogs: updated.progressLogs || []
+      }));
+      setWorkItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+      setSuccess('Avance eliminado');
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const handleUpdateTask = async (e) => {
@@ -1318,7 +1413,8 @@ function App() {
           assignees: assigneesToSave,
           assignee: finalAssigneeStr,
           assigneeType: finalAssigneeType,
-          completedAt: completedAtToSave
+          completedAt: completedAtToSave,
+          progressLogs: editTaskForm.progressLogs || []
         })
       });
       const data = await res.json();
@@ -3430,6 +3526,22 @@ function App() {
                                 )}
                               </div>
 
+                              {Array.isArray(item.progressLogs) && item.progressLogs.length > 0 && (
+                                <div
+                                  className="task-progress-count-badge"
+                                  onClick={() => openEditTaskModal(item)}
+                                  title={`Ver bitácora de avances (${item.progressLogs.length} registros)`}
+                                >
+                                  <Icons.History />
+                                  <span>{item.progressLogs.length} {item.progressLogs.length === 1 ? 'avance' : 'avances'}</span>
+                                  {item.progressLogs[item.progressLogs.length - 1]?.text && (
+                                    <span className="task-progress-latest-snippet">
+                                      · {item.progressLogs[item.progressLogs.length - 1].text}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
                               <div className="task-meta">
                                 <small style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>Mover a:</small>
                                 <select
@@ -3969,6 +4081,11 @@ function App() {
             </div>
 
             <form onSubmit={handleUpdateTask} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {error && (
+                <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: 'var(--radius-md)', padding: '8px 12px', color: '#fca5a5', fontSize: '0.84rem' }}>
+                  ⚠️ {error}
+                </div>
+              )}
               <div className="form-field">
                 <label>Proyecto asociado *</label>
                 <select
@@ -4191,6 +4308,92 @@ function App() {
                   </div>
                 </div>
               )}
+
+              {/* Bitácora de Avances y Cambios en la Tarea */}
+              <div className="task-progress-logs-section">
+                <div className="progress-logs-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icons.History />
+                    <span>Bitácora de Avances y Cambios</span>
+                  </div>
+                  <span className="progress-logs-count-badge">
+                    {editTaskForm.progressLogs?.length || 0} {editTaskForm.progressLogs?.length === 1 ? 'registro' : 'registros'}
+                  </span>
+                </div>
+
+                {/* Formulario para registrar un nuevo avance */}
+                <div className="progress-log-form">
+                  <textarea
+                    className="progress-log-textarea"
+                    placeholder="Registrar nuevo avance, actualización o cambio en el alcance..."
+                    value={newProgressText}
+                    onChange={(e) => setNewProgressText(e.target.value)}
+                    rows={2}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        e.preventDefault();
+                        handleAddProgressLog();
+                      }
+                    }}
+                  />
+                  <div className="progress-log-form-footer">
+                    <div className="progress-log-author-input-wrap">
+                      <Icons.User />
+                      <span>Registrado por:</span>
+                      <input
+                        type="text"
+                        className="progress-log-author-input"
+                        value={newProgressAuthor}
+                        onChange={(e) => setNewProgressAuthor(e.target.value)}
+                        placeholder="Nombre..."
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="progress-log-add-btn"
+                      onClick={handleAddProgressLog}
+                      disabled={!newProgressText.trim() || isAddingProgress}
+                    >
+                      <Icons.Plus /> {isAddingProgress ? 'Registrando...' : 'Registrar Avance'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Historial de avances registrados */}
+                <div className="progress-logs-list">
+                  {(!editTaskForm.progressLogs || editTaskForm.progressLogs.length === 0) ? (
+                    <div className="progress-logs-empty">
+                      Aún no hay avances o cambios registrados en esta tarea. Agrega el primero arriba.
+                    </div>
+                  ) : (
+                    [...editTaskForm.progressLogs]
+                      .reverse()
+                      .map((log) => (
+                        <div key={log.id} className="progress-log-item">
+                          <div className="progress-log-item-top">
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                              <span className="progress-log-author-badge">
+                                <Icons.User /> {log.author || 'Jorge'}
+                              </span>
+                              <span className="progress-log-date">
+                                {formatDateTime(log.createdAt)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              className="progress-log-delete-btn"
+                              title="Eliminar este avance"
+                              onClick={() => handleDeleteProgressLog(log.id)}
+                            >
+                              <Icons.Trash />
+                            </button>
+                          </div>
+                          <div className="progress-log-text">{log.text}</div>
+                        </div>
+                      ))
+                  )}
+                </div>
+              </div>
 
               <div className="modal-actions" style={{ justifyContent: 'space-between', width: '100%' }}>
                 <button
@@ -4419,6 +4622,19 @@ function App() {
                                     >
                                       + Reportar lo realizado
                                     </button>
+                                  )}
+                                  {Array.isArray(task.progressLogs) && task.progressLogs.length > 0 && (
+                                    <div
+                                      style={{ marginTop: '5px', fontSize: '0.72rem', color: '#38bdf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      onClick={() => {
+                                        setIsDoneReportModalOpen(false);
+                                        openEditTaskModal(task);
+                                      }}
+                                      title="Ver historial de avances de la tarea"
+                                    >
+                                      <Icons.History />
+                                      <span>{task.progressLogs.length} {task.progressLogs.length === 1 ? 'avance' : 'avances'} en bitácora</span>
+                                    </div>
                                   )}
                                 </td>
                                 <td style={{ textAlign: 'center' }}>

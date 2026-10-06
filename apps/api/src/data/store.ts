@@ -46,6 +46,13 @@ export type Project = {
   dateExtensions?: DateExtension[];
 };
 
+export type TaskProgressEntry = {
+  id: string;
+  text: string;
+  author: string;
+  createdAt: string;
+};
+
 export type WorkItem = {
   id: string;
   code?: string;
@@ -64,6 +71,7 @@ export type WorkItem = {
   completionReport?: string;
   continuationTaskId?: string;
   completedAt?: string;
+  progressLogs?: TaskProgressEntry[];
 };
 
 export type GlobalMemberRole = 'admin' | 'collaborator' | 'vendor' | 'viewer';
@@ -528,7 +536,8 @@ function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
       completionType: item.completionType || (item.status === 'done' ? 'full' : undefined),
       completionReport: item.completionReport || '',
       continuationTaskId: item.continuationTaskId || undefined,
-      completedAt: item.completedAt || (item.status === 'done' ? (item.createdAt || new Date().toISOString()) : undefined)
+      completedAt: item.completedAt || (item.status === 'done' ? (item.createdAt || new Date().toISOString()) : undefined),
+      progressLogs: Array.isArray(item.progressLogs) ? item.progressLogs : []
     };
   });
 

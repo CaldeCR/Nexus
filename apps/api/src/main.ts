@@ -77,6 +77,13 @@ const projectStatusSchema = z.object({
   status: z.enum(['preproject', 'review', 'execution', 'completed', 'discarded'])
 });
 
+const taskProgressEntrySchema = z.object({
+  id: z.string(),
+  text: z.string().min(1),
+  author: z.string().min(1),
+  createdAt: z.string()
+});
+
 const workItemSchema = z.object({
   code: z.string().optional(),
   projectId: z.string().min(1),
@@ -92,7 +99,8 @@ const workItemSchema = z.object({
   completionType: z.enum(['full', 'partial']).optional(),
   completionReport: z.string().optional(),
   continuationTaskId: z.string().optional(),
-  completedAt: z.string().optional()
+  completedAt: z.string().optional(),
+  progressLogs: z.array(taskProgressEntrySchema).optional()
 });
 
 const workItemUpdateSchema = z.object({
@@ -110,7 +118,8 @@ const workItemUpdateSchema = z.object({
   completionType: z.enum(['full', 'partial']).optional(),
   completionReport: z.string().optional(),
   continuationTaskId: z.string().optional(),
-  completedAt: z.string().optional()
+  completedAt: z.string().optional(),
+  progressLogs: z.array(taskProgressEntrySchema).optional()
 });
 
 const workItemStatusSchema = z.object({
@@ -728,7 +737,8 @@ app.post('/api/work-items', (req, res) => {
     completionType: parsed.data.completionType || (parsed.data.status === 'done' ? 'full' : undefined),
     completionReport: parsed.data.completionReport || '',
     continuationTaskId: parsed.data.continuationTaskId,
-    completedAt: parsed.data.completedAt || (parsed.data.status === 'done' ? new Date().toISOString() : undefined)
+    completedAt: parsed.data.completedAt || (parsed.data.status === 'done' ? new Date().toISOString() : undefined),
+    progressLogs: parsed.data.progressLogs || []
   };
 
   workItems.unshift(newItem);
@@ -813,6 +823,61 @@ app.put('/api/work-items/:id/status', (req, res) => {
 
   writeDb(db);
   return res.json(db.workItems[itemIndex]);
+});
+
+const addProgressLogSchema = z.object({
+  text: z.string().min(1),
+  author: z.string().optional()
+});
+
+app.post('/api/work-items/:id/progress-logs', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const parsed = addProgressLogSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Detalle del avance es requerido', errors: parsed.error.flatten() });
+  }
+
+  const db = readDb();
+  const itemIndex = db.workItems.findIndex((item) => item.id === req.params.id);
+  if (itemIndex === -1) {
+    return res.status(404).json({ message: 'Tarea no encontrada' });
+  }
+
+  const item = db.workItems[itemIndex];
+  if (!Array.isArray(item.progressLogs)) {
+    item.progressLogs = [];
+  }
+
+  const newLog = {
+    id: `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    text: parsed.data.text.trim(),
+    author: parsed.data.author?.trim() || user.name || 'Jorge',
+    createdAt: new Date().toISOString()
+  };
+
+  item.progressLogs.unshift(newLog);
+  writeDb(db);
+  return res.status(201).json(item);
+});
+
+app.delete('/api/work-items/:id/progress-logs/:logId', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const itemIndex = db.workItems.findIndex((item) => item.id === req.params.id);
+  if (itemIndex === -1) {
+    return res.status(404).json({ message: 'Tarea no encontrada' });
+  }
+
+  const item = db.workItems[itemIndex];
+  if (Array.isArray(item.progressLogs)) {
+    item.progressLogs = item.progressLogs.filter((l) => l.id !== req.params.logId);
+  }
+  writeDb(db);
+  return res.json(item);
 });
 
 app.delete('/api/work-items/:id', (req, res) => {
