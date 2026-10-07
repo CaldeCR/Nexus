@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nexus - Prototipo Interactivo: Resumen y Estatus del Proyecto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #070b12;
+      --bg-surface: #0c1322;
+      --bg-card: #111a2e;
+      --bg-card-hover: #16223b;
+      --bg-elevated: #1a2742;
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-medium: rgba(255, 255, 255, 0.14);
+      --border-focus: rgba(56, 189, 248, 0.45);
+      
+      --accent-blue: #3b82f6;
+      --accent-cyan: #38bdf8;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #ef4444;
+      --accent-purple: #a855f7;
+      
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --shadow-elevation: 0 16px 36px -8px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+      --shadow-drawer: -12px 0 40px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* TOP BANNER DE CONTROL DEL PROTOTIPO */
+    .prototype-bar {
+      background: linear-gradient(90deg, #0e1e38 0%, #17153b 50%, #2a1136 100%);
+      border-bottom: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+
+    .proto-branding {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .proto-badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+    .proto-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .proto-title span {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.85rem;
+    }
+
+    /* SWITCHER DE OPCIONES */
+    .mode-switch-group {
+      display: inline-flex;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid var(--border-medium);
+      padding: 3px;
+      border-radius: 8px;
+      gap: 4px;
+    }
+    .mode-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.18s ease;
+      font-family: var(--font-sans);
+    }
+    .mode-btn:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+    .mode-btn.active {
+      background: var(--accent-blue);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+    }
+
+    /* PROYECTO SELECTOR EN HEADER */
+    .project-selector-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .project-select {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+    }
+    .project-select:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* CONTENEDOR PRINCIPAL: VISTA MIS PROYECTOS */
+    .workspace-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 28px 24px 60px 24px;
+      width: 100%;
+      flex: 1;
+    }
+
+    .section-header {
+      margin-bottom: 24px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .section-header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .section-header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* GRILLA DE TARJETAS DE PROYECTO */
+    .projects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+
+    .project-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .project-card:hover {
+      border-color: var(--border-medium);
+      background: var(--bg-card-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+    }
+    .project-card.is-active-demo {
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4), 0 8px 24px rgba(56, 189, 248, 0.12);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .card-code {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 7px;
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent-cyan);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+    .card-stage {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 3px 9px;
+      border-radius: 999px;
+    }
+    .card-stage.execution {
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    .card-stage.review {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .card-stage.completed {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .card-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+    }
+    .card-desc {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* BARRA DE PROGRESO DE LA TARJETA */
+    .card-progress-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .card-progress-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+    }
+    .progress-bar-track {
+      height: 7px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #38bdf8 0%, #3b82f6 100%);
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+
+    /* BOTÓN DESTACADO DE ESTATUS EN LA TARJETA */
+    .card-actions-bar {
+      margin-top: auto;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .status-report-btn {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.14) 0%, rgba(59, 130, 246, 0.18) 100%);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #e0f2fe;
+      padding: 9px 14px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .status-report-btn:hover {
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(59, 130, 246, 0.32) 100%);
+      border-color: #38bdf8;
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.25);
+      transform: translateY(-1px);
+    }
+    .status-report-btn svg {
+      color: #38bdf8;
+    }
+
+    /* ======================================================== */
+    /* COMPONENTE: MODAL EJECUTIVO 360° (OPCIÓN 1)             */
+    /* ======================================================== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.82);
+      backdrop-filter: blur(6px);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-sheet {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-medium);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 860px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-elevation);
+      overflow: hidden;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalSlideUp {
+      from { transform: translateY(18px) scale(0.98); opacity: 0; }
+      to { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    .sheet-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .sheet-title-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .sheet-kicker {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-cyan);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .sheet-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-icon-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .close-icon-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+    }
+
+    /* KPI STRIP / SEMÁFORO EN CABECERA DE REPORTE */
+    .kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 16px 24px;
+      background: rgba(0, 0, 0, 0.25);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .kpi-cell {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .kpi-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .kpi-value {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .kpi-value.good { color: #34d399; }
+    .kpi-value.warning { color: #fbbf24; }
+    .kpi-value.info { color: #38bdf8; }
+
+    /* CONTENIDO CON SCROLL DEL REPORTE */
+    .sheet-body {
+      padding: 20px 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      flex: 1;
+    }
+
+    /* BLOQUE DE SECCIÓN DE 3 PREGUNTAS */
+    .status-pillar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .pillar-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+    .pillar-header.done {
+      background: rgba(16, 185, 129, 0.08);
+      color: #34d399;
+      border-left: 4px solid #10b981;
+    }
+    .pillar-header.active {
+      background: rgba(56, 189, 248, 0.08);
+      color: #38bdf8;
+      border-left: 4px solid #38bdf8;
+    }
+    .pillar-header.pending {
+      background: rgba(245, 158, 11, 0.08);
+      color: #fbbf24;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .pillar-content {
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ITEMS DENTRO DE CADA PILAR */
+    .report-task-item {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.15s;
+    }
+    .report-task-item:hover {
+      border-color: var(--border-medium);
+    }
+    .task-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .task-item-title {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .task-tag {
+      font-size: 0.72rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .task-report-detail {
+      background: rgba(0, 0, 0, 0.25);
+      border-left: 2px solid #38bdf8;
+      padding: 6px 10px;
+      border-radius: 0 4px 4px 0;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+      line-height: 1.4;
+      font-style: italic;
+    }
+    .task-report-detail.done-snippet {
+      border-left-color: #10b981;
+    }
+    .task-report-detail.advance-snippet {
+      border-left-color: #38bdf8;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .advance-meta {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      font-style: normal;
+      font-weight: 600;
+    }
+
+    .task-item-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* FOOTER DE ACCIONES DEL REPORTE */
+    .sheet-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-medium);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-copy {
+      background: var(--accent-blue);
+      border: none;
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      transition: all 0.15s;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
+    }
+    .btn-copy:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+    .btn-copy.copied {
+      background: #10b981;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    /* ======================================================== */
+    /* COMPONENTE: PANEL LATERAL DESLIZANTE (OPCIÓN 2)          */
+    /* ======================================================== */
+    .drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.65);
+      backdrop-filter: blur(3px);
+      z-index: 600;
+      display: none;
+      justify-content: flex-end;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .drawer-overlay.open {
+      display: flex;
+      opacity: 1;
+    }
+
+    .drawer-sheet {
+      width: 100%;
+      max-width: 540px;
+      height: 100vh;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-medium);
+      box-shadow: var(--shadow-drawer);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-overlay.open .drawer-sheet {
+      transform: translateX(0);
+    }
+
+    .pm-note-box {
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px dashed rgba(59, 130, 246, 0.4);
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pm-note-box label {
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: #60a5fa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .pm-note-textarea {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      color: #f1f5f9;
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 8px 10px;
+      resize: vertical;
+      min-height: 52px;
+      outline: none;
+    }
+    .pm-note-textarea:focus {
+      border-color: var(--accent-cyan);
+    }
+
+    /* TOAST DE COPIADO */
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #0f172a;
+      border: 1px solid #10b981;
+      color: #34d399;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+      transform: translateY(60px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000;
+    }
+    .toast-msg.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* BADGE DE COMPARATIVA */
+    .comparison-callout {
+      background: linear-gradient(135deg, rgba(30, 58, 138, 0.3) 0%, rgba(79, 70, 229, 0.2) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .comparison-text {
+      font-size: 0.86rem;
+      color: #e2e8f0;
+    }
+    .comparison-text strong {
+      color: #fff;
+    }
+
+    @media (max-width: 768px) {
+      .kpi-strip {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .projects-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- BARRA DE CONTROL DEL PROTOTIPO -->
+  <header class="prototype-bar">
+    <div class="proto-branding">
+      <span class="proto-badge">DEMO INTERACTIVO</span>
+      <div class="proto-title">
+        Estatus y Resumen del Proyecto <span>| Explorador de Propuestas</span>
+      </div>
+    </div>
+
+    <!-- SWITCH DE MODOS: MODAL VS DRAWER -->
+    <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+      <div class="project-selector-wrap">
+        <span>Proyecto de prueba:</span>
+        <select class="project-select" id="projectSelect" onchange="switchProject(this.value)">
+          <option value="p-softland">P1: ACTUALIZACIÓN SOFTLAND (67% avance)</option>
+          <option value="p-truesec">P7: RECOMENDACIONES TRUESEC (15% avance)</option>
+          <option value="p-bac">P6: COBRO AUTOMATIZADO BAC (82% avance)</option>
+        </select>
+      </div>
+
+      <div class="mode-switch-group">
+        <button type="button" class="mode-btn active" id="btnModeModal" onclick="setMode('modal')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+          Opción 1: Modal Ejecutivo 360°
+        </button>
+        <button type="button" class="mode-btn" id="btnModeDrawer" onclick="setMode('drawer')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+          Opción 2: Panel Lateral (Drawer)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL: SIMULACIÓN DE LA VISTA MIS PROYECTOS -->
+  <main class="workspace-container">
+    
+    <div class="comparison-callout">
+      <div class="comparison-text">
+        <strong>💡 ¿Cómo probar este prototipo?</strong><br>
+        Haz clic en el botón <strong>"📊 Ver Estatus / Resumen"</strong> en cualquiera de las tarjetas de abajo. 
+        Puedes cambiar arriba entre la <strong>Opción 1 (Modal flotante 360°)</strong> y la <strong>Opción 2 (Panel lateral deslizante)</strong> para ver cuál te resulta más cómoda en tu día a día.
+      </div>
+      <button type="button" class="btn-secondary" onclick="openCurrentMode(currentProjectId)" style="white-space: nowrap;">
+        ⚡ Probar con Proyecto Seleccionado
+      </button>
+    </div>
+
+    <div class="section-header">
+      <div>
+        <p style="font-size: 0.78rem; text-transform: uppercase; color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.05em;">Control de Portafolio</p>
+        <h1>Mis Proyectos Activos</h1>
+        <p>Selecciona un proyecto para abrir su Ficha Ejecutiva con el resumen de ¿Qué se ha hecho?, ¿En qué estamos? y los Pendientes.</p>
+      </div>
+    </div>
+
+    <!-- TARJETAS DE PROYECTO -->
+    <div class="projects-grid" id="projectsGridContainer">
+      <!-- Se llena dinámicamente -->
+    </div>
+  </main>
+
+  <!-- ============================================================== -->
+  <!-- OPCIÓN 1: MODAL EJECUTIVO 360°                                 -->
+  <!-- ============================================================== -->
+  <div class="modal-overlay" id="statusModalOverlay" onclick="closeModal(event)">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      
+      <!-- Cabecera del Modal -->
+      <div class="sheet-header">
+        <div class="sheet-title-group">
+          <div class="sheet-kicker">
+            <span class="card-code" id="modalCode">P1</span>
+            <span id="modalStageBadge">En Ejecución</span>
+            <span>· Ficha Ejecutiva de Estatus</span>
+          </div>
+          <h2 class="sheet-title" id="modalProjectName">ACTUALIZACIÓN SOFTLAND</h2>
+        </div>
+        <button type="button" class="close-icon-btn" onclick="closeModal()" title="Cerrar modal">
+          ✕
+        </button>
+      </div>
+
+      <!-- Semáforo de Salud / KPIs -->
+      <div class="kpi-strip">
+        <div class="kpi-cell">
+          <span class="kpi-label">Avance Global</span>
+          <span class="kpi-value info" id="modalKpiProgress">67%</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Tareas Realizadas</span>
+          <span class="kpi-value good" id="modalKpiTasks">4 de 6</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Plazo Estimado</span>
+          <span class="kpi-value good" id="modalKpiTargetDate">30 Oct (En tiempo)</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Equipo Asignado</span>
+          <span class="kpi-value" id="modalKpiTeam" style="font-size: 0.95rem;">3 personas</span>
+        </div>
+      </div>
+
+      <!-- Cuerpo del Reporte (Las 3 preguntas clave) -->
+      <div class="sheet-body" id="modalSheetBody">
+        <!-- Generado dinámicamente -->
+      </div>
+
+      <!-- Pie de Acciones -->
+      <div class="sheet-footer">
+        <div style="font-size: 0.78rem; color: var(--text-muted);">
+          Generado automáticamente con base en el avance de tareas y bitácoras.
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeModal()">
+            Cerrar
+          </button>
+          <button type="button" class="btn-copy" id="btnCopyModal" onclick="copyReportToClipboard()">
+            📋 Copiar para WhatsApp / Correo
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- OPCIÓN 2: PANEL LATERAL DESLIZANTE (SLIDE-OVER DRAWER)         -->
+  <!-- ============================================================== -->
+  <div class="drawer-overlay" id="statusDrawerOverlay" onclick="closeDrawer(event)">
+    <div class="drawer-sheet" onclick="event.stopPropagation()">
+      
+      <!-- Cabecera del Drawer -->
+      <div class="sheet-header" style="background: rgba(0,0,0,0.2);">
+        <div class="sheet-title-group">
+          <div class="sheet-kicker">
+            <span class="card-code" id="drawerCode">P1</span>
+            <span id="drawerStageBadge">En Ejecución</span>
+            <span>· Panel Lateral de Estatus</span>
+          </div>
+          <h2 class="sheet-title" id="drawerProjectName" style="font-size: 1.25rem;">ACTUALIZACIÓN SOFTLAND</h2>
+        </div>
+        <button type="button" class="close-icon-btn" onclick="closeDrawer()" title="Cerrar panel">
+          ✕
+        </button>
+      </div>
+
+      <!-- Mini KPI Strip -->
+      <div class="kpi-strip" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="kpi-cell">
+          <span class="kpi-label">Avance</span>
+          <span class="kpi-value info" id="drawerKpiProgress">67%</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Tareas</span>
+          <span class="kpi-value good" id="drawerKpiTasks">4 / 6</span>
+        </div>
+        <div class="kpi-cell">
+          <span class="kpi-label">Cierre</span>
+          <span class="kpi-value good" id="drawerKpiDate" style="font-size: 0.95rem;">30 Oct</span>
+        </div>
+      </div>
+
+      <!-- Cuerpo con Scroll y Nota del PM -->
+      <div class="sheet-body" id="drawerSheetBody">
+        <!-- Generado dinámicamente -->
+      </div>
+
+      <!-- Pie del Drawer -->
+      <div class="sheet-footer">
+        <button type="button" class="btn-secondary" onclick="closeDrawer()">
+          Cerrar
+        </button>
+        <button type="button" class="btn-copy" id="btnCopyDrawer" onclick="copyReportToClipboard()">
+          📋 Copiar Resumen
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACIÓN -->
+  <div class="toast-msg" id="toastMsg">
+    ✓ Resumen ejecutivo copiado al portapapeles con éxito
+  </div>
+
+  <script>
+    // DATOS DE PRUEBA BASADOS EN EL PROYECTO REAL
+    const mockProjects = {
+      'p-softland': {
+        id: 'p-softland',
+        code: 'P1',
+        name: 'ACTUALIZACIÓN SOFTLAND',
+        description: 'Hacienda solicitó cambios en los documentos electrónicos. Requiere pruebas en ambiente de producción de Softland.',
+        stage: 'En Ejecución',
+        stageKey: 'execution',
+        progressPct: 67,
+        totalTasks: 6,
+        doneTasks: 4,
+        startDate: '2026-10-01',
+        targetDate: '2026-10-30',
+        healthStatus: 'En tiempo',
+        teamMembers: ['Jorge', 'Jerry Contabilidad', 'Jean Paul TI'],
+        pmNote: 'Se coordinó con Jerry para ambiente de pruebas el jueves. Proveedor Softland responde según lo previsto.',
+        done: [
+          {
+            code: 'P1-T1',
+            title: 'Validar con Jean Paul archivos de configuración de pruebas',
+            status: 'done',
+            type: 'partial',
+            report: 'Debemos escalar a Softland. Se solicitará configuración de ambiente de pruebas. Continuada en P1-T2.',
+            date: '5 Oct 2026',
+            assignee: 'Jorge'
+          },
+          {
+            code: 'P1-T3',
+            title: 'Alistar nuevo servidor o equipo de pruebas para Softland',
+            status: 'done',
+            type: 'full',
+            report: 'Servidor virtual aprovisionado con Windows Server 2022 y cliente Softland configurado.',
+            date: '2 Oct 2026',
+            assignee: 'Jorge'
+          }
+        ],
+        active: [
+          {
+            code: 'P1-T2',
+            title: 'Solicitar los archivos necesarios para crear el ambiente de pruebas',
+            assignee: 'Jorge',
+            priority: 'medium',
+            latestLog: {
+              author: 'Jorge',
+              date: '5 Oct 2026, 3:30 pm',
+              text: 'Se enviaron las especificaciones al consultor externo de Softland para la base de datos de homologación.'
+            }
+          },
+          {
+            code: 'P1-T4',
+            title: 'Validar con Jerry los cambios que trae la nueva actualización',
+            assignee: 'Jerry Contabilidad',
+            priority: 'medium',
+            latestLog: {
+              author: 'Jerry Contabilidad',
+              date: '4 Oct 2026, 11:15 am',
+              text: 'Revisando matriz de cambios en notas de crédito y formato XML v4.4.'
+            }
+          }
+        ],
+        pending: [
+          {
+            code: 'P1-T5',
+            title: 'Solicitar información de la actualización a Softland',
+            priority: 'medium',
+            dueDate: '12 Oct 2026',
+            assignee: 'Jorge'
+          },
+          {
+            code: 'P1-T6',
+            title: 'Ejecutar actualización final en todas las terminales de Contabilidad',
+            priority: 'high',
+            dueDate: '30 Oct 2026',
+            assignee: 'Jean Paul TI'
+          }
+        ]
+      },
+      'p-truesec': {
+        id: 'p-truesec',
+        code: 'P7',
+        name: 'RECOMENDACIONES TRUESEC',
+        description: 'Revisar la lista de recomendaciones brindadas por TrueSec como informe final tras el incidente de seguridad.',
+        stage: 'En Revisión',
+        stageKey: 'review',
+        progressPct: 15,
+        totalTasks: 4,
+        doneTasks: 0,
+        startDate: '2026-10-05',
+        targetDate: '2026-10-30',
+        healthStatus: 'En tiempo',
+        teamMembers: ['Jorge', 'Marco', 'Josué B', 'Jean Paul'],
+        pmNote: 'Iniciando fase de priorización de las 38 recomendaciones. Enfoque prioritario en EDR y migración a Entra ID.',
+        done: [],
+        active: [
+          {
+            code: 'P7-T1',
+            title: 'Conciliar el inventario de servidores (GLPI, TI y consola central)',
+            assignee: 'Jorge',
+            priority: 'high',
+            latestLog: {
+              author: 'Jorge',
+              date: '6 Oct 2026, 9:20 am',
+              text: 'Se cruzó lista de 42 VMs contra consola de SentinelOne. Pendiente validar 3 servidores legacy.'
+            }
+          }
+        ],
+        pending: [
+          {
+            code: 'P7-T2',
+            title: 'Política de equipos personales y de terceros (Zero Trust)',
+            priority: 'high',
+            dueDate: '16 Oct 2026',
+            assignee: 'Marco, Jorge'
+          },
+          {
+            code: 'P7-T3',
+            title: 'Solución de respaldo inmutable fuera de línea',
+            priority: 'high',
+            dueDate: '30 Oct 2026',
+            assignee: 'Esteban Montoya, Jorge'
+          },
+          {
+            code: 'P7-T4',
+            title: 'Plan de migración a Entra ID e Intune como fuente única de identidad',
+            priority: 'medium',
+            dueDate: '30 Oct 2026',
+            assignee: 'Jorge'
+          }
+        ]
+      },
+      'p-bac': {
+        id: 'p-bac',
+        code: 'P6',
+        name: 'COBRO AUTOMATIZADO BAC & ZOHO',
+        description: 'Integración de pasarela de pagos BAC Credomatic con formulario de suscripciones y cobro recurrente.',
+        stage: 'En Ejecución',
+        stageKey: 'execution',
+        progressPct: 82,
+        totalTasks: 5,
+        doneTasks: 4,
+        startDate: '2026-09-25',
+        targetDate: '2026-10-03',
+        healthStatus: 'Con prórroga (7 días)',
+        teamMembers: ['Jorge', 'Marco', 'Pasarela BAC Credomatic'],
+        pmNote: 'Prórroga técnica aprobada debido a retraso del banco en entrega de credenciales productivas.',
+        done: [
+          {
+            code: 'P6-T2',
+            title: 'Validar el rendimiento de endpoints en AWS',
+            status: 'done',
+            type: 'full',
+            report: 'Latencia promedio bajo 180ms en pruebas de carga.',
+            date: '2 Oct 2026',
+            assignee: 'Jorge'
+          },
+          {
+            code: 'P6-T3',
+            title: 'Obtener confirmación de Marco para esquema de cobro recurrente',
+            status: 'done',
+            type: 'full',
+            report: 'Aprobado esquema de comisiones y tokenización de tarjetas.',
+            date: '2 Oct 2026',
+            assignee: 'Marco'
+          }
+        ],
+        active: [
+          {
+            code: 'P6-T4',
+            title: 'Pasarela BAC: Validar credenciales y llaves de webhook',
+            assignee: 'Pasarela BAC Credomatic (Proveedor)',
+            priority: 'high',
+            latestLog: {
+              author: 'Jorge',
+              date: '5 Oct 2026, 4:00 pm',
+              text: 'Soporte BAC confirmó entrega de Merchant ID productivo para mañana en la tarde.'
+            }
+          }
+        ],
+        pending: [
+          {
+            code: 'P6-T1',
+            title: 'Solicitar Credenciales Greenpay para contingencia',
+            priority: 'medium',
+            dueDate: '10 Oct 2026',
+            assignee: 'Jorge'
+          }
+        ]
+      }
+    };
+
+    let currentMode = 'modal'; // 'modal' | 'drawer'
+    let currentProjectId = 'p-softland';
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.getElementById('btnModeModal').classList.toggle('active', mode === 'modal');
+      document.getElementById('btnModeDrawer').classList.toggle('active', mode === 'drawer');
+      closeAll();
+    }
+
+    function switchProject(projId) {
+      currentProjectId = projId;
+      renderProjectsGrid();
+      // Si alguno estaba abierto, actualizarlo
+      if (document.getElementById('statusModalOverlay').classList.contains('open')) {
+        openModal(projId);
+      } else if (document.getElementById('statusDrawerOverlay').classList.contains('open')) {
+        openDrawer(projId);
+      }
+    }
+
+    function openCurrentMode(projId) {
+      if (currentMode === 'modal') {
+        openModal(projId);
+      } else {
+        openDrawer(projId);
+      }
+    }
+
+    function closeAll() {
+      document.getElementById('statusModalOverlay').classList.remove('open');
+      document.getElementById('statusDrawerOverlay').classList.remove('open');
+    }
+
+    function closeModal(e) {
+      if (!e || e.target === document.getElementById('statusModalOverlay')) {
+        document.getElementById('statusModalOverlay').classList.remove('open');
+      }
+    }
+
+    function closeDrawer(e) {
+      if (!e || e.target === document.getElementById('statusDrawerOverlay')) {
+        document.getElementById('statusDrawerOverlay').classList.remove('open');
+      }
+    }
+
+    // RENDERIZADO DE LAS TARJETAS EN EL TABLERO
+    function renderProjectsGrid() {
+      const container = document.getElementById('projectsGridContainer');
+      container.innerHTML = '';
+
+      Object.values(mockProjects).forEach(p => {
+        const isSelected = p.id === currentProjectId;
+        const card = document.createElement('div');
+        card.className = `project-card ${isSelected ? 'is-active-demo' : ''}`;
+        
+        card.innerHTML = `
+          <div class="card-top">
+            <span class="card-code">${p.code}</span>
+            <span class="card-stage ${p.stageKey}">${p.stage}</span>
+          </div>
+
+          <div>
+            <h3 class="card-title">${p.name}</h3>
+            <p class="card-desc">${p.description}</p>
+          </div>
+
+          <div class="card-progress-wrap">
+            <div class="card-progress-meta">
+              <span style="color: var(--text-muted);">Avance: <strong>${p.progressPct}%</strong></span>
+              <span style="color: var(--text-muted);">${p.doneTasks}/${p.totalTasks} tareas</span>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width: ${p.progressPct}%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-dim); margin-top: 2px;">
+              <span>Entrega: ${p.targetDate}</span>
+              <span style="color: ${p.healthStatus.includes('prórroga') ? '#fbbf24' : '#34d399'}; font-weight: 600;">${p.healthStatus}</span>
+            </div>
+          </div>
+
+          <div class="card-actions-bar">
+            <button type="button" class="status-report-btn" onclick="openCurrentMode('${p.id}')">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+              <span>📊 Ver Estatus / Resumen</span>
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // GENERAR CONTENIDO HTML DE LAS 3 PREGUNTAS
+    function buildStatusSectionsHTML(p, showPmNote = false) {
+      let html = '';
+
+      if (showPmNote) {
+        html += `
+          <div class="pm-note-box">
+            <label>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Balance Editorial del Líder / PM:
+            </label>
+            <textarea class="pm-note-textarea" id="pmNoteInput" placeholder="Escribe aquí tu balance ejecutivo...">${p.pmNote}</textarea>
+          </div>
+        `;
+      }
+
+      // PILAR 1: ¿QUÉ SE HA HECHO?
+      html += `
+        <div class="status-pillar">
+          <div class="pillar-header done">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              1. ¿Qué se ha hecho? (Logros y Cierres)
+            </span>
+            <span style="font-size: 0.78rem; opacity: 0.85;">${p.done.length} tareas cerradas</span>
+          </div>
+          <div class="pillar-content">
+            ${p.done.length === 0 ? `
+              <div style="font-size: 0.82rem; color: var(--text-dim); font-style: italic; padding: 6px 0;">
+                No hay tareas finalizadas aún en este ciclo.
+              </div>
+            ` : p.done.map(t => `
+              <div class="report-task-item">
+                <div class="task-item-head">
+                  <span class="task-item-title">
+                    <span class="task-tag" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">${t.code}</span>
+                    ${t.title}
+                  </span>
+                  <span style="font-size: 0.74rem; color: #34d399; font-weight: 600;">✓ Hecho</span>
+                </div>
+                ${t.report ? `
+                  <div class="task-report-detail done-snippet">
+                    "${t.report}"
+                  </div>
+                ` : ''}
+                <div class="task-item-footer">
+                  <span>Resp: <strong>${t.assignee}</strong></span>
+                  <span>Cierre: ${t.date}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // PILAR 2: ¿EN QUÉ ESTAMOS HOY?
+      html += `
+        <div class="status-pillar">
+          <div class="pillar-header active">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              2. ¿En qué estamos? (En Ejecución & Avances)
+            </span>
+            <span style="font-size: 0.78rem; opacity: 0.85;">${p.active.length} activas</span>
+          </div>
+          <div class="pillar-content">
+            ${p.active.length === 0 ? `
+              <div style="font-size: 0.82rem; color: var(--text-dim); font-style: italic; padding: 6px 0;">
+                Sin tareas en progreso activo en este momento.
+              </div>
+            ` : p.active.map(t => `
+              <div class="report-task-item">
+                <div class="task-item-head">
+                  <span class="task-item-title">
+                    <span class="task-tag" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8;">${t.code}</span>
+                    ${t.title}
+                  </span>
+                  <span style="font-size: 0.72rem; padding: 2px 6px; border-radius: 4px; background: rgba(56,189,248,0.1); color: #38bdf8; font-weight: 600;">
+                    ⚡ En Progreso
+                  </span>
+                </div>
+                ${t.latestLog ? `
+                  <div class="task-report-detail advance-snippet">
+                    <span class="advance-meta">↳ Último avance registrado por ${t.latestLog.author} (${t.latestLog.date}):</span>
+                    <span>"${t.latestLog.text}"</span>
+                  </div>
+                ` : ''}
+                <div class="task-item-footer">
+                  <span>Responsable: <strong>${t.assignee}</strong></span>
+                  <span style="color: ${t.priority === 'high' ? '#f43f5e' : '#fbbf24'}; font-weight: 600;">Prioridad: ${t.priority.toUpperCase()}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      // PILAR 3: ¿QUÉ ESTÁ PENDIENTE?
+      html += `
+        <div class="status-pillar">
+          <div class="pillar-header pending">
+            <span style="display: flex; align-items: center; gap: 8px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              3. ¿Qué está pendiente? (Próximos Pasos & Riesgos)
+            </span>
+            <span style="font-size: 0.78rem; opacity: 0.85;">${p.pending.length} pendientes</span>
+          </div>
+          <div class="pillar-content">
+            ${p.pending.length === 0 ? `
+              <div style="font-size: 0.82rem; color: var(--text-dim); font-style: italic; padding: 6px 0;">
+                No hay pendientes en el backlog.
+              </div>
+            ` : p.pending.map(t => `
+              <div class="report-task-item">
+                <div class="task-item-head">
+                  <span class="task-item-title">
+                    <span class="task-tag" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24;">${t.code}</span>
+                    ${t.title}
+                  </span>
+                  <span style="font-size: 0.72rem; color: var(--text-dim);">Límite: ${t.dueDate || 'Sin definir'}</span>
+                </div>
+                <div class="task-item-footer">
+                  <span>Asignado a: <strong>${t.assignee}</strong></span>
+                  <span style="color: ${t.priority === 'high' ? '#f43f5e' : '#94a3b8'}; font-weight: 600;">
+                    ${t.priority === 'high' ? '⚠️ Alta Prioridad' : 'Prioridad Media'}
+                  </span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
+    // ABRIR OPCIÓN 1: MODAL
+    function openModal(projId) {
+      currentProjectId = projId;
+      document.getElementById('projectSelect').value = projId;
+      renderProjectsGrid();
+
+      const p = mockProjects[projId];
+      document.getElementById('modalCode').innerText = p.code;
+      document.getElementById('modalStageBadge').innerText = p.stage;
+      document.getElementById('modalProjectName').innerText = p.name;
+      document.getElementById('modalKpiProgress').innerText = p.progressPct + '%';
+      document.getElementById('modalKpiTasks').innerText = `${p.doneTasks} de ${p.totalTasks}`;
+      document.getElementById('modalKpiTargetDate').innerText = `${p.targetDate} (${p.healthStatus})`;
+      document.getElementById('modalKpiTeam').innerText = `${p.teamMembers.length} integrantes`;
+
+      document.getElementById('modalSheetBody').innerHTML = buildStatusSectionsHTML(p, false);
+      document.getElementById('statusModalOverlay').classList.add('open');
+      document.getElementById('statusDrawerOverlay').classList.remove('open');
+    }
+
+    // ABRIR OPCIÓN 2: DRAWER LATERAL
+    function openDrawer(projId) {
+      currentProjectId = projId;
+      document.getElementById('projectSelect').value = projId;
+      renderProjectsGrid();
+
+      const p = mockProjects[projId];
+      document.getElementById('drawerCode').innerText = p.code;
+      document.getElementById('drawerStageBadge').innerText = p.stage;
+      document.getElementById('drawerProjectName').innerText = p.name;
+      document.getElementById('drawerKpiProgress').innerText = p.progressPct + '%';
+      document.getElementById('drawerKpiTasks').innerText = `${p.doneTasks} / ${p.totalTasks}`;
+      document.getElementById('drawerKpiDate').innerText = p.targetDate;
+
+      document.getElementById('drawerSheetBody').innerHTML = buildStatusSectionsHTML(p, true);
+      document.getElementById('statusDrawerOverlay').classList.add('open');
+      document.getElementById('statusModalOverlay').classList.remove('open');
+    }
+
+    // COPIAR AL PORTAPAPELES EN FORMATO TEXTO LIMPIO (PARA WHATSAPP / TEAMS / CORREO)
+    function copyReportToClipboard() {
+      const p = mockProjects[currentProjectId];
+      let text = `📌 REPORTE DE ESTATUS: [${p.code}] ${p.name}\n`;
+      text += `--------------------------------------------------\n`;
+      text += `Etapa: ${p.stage} | Avance: ${p.progressPct}% (${p.doneTasks}/${p.totalTasks} tareas)\n`;
+      text += `Fecha Objetivo: ${p.targetDate} (${p.healthStatus})\n`;
+      
+      const pmNoteVal = document.getElementById('pmNoteInput') ? document.getElementById('pmNoteInput').value : p.pmNote;
+      if (pmNoteVal && pmNoteVal.trim()) {
+        text += `\n📝 BALANCE DEL LÍDER:\n${pmNoteVal.trim()}\n`;
+      }
+
+      text += `\n✅ 1. ¿QUÉ SE HA HECHO?\n`;
+      if (p.done.length === 0) text += `• Sin entregables finalizados en este ciclo.\n`;
+      p.done.forEach(t => {
+        text += `• [${t.code}] ${t.title} (${t.date})\n`;
+        if (t.report) text += `  ↳ Cierre: "${t.report}"\n`;
+      });
+
+      text += `\n⚡ 2. ¿EN QUÉ ESTAMOS HOY?\n`;
+      if (p.active.length === 0) text += `• No hay tareas en progreso actualmente.\n`;
+      p.active.forEach(t => {
+        text += `• [${t.code}] ${t.title} (Resp: ${t.assignee})\n`;
+        if (t.latestLog) text += `  ↳ Último avance (${t.latestLog.date}): "${t.latestLog.text}"\n`;
+      });
+
+      text += `\n⏳ 3. ¿QUÉ ESTÁ PENDIENTE?\n`;
+      if (p.pending.length === 0) text += `• Sin tareas pendientes en el backlog.\n`;
+      p.pending.forEach(t => {
+        text += `• [${t.code}] ${t.title} (Prioridad ${t.priority.toUpperCase()} - Límite: ${t.dueDate || 'S/F'})\n`;
+      });
+
+      navigator.clipboard.writeText(text).then(() => {
+        const toast = document.getElementById('toastMsg');
+        toast.classList.add('show');
+        const btnM = document.getElementById('btnCopyModal');
+        const btnD = document.getElementById('btnCopyDrawer');
+        if (btnM) btnM.innerText = '✓ ¡Copiado!';
+        if (btnD) btnD.innerText = '✓ ¡Copiado!';
+
+        setTimeout(() => {
+          toast.classList.remove('show');
+          if (btnM) btnM.innerText = '📋 Copiar para WhatsApp / Correo';
+          if (btnD) btnD.innerText = '📋 Copiar Resumen';
+        }, 2500);
+      });
+    }
+
+    // Inicializar al cargar
+    renderProjectsGrid();
+  </script>
+</body>
+</html>

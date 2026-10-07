@@ -231,6 +231,12 @@ const Icons = {
       <path d="M3 3v5h5" />
       <path d="M12 7v5l4 2" />
     </svg>
+  ),
+  Clock: () => (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
   )
 };
 
@@ -578,6 +584,9 @@ function App() {
   const [isDoneReportModalOpen, setIsDoneReportModalOpen] = useState(false);
   const [doneReportFilter, setDoneReportFilter] = useState('all'); // 'all' | 'full' | 'partial'
   const [doneReportSearch, setDoneReportSearch] = useState('');
+  const [isProjectStatusModalOpen, setIsProjectStatusModalOpen] = useState(false);
+  const [statusModalProject, setStatusModalProject] = useState(null);
+  const [copiedStatusReport, setCopiedStatusReport] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [newProgressText, setNewProgressText] = useState('');
   const [newProgressAuthor, setNewProgressAuthor] = useState('');
@@ -1503,6 +1512,107 @@ function App() {
     setWeekDate(new Date());
   };
 
+  const openProjectStatusModal = (project) => {
+    setStatusModalProject(project);
+    setIsProjectStatusModalOpen(true);
+    setCopiedStatusReport(false);
+  };
+
+  const copyProjectStatusReport = (project, doneTasks, activeTasks, pendingTasks) => {
+    const code = project.code || `P-${(project.id || '').slice(0, 4)}`;
+    const stage = stageLabelMap[project.status] || 'En ejecución';
+    const health = project.isOverdue ? 'Vencido' : project.hasExtension ? 'Con prórroga' : 'En tiempo';
+    const targetDateStr = project.targetDate ? formatDateShort(project.targetDate) : 'Sin fecha límite';
+    const allTeam = [
+      ...(project.admins && project.admins.length > 0 ? project.admins : ['Jorge']),
+      ...(project.members || [])
+    ].filter((v, i, a) => a.indexOf(v) === i);
+
+    let text = `📌 REPORTE DE ESTATUS: [${code}] ${project.name}\n`;
+    text += `--------------------------------------------------\n`;
+    text += `Etapa: ${stage} | Avance: ${project.progressPct}% (${project.doneTasks}/${project.totalTasks} tareas)\n`;
+    text += `Fecha Objetivo: ${targetDateStr} (${health})\n`;
+    if (allTeam.length > 0) {
+      text += `Equipo Asignado: ${allTeam.join(', ')}\n`;
+    }
+
+    text += `\n✅ 1. ¿QUÉ SE HA HECHO? (${doneTasks.length} tareas)\n`;
+    if (doneTasks.length === 0) {
+      text += `• Sin tareas finalizadas aún en este ciclo.\n`;
+    } else {
+      doneTasks.forEach((t) => {
+        const tCode = t.code ? `[${t.code}] ` : '';
+        const closingDate = t.completedAt ? formatDateShort(t.completedAt.split('T')[0]) : t.dueDate ? formatDateShort(t.dueDate) : '';
+        const dateSuffix = closingDate ? ` (${closingDate})` : '';
+        const isPartial = t.completionType === 'partial';
+        text += `• ${tCode}${t.title}${dateSuffix}${isPartial ? ' [⚠️ Continuada]' : ' [✓ Hecho]'}\n`;
+        if (t.completionReport) {
+          text += `  ↳ Cierre: "${t.completionReport}"\n`;
+        }
+      });
+    }
+
+    text += `\n⚡ 2. ¿EN QUÉ ESTAMOS HOY? (${activeTasks.length} activas)\n`;
+    if (activeTasks.length === 0) {
+      text += `• No hay tareas en progreso activo en este momento.\n`;
+    } else {
+      activeTasks.forEach((t) => {
+        const tCode = t.code ? `[${t.code}] ` : '';
+        const assignee = t.assignee || 'Sin asignar';
+        text += `• ${tCode}${t.title} (Resp: ${assignee})\n`;
+        if (Array.isArray(t.progressLogs) && t.progressLogs.length > 0) {
+          const lastLog = t.progressLogs[t.progressLogs.length - 1];
+          const logDate = lastLog.createdAt ? formatDateTime(lastLog.createdAt) : lastLog.date || '';
+          text += `  ↳ Último avance (${lastLog.author || 'Equipo'}${logDate ? ` - ${logDate}` : ''}): "${lastLog.text}"\n`;
+        } else if (t.description) {
+          text += `  ↳ Detalle: "${t.description}"\n`;
+        }
+      });
+    }
+
+    text += `\n⏳ 3. ¿QUÉ ESTÁ PENDIENTE? (${pendingTasks.length} pendientes)\n`;
+    if (pendingTasks.length === 0) {
+      text += `• Sin tareas pendientes en el backlog.\n`;
+    } else {
+      pendingTasks.forEach((t) => {
+        const tCode = t.code ? `[${t.code}] ` : '';
+        const assignee = t.assignee || 'Sin asignar';
+        const priorityLabel = t.priority === 'high' ? 'ALTA' : t.priority === 'low' ? 'BAJA' : 'MEDIA';
+        const due = t.dueDate ? formatDateShort(t.dueDate) : 'S/F';
+        text += `• ${tCode}${t.title} (Resp: ${assignee} | Prioridad ${priorityLabel} | Límite: ${due})\n`;
+      });
+    }
+
+    const copyFallback = (str) => {
+      try {
+        const el = document.createElement('textarea');
+        el.value = str;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+        setCopiedStatusReport(true);
+        setTimeout(() => setCopiedStatusReport(false), 2500);
+      } catch (err) {
+        console.warn('Fallback copy failed', err);
+      }
+    };
+
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        setCopiedStatusReport(true);
+        setTimeout(() => setCopiedStatusReport(false), 2500);
+      }).catch(() => {
+        copyFallback(text);
+      });
+    } else {
+      copyFallback(text);
+    }
+  };
+
   const enrichedProjects = useMemo(() => {
     return projects.map((p) => {
       const items = workItems.filter((w) => w.projectId === p.id);
@@ -2343,7 +2453,16 @@ function App() {
                             onClick={() => openEditProjectModal(project)}
                             title="Editar información del proyecto"
                           >
-                            <Icons.Edit /> <span>Editar Proyecto</span>
+                            <Icons.Edit /> <span>Editar</span>
+                          </button>
+
+                          <button
+                            className="ui-btn ui-btn--status-report ui-btn--small"
+                            type="button"
+                            onClick={() => openProjectStatusModal(project)}
+                            title="Ver estatus y reporte ejecutivo 360° del proyecto"
+                          >
+                            <Icons.FileText /> <span>Estatus & Resumen</span>
                           </button>
                         </div>
 
@@ -2411,6 +2530,19 @@ function App() {
                                     {project.doneTasks}/{project.totalTasks} tareas ({project.progressPct}%)
                                   </span>
                                 </span>
+
+                                <button
+                                  type="button"
+                                  className="ui-btn ui-btn--ghost ui-btn--small"
+                                  style={{ fontSize: '0.72rem', padding: '2px 8px', color: 'var(--brand-300)', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openProjectStatusModal(project);
+                                  }}
+                                  title="Ver estatus y resumen ejecutivo de este proyecto"
+                                >
+                                  <Icons.FileText /> <span>Estatus</span>
+                                </button>
 
                                 {project.hasExtension ? (
                                   <button
@@ -3380,6 +3512,23 @@ function App() {
                       >
                         <Icons.Team />
                         <span>Equipo & Roles ({membersCount})</span>
+                      </button>
+                    );
+                  })()}
+
+                  {(() => {
+                    const activeProj = projects.find((p) => p.id === selectedProjectId) || projects[0];
+                    if (!activeProj) return null;
+                    return (
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn--status-report ui-btn--small"
+                        onClick={() => openProjectStatusModal(activeProj)}
+                        title="Ver resumen ejecutivo y estatus 360° del proyecto"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                      >
+                        <Icons.FileText />
+                        <span>Estatus del Proyecto</span>
                       </button>
                     );
                   })()}
@@ -5760,7 +5909,348 @@ function App() {
           </div>
         </div>
       )}
-    </div>
+
+      {/* MODAL EJECUTIVO: FICHA DE ESTATUS 360° */}
+      {isProjectStatusModalOpen && statusModalProject && (() => {
+        const proj = enrichedProjects.find((p) => p.id === statusModalProject.id) || statusModalProject;
+        const projectTasks = workItems.filter((w) => w.projectId === proj.id);
+        const doneTasks = projectTasks.filter((w) => w.status === 'done');
+        const activeTasks = projectTasks.filter((w) => w.status === 'in_progress' || w.status === 'review');
+        const pendingTasks = projectTasks
+          .filter((w) => w.status === 'backlog')
+          .sort((a, b) => {
+            const pOrder = { high: 1, medium: 2, low: 3 };
+            return (pOrder[a.priority] || 2) - (pOrder[b.priority] || 2);
+          });
+
+        const code = proj.code || `P-${(proj.id || '').slice(0, 4)}`;
+        const stage = stageLabelMap[proj.status] || 'En ejecución';
+        const isOverdue = proj.isOverdue;
+        const hasExtension = proj.hasExtension;
+        const healthStatusText = isOverdue ? 'Vencido' : hasExtension ? 'Con prórroga' : 'En tiempo';
+        const healthStatusClass = isOverdue ? 'warning' : hasExtension ? 'warning' : 'good';
+        const targetDateDisplay = proj.targetDate ? formatDateShort(proj.targetDate) : 'Sin fecha límite';
+
+        const allTeam = [
+          ...(proj.admins && proj.admins.length > 0 ? proj.admins : ['Jorge']),
+          ...(proj.members || [])
+        ].filter((v, i, a) => a.indexOf(v) === i);
+
+        return (
+          <div className="modal-overlay" onClick={() => setIsProjectStatusModalOpen(false)}>
+            <div className="modal-sheet modal-sheet--status" onClick={(e) => e.stopPropagation()}>
+              
+              {/* CABECERA */}
+              <div className="status-sheet-header">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <div className="status-sheet-kicker">
+                    <span style={{
+                      padding: '2px 7px',
+                      background: 'rgba(56, 189, 248, 0.15)',
+                      border: '1px solid rgba(56, 189, 248, 0.3)',
+                      color: '#38bdf8',
+                      borderRadius: '4px',
+                      fontFamily: 'monospace',
+                      fontWeight: 700
+                    }}>
+                      {code}
+                    </span>
+                    <span className={`stage-tag stage-tag--${proj.status || 'execution'}`}>
+                      {stage}
+                    </span>
+                    <span>· Ficha Ejecutiva 360°</span>
+                  </div>
+                  <h2 className="status-sheet-title">
+                    {proj.name}
+                  </h2>
+                  {proj.description && (
+                    <p style={{ margin: '2px 0 0 0', fontSize: '0.84rem', color: 'var(--ink-500)', lineHeight: 1.4 }}>
+                      {proj.description}
+                    </p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className="close-icon-btn"
+                  onClick={() => setIsProjectStatusModalOpen(false)}
+                  title="Cerrar ficha de estatus"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid transparent',
+                    color: 'var(--ink-500)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Icons.Close />
+                </button>
+              </div>
+
+              {/* SEMÁFORO / KPI STRIP */}
+              <div className="status-kpi-strip">
+                <div className="status-kpi-cell">
+                  <span className="status-kpi-label">Avance Global</span>
+                  <span className={`status-kpi-value ${proj.progressPct >= 75 ? 'good' : 'info'}`}>
+                    {proj.progressPct}%
+                  </span>
+                </div>
+
+                <div className="status-kpi-cell">
+                  <span className="status-kpi-label">Tareas Realizadas</span>
+                  <span className="status-kpi-value good">
+                    {proj.doneTasks} de {proj.totalTasks}
+                  </span>
+                </div>
+
+                <div className="status-kpi-cell">
+                  <span className="status-kpi-label">Plazo Estimado</span>
+                  <span className={`status-kpi-value ${healthStatusClass}`} style={{ fontSize: '1rem' }}>
+                    {targetDateDisplay} ({healthStatusText})
+                  </span>
+                </div>
+
+                <div className="status-kpi-cell">
+                  <span className="status-kpi-label">Equipo Asignado</span>
+                  <span className="status-kpi-value" style={{ fontSize: '0.95rem' }} title={allTeam.join(', ')}>
+                    {allTeam.length} {allTeam.length === 1 ? 'persona' : 'personas'}
+                  </span>
+                </div>
+              </div>
+
+              {/* CUERPO: LOS 3 PILARES CLAVE */}
+              <div className="status-sheet-body">
+                
+                {/* PILAR 1: ¿QUÉ SE HA HECHO? */}
+                <div className="status-pillar">
+                  <div className="status-pillar-header done">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icons.Check />
+                      <span>1. ¿Qué se ha hecho? (Logros y Cierres)</span>
+                    </span>
+                    <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+                      {doneTasks.length} {doneTasks.length === 1 ? 'tarea cerrada' : 'tareas cerradas'}
+                    </span>
+                  </div>
+                  <div className="status-pillar-content">
+                    {doneTasks.length === 0 ? (
+                      <div style={{ fontSize: '0.84rem', color: 'var(--ink-500)', fontStyle: 'italic', padding: '6px 0' }}>
+                        No hay tareas finalizadas aún en este ciclo.
+                      </div>
+                    ) : (
+                      doneTasks.map((t) => {
+                        const isPartial = t.completionType === 'partial';
+                        const continuationTask = t.continuedInTaskId
+                          ? workItems.find((w) => w.id === t.continuedInTaskId)
+                          : null;
+                        const closingDate = t.completedAt ? formatDateShort(t.completedAt.split('T')[0]) : t.dueDate ? formatDateShort(t.dueDate) : '';
+
+                        return (
+                          <div key={t.id} className="status-task-item">
+                            <div className="status-task-head">
+                              <span className="status-task-title">
+                                <span className="status-task-tag" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                                  {t.code || `T-${t.id}`}
+                                </span>
+                                <span>{t.title}</span>
+                              </span>
+                              {isPartial ? (
+                                <span style={{ fontSize: '0.74rem', color: '#fbbf24', fontWeight: 600 }}>
+                                  ⚠️ Continuada
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 600 }}>
+                                  ✓ Hecho
+                                </span>
+                              )}
+                            </div>
+
+                            {t.completionReport ? (
+                              <div className="status-quote-box done">
+                                "{t.completionReport}"
+                              </div>
+                            ) : null}
+
+                            {isPartial && continuationTask && (
+                              <div style={{ fontSize: '0.74rem', color: 'var(--warning-600)', paddingLeft: '4px' }}>
+                                ↳ Continuada en: {continuationTask.code ? `[${continuationTask.code}] ` : ''}{continuationTask.title}
+                              </div>
+                            )}
+
+                            <div className="status-task-footer">
+                              <span>Resp: <strong>{t.assignee || 'Sin asignar'}</strong></span>
+                              {closingDate && <span>Cierre: {closingDate}</span>}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* PILAR 2: ¿EN QUÉ ESTAMOS HOY? */}
+                <div className="status-pillar">
+                  <div className="status-pillar-header active">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icons.StageExecution />
+                      <span>2. ¿En qué estamos hoy? (En Ejecución & Avances)</span>
+                    </span>
+                    <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+                      {activeTasks.length} {activeTasks.length === 1 ? 'activa' : 'activas'}
+                    </span>
+                  </div>
+                  <div className="status-pillar-content">
+                    {activeTasks.length === 0 ? (
+                      <div style={{ fontSize: '0.84rem', color: 'var(--ink-500)', fontStyle: 'italic', padding: '6px 0' }}>
+                        Sin tareas en progreso activo en este momento.
+                      </div>
+                    ) : (
+                      activeTasks.map((t) => {
+                        const hasLogs = Array.isArray(t.progressLogs) && t.progressLogs.length > 0;
+                        const latestLog = hasLogs ? t.progressLogs[t.progressLogs.length - 1] : null;
+
+                        return (
+                          <div key={t.id} className="status-task-item">
+                            <div className="status-task-head">
+                              <span className="status-task-title">
+                                <span className="status-task-tag" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                                  {t.code || `T-${t.id}`}
+                                </span>
+                                <span>{t.title}</span>
+                              </span>
+                              <span style={{
+                                fontSize: '0.72rem',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                background: t.status === 'review' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(56, 189, 248, 0.12)',
+                                color: t.status === 'review' ? '#fbbf24' : '#38bdf8',
+                                fontWeight: 600
+                              }}>
+                                {t.status === 'review' ? '🔍 Validación' : '⚡ En Progreso'}
+                              </span>
+                            </div>
+
+                            {latestLog ? (
+                              <div className="status-quote-box advance">
+                                <span className="status-advance-meta">
+                                  <Icons.History />
+                                  <span>
+                                    ↳ Último avance registrado por {latestLog.author || 'Equipo'} ({latestLog.createdAt ? formatDateTime(latestLog.createdAt) : latestLog.date || 'reciente'}):
+                                  </span>
+                                </span>
+                                <span style={{ marginTop: '2px', color: 'var(--ink-800)' }}>
+                                  "{latestLog.text}"
+                                </span>
+                              </div>
+                            ) : t.description ? (
+                              <div className="status-quote-box" style={{ borderLeftColor: 'var(--line-300)', color: 'var(--ink-500)' }}>
+                                {t.description}
+                              </div>
+                            ) : null}
+
+                            <div className="status-task-footer">
+                              <span>Responsable: <strong>{t.assignee || 'Sin asignar'}</strong></span>
+                              <span style={{
+                                color: t.priority === 'high' ? 'var(--danger-500)' : t.priority === 'medium' ? 'var(--warning-500)' : 'var(--ink-500)',
+                                fontWeight: 600
+                              }}>
+                                Prioridad: {t.priority ? t.priority.toUpperCase() : 'MEDIA'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* PILAR 3: ¿QUÉ ESTÁ PENDIENTE? */}
+                <div className="status-pillar">
+                  <div className="status-pillar-header pending">
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Icons.Clock />
+                      <span>3. ¿Qué está pendiente? (Próximos Pasos & Riesgos)</span>
+                    </span>
+                    <span style={{ fontSize: '0.78rem', opacity: 0.9 }}>
+                      {pendingTasks.length} {pendingTasks.length === 1 ? 'pendiente' : 'pendientes'}
+                    </span>
+                  </div>
+                  <div className="status-pillar-content">
+                    {pendingTasks.length === 0 ? (
+                      <div style={{ fontSize: '0.84rem', color: 'var(--ink-500)', fontStyle: 'italic', padding: '6px 0' }}>
+                        No hay tareas pendientes en el backlog.
+                      </div>
+                    ) : (
+                      pendingTasks.map((t) => {
+                        const isTaskOverdue = t.dueDate && t.dueDate < todayStr;
+
+                        return (
+                          <div key={t.id} className="status-task-item">
+                            <div className="status-task-head">
+                              <span className="status-task-title">
+                                <span className="status-task-tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                                  {t.code || `T-${t.id}`}
+                                </span>
+                                <span>{t.title}</span>
+                              </span>
+                              <span style={{ fontSize: '0.72rem', color: isTaskOverdue ? 'var(--danger-500)' : 'var(--ink-500)', fontWeight: isTaskOverdue ? 700 : 500 }}>
+                                {isTaskOverdue ? '⚠️ Vencida: ' : 'Límite: '}{t.dueDate ? formatDateShort(t.dueDate) : 'Sin definir'}
+                              </span>
+                            </div>
+                            <div className="status-task-footer">
+                              <span>Asignado a: <strong>{t.assignee || 'Sin asignar'}</strong></span>
+                              <span style={{
+                                color: t.priority === 'high' ? 'var(--danger-500)' : 'var(--ink-500)',
+                                fontWeight: 600
+                              }}>
+                                {t.priority === 'high' ? '⚠️ Alta Prioridad' : t.priority === 'low' ? 'Prioridad Baja' : 'Prioridad Media'}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* PIE DE ACCIONES */}
+              <div className="status-sheet-footer">
+                <div style={{ fontSize: '0.78rem', color: 'var(--ink-500)' }}>
+                  Generado automáticamente con base en el avance de tareas y bitácoras en tiempo real.
+                </div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary"
+                    onClick={() => setIsProjectStatusModalOpen(false)}
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--primary"
+                    onClick={() => copyProjectStatusReport(proj, doneTasks, activeTasks, pendingTasks)}
+                    style={{
+                      background: copiedStatusReport ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : undefined,
+                      borderColor: copiedStatusReport ? '#10b981' : undefined
+                    }}
+                  >
+                    {copiedStatusReport ? '✓ ¡Reporte Copiado!' : '📋 Copiar para WhatsApp / Correo'}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
+      </div>
   );
 }
 

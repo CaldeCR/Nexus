@@ -202,7 +202,7 @@
       "name": "SISTEMA DE CONTROL DE FLOTILLA - GRUPO EXTRA",
       "description": "Crear un sistema que permita gestionar la salida e ingreso de las móviles del canal.",
       "template": "pmi",
-      "status": "execution",
+      "status": "completed",
       "role": "lead",
       "admins": [
         "Jorge"
@@ -253,6 +253,82 @@
     }
   ],
   "workItems": [
+    {
+      "id": "wi-1791300906124",
+      "code": "P6-T10",
+      "projectId": "p-1790876119003",
+      "title": "Coordinar capacitación con Ivannia y Christian",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-08",
+      "createdAt": "2026-10-06T15:35:06.124Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791300667191",
+      "code": "P6-T9",
+      "projectId": "p-1790876119003",
+      "title": "Preparar entrenamiento de uso de la plataforma",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-16",
+      "createdAt": "2026-10-06T15:31:07.191Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791300602956",
+      "code": "P6-T8",
+      "projectId": "p-1790876119003",
+      "title": "Revisar flujo de Facturación y reportería",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-06",
+      "createdAt": "2026-10-06T15:30:02.957Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791300302309",
+      "code": "P6-T7",
+      "projectId": "p-1790876119003",
+      "title": "Solicitar canales a Ivania",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-06",
+      "createdAt": "2026-10-06T15:25:02.309Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
     {
       "id": "wi-1791232500357",
       "code": "P7-T4",
