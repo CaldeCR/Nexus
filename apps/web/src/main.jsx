@@ -6197,15 +6197,22 @@ function App() {
                                 </span>
                                 <span>{t.title}</span>
                               </span>
-                              <span style={{ fontSize: '0.72rem', color: isTaskOverdue ? 'var(--danger-500)' : 'var(--ink-500)', fontWeight: isTaskOverdue ? 700 : 500 }}>
+                              <span style={{ fontSize: '0.72rem', color: isTaskOverdue ? 'var(--danger-500)' : 'var(--ink-500)', fontWeight: isTaskOverdue ? 700 : 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
                                 {isTaskOverdue ? '⚠️ Vencida: ' : 'Límite: '}{t.dueDate ? formatDateShort(t.dueDate) : 'Sin definir'}
                               </span>
                             </div>
+                            {t.description && (
+                              <div style={{ fontSize: '0.78rem', color: 'var(--ink-500)', lineHeight: 1.4, paddingLeft: '2px' }}>
+                                {t.description}
+                              </div>
+                            )}
                             <div className="status-task-footer">
                               <span>Asignado a: <strong>{t.assignee || 'Sin asignar'}</strong></span>
                               <span style={{
                                 color: t.priority === 'high' ? 'var(--danger-500)' : 'var(--ink-500)',
-                                fontWeight: 600
+                                fontWeight: 600,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0
                               }}>
                                 {t.priority === 'high' ? '⚠️ Alta Prioridad' : t.priority === 'low' ? 'Prioridad Baja' : 'Prioridad Media'}
                               </span>
