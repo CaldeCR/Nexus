@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { z } from 'zod';
-import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension } from './data/store';
+import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension } from './data/store';
 
 const app = express();
 app.use(cors());
@@ -12,6 +12,14 @@ const sessionStore = new Map<string, { userId: string; createdAt: number }>();
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6)
+});
+
+const registerSchema = z.object({
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  email: z.string().email('Formato de correo electrónico inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  role: z.enum(['owner', 'admin', 'member']).default('member'),
+  organization: z.string().optional()
 });
 
 const memberRoleSchema = z.enum(['admin', 'collaborator', 'vendor', 'viewer']);
@@ -28,7 +36,10 @@ const createGlobalMemberSchema = z.object({
   role: memberRoleSchema.default('collaborator'),
   email: z.string().optional(),
   phone: z.string().optional(),
-  organization: z.string().optional()
+  organization: z.string().optional(),
+  createAccount: z.boolean().optional(),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional(),
+  userRole: z.enum(['admin', 'member']).optional()
 });
 
 const updateGlobalMemberSchema = z.object({
@@ -143,6 +154,19 @@ function getCurrentUser(req: express.Request) {
   return db.users.find((user) => user.id === session.userId) ?? null;
 }
 
+function requireAdmin(req: express.Request, res: express.Response): User | null {
+  const user = getCurrentUser(req);
+  if (!user) {
+    res.status(401).json({ message: 'No autorizado. Inicie sesión.' });
+    return null;
+  }
+  if (user.role !== 'owner' && user.role !== 'admin') {
+    res.status(403).json({ message: 'Acceso restringido: Solo un Administrador puede crear o gestionar cuentas de usuario.' });
+    return null;
+  }
+  return user;
+}
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, status: 'healthy' });
 });
@@ -168,6 +192,114 @@ app.post('/api/auth/login', (req, res) => {
     token,
     user: { id: user.id, name: user.name, email: user.email, role: user.role }
   });
+});
+
+// ==========================================
+// GESTIÓN INTERNA DE USUARIOS (Solo Administradores)
+// ==========================================
+app.get('/api/users', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const db = readDb();
+  const safeUsers = db.users.map(({ password, ...u }) => u);
+  res.json({ items: safeUsers });
+});
+
+app.post('/api/users', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const parsed = registerSchema.safeParse(req.body);
+  if (!parsed.success) {
+    const errorMsg = parsed.error.issues?.[0]?.message || 'Datos de usuario inválidos';
+    return res.status(400).json({ message: errorMsg, errors: parsed.error.flatten() });
+  }
+
+  const db = readDb();
+  const normalizedEmail = parsed.data.email.trim().toLowerCase();
+  const existingUser = db.users.find((item) => item.email.toLowerCase() === normalizedEmail);
+
+  if (existingUser) {
+    return res.status(409).json({ message: 'Ya existe un usuario con este correo electrónico' });
+  }
+
+  const newUser: User = {
+    id: `u-${Date.now()}`,
+    name: parsed.data.name.trim(),
+    email: normalizedEmail,
+    password: parsed.data.password,
+    role: parsed.data.role || 'member'
+  };
+
+  db.users.push(newUser);
+
+  // Sincronizar automáticamente en el Directorio si no existe
+  const existingDirMember = db.teamDirectory.find(
+    (m) => m.email && m.email.toLowerCase() === normalizedEmail
+  );
+  if (!existingDirMember) {
+    db.teamDirectory.push({
+      id: `dir-${Date.now()}`,
+      name: newUser.name,
+      role: newUser.role === 'admin' ? 'admin' : 'collaborator',
+      email: newUser.email,
+      organization: parsed.data.organization || 'Equipo Interno',
+      createdAt: new Date().toISOString()
+    });
+  } else {
+    if (newUser.role === 'admin') {
+      existingDirMember.role = 'admin';
+    }
+  }
+
+  writeDb(db);
+
+  return res.status(201).json({
+    message: `Usuario "${newUser.name}" creado exitosamente con credenciales de acceso.`,
+    user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
+  });
+});
+
+app.put('/api/users/:id/password', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const { password } = req.body;
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+  }
+
+  const db = readDb();
+  const targetUser = db.users.find((u) => u.id === req.params.id);
+  if (!targetUser) {
+    return res.status(404).json({ message: 'Usuario no encontrado' });
+  }
+
+  targetUser.password = password;
+  writeDb(db);
+
+  return res.json({ message: `Contraseña de "${targetUser.name}" actualizada correctamente.` });
+});
+
+app.delete('/api/users/:id', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const db = readDb();
+  const targetUser = db.users.find((u) => u.id === req.params.id);
+  if (!targetUser) {
+    return res.status(404).json({ message: 'Usuario no encontrado' });
+  }
+
+  if (targetUser.id === admin.id || targetUser.role === 'owner') {
+    return res.status(400).json({ message: 'No se puede revocar el acceso del usuario propietario principal.' });
+  }
+
+  db.users = db.users.filter((u) => u.id !== req.params.id);
+  writeDb(db);
+
+  return res.json({ message: `Acceso revocado para "${targetUser.name}".` });
 });
 
 app.get('/api/auth/me', (req, res) => {
@@ -465,7 +597,18 @@ app.get('/api/directory', (req, res) => {
   if (!user) return res.status(401).json({ message: 'No autorizado' });
 
   const db = readDb();
-  return res.json({ items: db.teamDirectory || [] });
+  const items = (db.teamDirectory || []).map((m) => {
+    const userAcc = db.users.find(
+      (u) => (m.email && u.email.toLowerCase() === m.email.toLowerCase()) || u.name.toLowerCase() === m.name.toLowerCase()
+    );
+    return {
+      ...m,
+      hasUserAccount: Boolean(userAcc),
+      userAccountId: userAcc?.id,
+      userRole: userAcc?.role
+    };
+  });
+  return res.json({ items });
 });
 
 app.post('/api/directory', (req, res) => {
@@ -488,6 +631,29 @@ app.post('/api/directory', (req, res) => {
     return res.status(400).json({ message: `Ya existe un integrante o tercero con el nombre "${trimmedName}" en el directorio.` });
   }
 
+  // Si se solicitó crear cuenta de acceso al sistema, validar permisos de administrador
+  if (parsed.data.createAccount) {
+    if (user.role !== 'owner' && user.role !== 'admin') {
+      return res.status(403).json({ message: 'Solo un Administrador puede generar credenciales de usuario.' });
+    }
+    if (!parsed.data.email || !parsed.data.password) {
+      return res.status(400).json({ message: 'Correo y contraseña son requeridos para crear la cuenta de acceso.' });
+    }
+    const userEmail = parsed.data.email.trim().toLowerCase();
+    const existingUser = db.users.find((u) => u.email.toLowerCase() === userEmail);
+    if (existingUser) {
+      return res.status(409).json({ message: 'Ya existe una cuenta con este correo electrónico.' });
+    }
+
+    db.users.push({
+      id: `u-${Date.now()}`,
+      name: trimmedName,
+      email: userEmail,
+      password: parsed.data.password,
+      role: parsed.data.userRole || (parsed.data.role === 'admin' ? 'admin' : 'member')
+    });
+  }
+
   const newMember: GlobalMember = {
     id: `dir-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     name: trimmedName,
@@ -501,6 +667,52 @@ app.post('/api/directory', (req, res) => {
   db.teamDirectory.unshift(newMember);
   writeDb(db);
   return res.status(201).json(newMember);
+});
+
+// Endpoint para que un Administrador genere credenciales a un integrante existente
+app.post('/api/directory/:id/create-account', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const { email, password, role } = req.body;
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+  }
+
+  const db = readDb();
+  const member = db.teamDirectory.find((m) => m.id === req.params.id);
+  if (!member) {
+    return res.status(404).json({ message: 'Integrante del directorio no encontrado.' });
+  }
+
+  const targetEmail = (email || member.email || '').trim().toLowerCase();
+  if (!targetEmail) {
+    return res.status(400).json({ message: 'Se requiere un correo electrónico para crear la cuenta.' });
+  }
+
+  const existingUser = db.users.find((u) => u.email.toLowerCase() === targetEmail);
+  if (existingUser) {
+    return res.status(409).json({ message: 'Ya existe una cuenta con este correo electrónico.' });
+  }
+
+  const newUser: User = {
+    id: `u-${Date.now()}`,
+    name: member.name,
+    email: targetEmail,
+    password,
+    role: role || (member.role === 'admin' ? 'admin' : 'member')
+  };
+
+  db.users.push(newUser);
+  if (!member.email) {
+    member.email = targetEmail;
+  }
+  writeDb(db);
+
+  return res.status(201).json({
+    message: `Cuenta de acceso generada para "${member.name}".`,
+    user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
+  });
 });
 
 app.put('/api/directory/:id', (req, res) => {

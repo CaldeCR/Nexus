@@ -6,6 +6,20 @@
       "name": "Jorge",
       "password": "123456",
       "role": "owner"
+    },
+    {
+      "id": "u-1792019074625",
+      "name": "Ana Rodriguez",
+      "email": "ana@nexus.local",
+      "password": "secret123",
+      "role": "member"
+    },
+    {
+      "id": "u-1792020629821",
+      "name": "Esteban Montoya",
+      "email": "esteban@nexus.local",
+      "password": "NexusPass123!",
+      "role": "member"
     }
   ],
   "projects": [
@@ -86,7 +100,7 @@
       "name": "VIAJA EXTRA - ZOHO",
       "description": "Crear el sitio de Viaja Extra para el manejo de clientes en el CRM de Zoho",
       "template": "kanban",
-      "status": "preproject",
+      "status": "review",
       "role": "lead",
       "admins": [
         "Jorge"
@@ -254,6 +268,92 @@
   ],
   "workItems": [
     {
+      "id": "wi-1791499339625",
+      "code": "P2-T5",
+      "projectId": "p-1790895374161",
+      "title": "Validar requerimiento de integración de Zoho con Whatsapp ",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge, Josué B",
+      "assignees": [
+        "Jorge",
+        "Josué B"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-13",
+      "createdAt": "2026-10-08T22:42:19.625Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791492272340",
+      "code": "P1-T6",
+      "projectId": "p-1790951494828",
+      "title": "Cotizar ambiente de pruebas con Softland",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-09",
+      "createdAt": "2026-10-08T20:44:32.340Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791389228873",
+      "code": "P7-T6",
+      "projectId": "p-1791231911086",
+      "title": "Reporte de informes con acciones que quedaron pendientes y se eliminaron",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-12",
+      "createdAt": "2026-10-07T16:07:08.873Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791389009133",
+      "code": "P7-T5",
+      "projectId": "p-1791231911086",
+      "title": "Contactar Truesec. Definir plan de acción para los equipos de broadcast. Copiar Hernando Segura.",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge, Jean Paul",
+      "assignees": [
+        "Jorge",
+        "Jean Paul"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-07",
+      "createdAt": "2026-10-07T16:03:29.133Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1791499775763-93d4",
+          "text": "Se coordina visita de True para el Lunes 12 de octubre para revisar el tema con Jean Paul.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:49:35.763Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
       "id": "wi-1791300906124",
       "code": "P6-T10",
       "projectId": "p-1790876119003",
@@ -298,7 +398,7 @@
       "title": "Revisar flujo de Facturación y reportería",
       "description": "",
       "type": "task",
-      "status": "backlog",
+      "status": "done",
       "priority": "medium",
       "assignee": "Jorge",
       "assignees": [
@@ -308,7 +408,9 @@
       "dueDate": "2026-10-06",
       "createdAt": "2026-10-06T15:30:02.957Z",
       "completionReport": "",
-      "progressLogs": []
+      "progressLogs": [],
+      "completionType": "full",
+      "completedAt": "2026-10-08T22:43:40.938Z"
     },
     {
       "id": "wi-1791300302309",
@@ -317,7 +419,7 @@
       "title": "Solicitar canales a Ivania",
       "description": "",
       "type": "task",
-      "status": "backlog",
+      "status": "done",
       "priority": "medium",
       "assignee": "Jorge",
       "assignees": [
@@ -327,7 +429,9 @@
       "dueDate": "2026-10-06",
       "createdAt": "2026-10-06T15:25:02.309Z",
       "completionReport": "",
-      "progressLogs": []
+      "progressLogs": [],
+      "completionType": "full",
+      "completedAt": "2026-10-08T22:43:26.088Z"
     },
     {
       "id": "wi-1791232500357",
@@ -376,7 +480,7 @@
       "code": "P7-T2",
       "projectId": "p-1791231911086",
       "title": "Política de equipos personales y de terceros",
-      "description": "Decidir si el EDR se instala en equipos que no son de Grupo Extra, sopesando la visibilidad que aporta \nfrente a la exposición legal, laboral y de licencias. Sin conexión a la red \ncorporativa. Acceden a los recursos de Grupo Extra solo por Zero Trust (R35), que verifica al usuario y el estado del equipo en cada acceso; para todo lo demás usan la red de invitados (R-36). El escritorio virtual queda como alternativa. Requiere análisis legal, laboral y de licencias. Entregar equipos corporativos a los presentadores de Fox que hoy transmiten desde laptops personales.",
+      "description": "Decidir si el EDR se instala en equipos que no son de Grupo Extra, sopesando la visibilidad que aporta \nfrente a la exposición legal, laboral y de licencias. Sin conexión a la red \ncorporativa. Acceden a los recursos de Grupo Extra solo por Zero Trust (R35), que verifica al usuario y el estado del equipo en cada acceso; para todo lo demás usan la red de invitados (R-36). El escritorio virtual queda como alternativa. Requiere análisis legal, laboral y de licencias. Entregar equipos corporativos a los presentadores de Fox que hoy transmiten desde laptops personales.\n\nCrear",
       "type": "task",
       "status": "backlog",
       "priority": "medium",
@@ -392,7 +496,14 @@
       "createdAt": "2026-10-05T20:27:03.300Z",
       "completionReport": "",
       "completionType": "full",
-      "progressLogs": []
+      "progressLogs": [
+        {
+          "id": "log-1791388339701-btc2",
+          "text": "-Definir escenarios en la que los externos de grupo extra se van a conectar. \n- Revisar el tema de asaumir costos para evaluar. Tema de si damos los equipos y asumimos el costo y no dejamos que usen equipos personales.",
+          "author": "Jorge",
+          "createdAt": "2026-10-07T15:52:19.705Z"
+        }
+      ]
     },
     {
       "id": "wi-1791231944062",
@@ -464,7 +575,7 @@
       "title": "01. Asegurarse que todos los usuaros están desconectados",
       "description": "",
       "type": "task",
-      "status": "backlog",
+      "status": "done",
       "priority": "high",
       "assignee": "Jorge",
       "assignees": [
@@ -476,7 +587,8 @@
       "code": "P3-T2",
       "completionReport": "",
       "progressLogs": [],
-      "completionType": "full"
+      "completionType": "full",
+      "completedAt": "2026-10-08T22:55:36.060Z"
     },
     {
       "id": "wi-1790957476255",
@@ -525,7 +637,7 @@
       "title": "Solicitar los archivos necesarios para crear el ambiente de pruebas de Softland",
       "description": "",
       "type": "task",
-      "status": "in_progress",
+      "status": "review",
       "priority": "medium",
       "assignee": "Jean Paul TI, Jorge",
       "assigneeType": "me",
@@ -537,7 +649,20 @@
       ],
       "code": "P1-T2",
       "completionReport": "",
-      "progressLogs": [],
+      "progressLogs": [
+        {
+          "id": "log-1791492241881-7w5p",
+          "text": "Se hicieron pruebas y se registraron en el servidor.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T20:44:01.881Z"
+        },
+        {
+          "id": "log-1791492228901-zbbc",
+          "text": "Ya contamos con los archivos.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T20:43:48.902Z"
+        }
+      ],
       "completionType": "full"
     },
     {
@@ -588,7 +713,7 @@
       "title": "Solicitar información de la actualización a Softland. ",
       "description": "",
       "type": "task",
-      "status": "backlog",
+      "status": "in_progress",
       "priority": "medium",
       "assignee": "Jorge",
       "assigneeType": "me",
@@ -677,7 +802,26 @@
       "createdAt": "2026-10-01T22:57:05.777Z",
       "code": "P2-T4",
       "completionReport": "",
-      "progressLogs": [],
+      "progressLogs": [
+        {
+          "id": "log-1791499257224-qvkc",
+          "text": "Se definieron reuniones semanales para ver avance",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:40:57.225Z"
+        },
+        {
+          "id": "log-1791499244768-lwgd",
+          "text": "Se definió que se deberá coordinar con Sebastian Cubillo la integración son Zoho y el sitio web que están desarrollando.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:40:44.768Z"
+        },
+        {
+          "id": "log-1791499194494-h8sr",
+          "text": "Se tuvo una reunión donde se discutió la forma en la que quieren trabajar el uso de Zoho",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:39:54.494Z"
+        }
+      ],
       "completionType": "full",
       "assignees": [
         "Jorge"
@@ -689,7 +833,7 @@
       "title": "Reinicio de servidores y pruebas de funcionamiento. ",
       "description": "",
       "type": "task",
-      "status": "backlog",
+      "status": "review",
       "priority": "high",
       "assignee": "Jorge",
       "assigneeType": "me",
@@ -834,7 +978,7 @@
       "title": "Atender reunión de evaluación del sistema con Reditet",
       "description": "",
       "type": "task",
-      "status": "in_progress",
+      "status": "review",
       "priority": "high",
       "assignee": "Jorge",
       "assigneeType": "me",
@@ -842,7 +986,26 @@
       "createdAt": "2026-10-01T20:22:48.080Z",
       "code": "P4-T1",
       "completionReport": "",
-      "progressLogs": [],
+      "progressLogs": [
+        {
+          "id": "log-1791500022286-682k",
+          "text": "En esta reunión se discutieron aspectos de requerimientos, procesos de implementación, seguridad y posibles mejoras.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:53:42.286Z"
+        },
+        {
+          "id": "log-1791500003319-l0rv",
+          "text": "Se definió que para el próximo lunes 12, se estará enviando la propuesta final de implementación.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:53:23.319Z"
+        },
+        {
+          "id": "log-1791499984527-dzpb",
+          "text": "Se atendió reunión con equipo de Redinet, Jean Paul y TI GE para definir requerimientos para implementar Entra ID, Intune.",
+          "author": "Jorge",
+          "createdAt": "2026-10-08T22:53:04.527Z"
+        }
+      ],
       "completionType": "full",
       "assignees": [
         "Jorge"
@@ -1001,7 +1164,8 @@
       "name": "Esteban Montoya",
       "role": "collaborator",
       "organization": "Gerente de Medios",
-      "createdAt": "2026-10-05T20:30:03.609Z"
+      "createdAt": "2026-10-05T20:30:03.609Z",
+      "email": "esteban@nexus.local"
     },
     {
       "id": "dir-jorge",
@@ -1065,6 +1229,14 @@
       "role": "collaborator",
       "organization": "Equipo Interno",
       "createdAt": "2026-10-02T16:21:37.378Z"
+    },
+    {
+      "id": "dir-1792019074626",
+      "name": "Ana Rodriguez",
+      "role": "collaborator",
+      "email": "ana@nexus.local",
+      "organization": "QA & Testing",
+      "createdAt": "2026-10-14T23:04:34.626Z"
     }
   ]
 }

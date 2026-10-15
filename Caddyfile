@@ -1,0 +1,18 @@
+nexus.mexicocentral.cloudapp.azure.com {
+    encode gzip zstd
+
+    # Proxy para la API Express
+    handle /api/* {
+        reverse_proxy api:4001
+    }
+
+    # Proxy para el Frontend React
+    handle {
+        reverse_proxy web:80
+    }
+}
+
+# Redirigir accesos por IP (HTTP) hacia el dominio oficial HTTPS
+http://158.23.21.184 {
+    redir https://nexus.mexicocentral.cloudapp.azure.com{uri} permanent
+}

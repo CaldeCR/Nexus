@@ -625,7 +625,16 @@ function App() {
     role: 'collaborator',
     organization: '',
     email: '',
-    phone: ''
+    phone: '',
+    createAccount: false,
+    password: '',
+    userRole: 'member'
+  });
+  const [accountModalMember, setAccountModalMember] = useState(null);
+  const [accountPasswordForm, setAccountPasswordForm] = useState({
+    email: '',
+    password: '',
+    role: 'member'
   });
   const [editingDirectoryMember, setEditingDirectoryMember] = useState(null);
   const [editDirectoryForm, setEditDirectoryForm] = useState({
@@ -799,6 +808,18 @@ function App() {
   const handleCreateDirectoryMember = async (e) => {
     e.preventDefault();
     if (!newDirectoryForm.name.trim()) return;
+
+    if (newDirectoryForm.createAccount) {
+      if (!newDirectoryForm.email || !newDirectoryForm.email.trim()) {
+        setError('Debes ingresar un correo electrónico para generar la cuenta de acceso.');
+        return;
+      }
+      if (!newDirectoryForm.password || newDirectoryForm.password.length < 6) {
+        setError('La contraseña de acceso debe tener al menos 6 caracteres.');
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`${API_BASE}/directory`, {
         method: 'POST',
@@ -813,14 +834,17 @@ function App() {
         setError(data.message || 'Error al registrar integrante en el directorio');
         return;
       }
-      setSuccess(`"${data.name}" se registró exitosamente en el directorio.`);
+      setSuccess(`"${data.name}" se registró exitosamente ${newDirectoryForm.createAccount ? 'con credenciales de acceso creadas' : 'en el directorio'}.`);
       setIsNewDirectoryModalOpen(false);
       setNewDirectoryForm({
         name: '',
         role: 'collaborator',
         organization: '',
         email: '',
-        phone: ''
+        phone: '',
+        createAccount: false,
+        password: '',
+        userRole: 'member'
       });
       fetchDirectory();
 
@@ -956,6 +980,51 @@ function App() {
       setSuccess('Sesión iniciada correctamente');
     } catch (err) {
       setError(err.message || 'No se pudo iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateAccountForMember = async (e) => {
+    e.preventDefault();
+    if (!accountModalMember) return;
+    setError('');
+    setSuccess('');
+
+    const pass = accountPasswordForm.password.trim();
+    if (!pass || pass.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    const targetEmail = (accountPasswordForm.email || accountModalMember.email || '').trim().toLowerCase();
+    if (!targetEmail) {
+      setError('Debes ingresar un correo electrónico para el usuario de acceso.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/directory/${accountModalMember.id}/create-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          email: targetEmail,
+          password: pass,
+          role: accountPasswordForm.role || (accountModalMember.role === 'admin' ? 'admin' : 'member')
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al generar credenciales');
+
+      setSuccess(`Credenciales generadas exitosamente para "${accountModalMember.name}".`);
+      setAccountModalMember(null);
+      fetchDirectory();
+    } catch (err) {
+      setError(err.message || 'No se pudo generar el acceso.');
     } finally {
       setLoading(false);
     }
@@ -1951,7 +2020,7 @@ function App() {
     return agendaTasks.filter((t) => t.dueDate === selectedCalDay);
   }, [agendaTasks, selectedCalDay]);
 
-  // Pantalla de Login
+  // Pantalla de Login (Acceso Interno Exclusivo)
   if (!session) {
     return (
       <div className="app-shell app-shell--auth" data-theme={darkMode ? 'dark' : 'light'}>
@@ -1959,14 +2028,15 @@ function App() {
           <div className="brand-hero-logo">
             <img src="/logobase01.png" alt="Nexus Logo" />
           </div>
-          <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <h1 style={{ fontSize: '1.6rem', color: 'var(--ink-900)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>Nexus</h1>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '1.65rem', color: 'var(--ink-900)', margin: '0 0 6px', letterSpacing: '-0.02em', fontWeight: 800 }}>Nexus</h1>
             <p className="muted" style={{ margin: 0, color: 'var(--ink-500)', fontSize: '0.88rem' }}>
               Track your goals, drive your moves.
             </p>
           </div>
+
           <form onSubmit={handleLogin}>
-            <div className="form-field" style={{ marginBottom: '12px' }}>
+            <div className="form-field" style={{ marginBottom: '14px' }}>
               <label>Correo electrónico</label>
               <input
                 type="email"
@@ -1976,7 +2046,7 @@ function App() {
                 required
               />
             </div>
-            <div className="form-field" style={{ marginBottom: '16px' }}>
+            <div className="form-field" style={{ marginBottom: '18px' }}>
               <label>Contraseña</label>
               <input
                 type="password"
@@ -1986,11 +2056,16 @@ function App() {
                 required
               />
             </div>
-            {error && <div className="notice notice-error" style={{ marginBottom: '12px' }}>{error}</div>}
-            {success && <div className="notice notice-success" style={{ marginBottom: '12px' }}>{success}</div>}
+            {error && <div className="notice notice-error" style={{ marginBottom: '14px' }}>{error}</div>}
+            {success && <div className="notice notice-success" style={{ marginBottom: '14px' }}>{success}</div>}
             <button className="ui-btn ui-btn--primary" type="submit" disabled={loading} style={{ width: '100%', justifyContent: 'center' }}>
               {loading ? 'Validando...' : 'Iniciar Sesión'}
             </button>
+            <div style={{ textAlign: 'center', marginTop: '18px' }}>
+              <p className="muted" style={{ fontSize: '0.78rem', color: 'var(--ink-500)', margin: 0 }}>
+                🔒 Acceso restringido. Las cuentas y contraseñas son generadas internamente por el Administrador.
+              </p>
+            </div>
           </form>
         </div>
       </div>
@@ -2009,7 +2084,10 @@ function App() {
             </div>
             <div className="top-navbar__brand-text">
               <strong>Nexus</strong>
-              <small>Track your goals, drive your moves</small>
+              <small>
+                <span>Track your goals,</span>
+                <span>drive your moves</span>
+              </small>
             </div>
           </div>
 
@@ -3779,6 +3857,16 @@ function App() {
                     <Icons.Vendor />
                     <span>Proveedores / Terceros</span>
                   </button>
+
+                  <button
+                    type="button"
+                    className={`dir-filter-tab ${directoryRoleFilter === 'has_account' ? 'active' : ''}`}
+                    onClick={() => setDirectoryRoleFilter('has_account')}
+                    title="Ver solo integrantes con credenciales de acceso a Nexus"
+                  >
+                    <Icons.ShieldAdmin />
+                    <span>Con Cuenta de Acceso</span>
+                  </button>
                 </div>
 
                 {/* FILA 2: BARRA DE BÚSQUEDA CON LUPA */}
@@ -3812,7 +3900,9 @@ function App() {
               {(() => {
                 const searchLower = directorySearch.toLowerCase().trim();
                 const filteredMembers = teamDirectory.filter((member) => {
-                  if (directoryRoleFilter !== 'all' && member.role !== directoryRoleFilter) {
+                  if (directoryRoleFilter === 'has_account') {
+                    if (!member.hasUserAccount) return false;
+                  } else if (directoryRoleFilter !== 'all' && member.role !== directoryRoleFilter) {
                     return false;
                   }
                   if (searchLower) {
@@ -3911,7 +4001,7 @@ function App() {
                               </div>
                             )}
 
-                            <div className="directory-status-row">
+                            <div className="directory-status-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                               {assignedTasks.length > 0 ? (
                                 <span className="directory-status-pill directory-status-pill--assigned" title={`Asignado a ${assignedTasks.length} tarea(s)`}>
                                   <Icons.Check /> {assignedTasks.length} tarea{assignedTasks.length !== 1 ? 's' : ''} asignada{assignedTasks.length !== 1 ? 's' : ''}
@@ -3921,10 +4011,45 @@ function App() {
                                   Sin tareas asignadas
                                 </span>
                               )}
+
+                              {member.hasUserAccount && (
+                                <span
+                                  className="directory-status-pill"
+                                  style={{
+                                    background: 'rgba(59, 130, 246, 0.15)',
+                                    color: 'var(--brand-300)',
+                                    border: '1px solid rgba(59, 130, 246, 0.35)',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                  title="Dispone de cuenta de acceso activa en Nexus"
+                                >
+                                  🔑 Acceso Activo
+                                </span>
+                              )}
                             </div>
                           </div>
 
                           <div className="directory-card__footer">
+                            {(session?.role === 'owner' || session?.role === 'admin') && (
+                              <button
+                                type="button"
+                                className={`ui-btn ui-btn--small ${member.hasUserAccount ? 'ui-btn--secondary' : 'ui-btn--primary'}`}
+                                onClick={() => {
+                                  setAccountModalMember(member);
+                                  setAccountPasswordForm({
+                                    email: member.email || '',
+                                    password: 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!',
+                                    role: member.role === 'admin' ? 'admin' : 'member'
+                                  });
+                                }}
+                                title={member.hasUserAccount ? 'Restablecer contraseña de acceso' : 'Generar credenciales de usuario para este integrante'}
+                              >
+                                <span>🔑 {member.hasUserAccount ? 'Cambiar Clave' : 'Generar Acceso'}</span>
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               className="ui-btn ui-btn--secondary ui-btn--small"
@@ -5400,6 +5525,58 @@ function App() {
                 </div>
               </div>
 
+              {(session?.role === 'owner' || session?.role === 'admin') && (
+                <div style={{
+                  background: 'var(--surface-elevated)',
+                  border: '1px solid var(--line-200)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '14px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', margin: 0, color: 'var(--ink-900)' }}>
+                    <input
+                      type="checkbox"
+                      checked={newDirectoryForm.createAccount}
+                      onChange={(e) => setNewDirectoryForm({ ...newDirectoryForm, createAccount: e.target.checked })}
+                    />
+                    <span>🔑 Generar credenciales de acceso para este usuario</span>
+                  </label>
+
+                  {newDirectoryForm.createAccount && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '4px' }}>
+                      <p className="muted" style={{ fontSize: '0.78rem', margin: 0, color: 'var(--ink-500)' }}>
+                        El usuario podrá ingresar a Nexus con el <strong>correo electrónico</strong> indicado arriba y esta contraseña:
+                      </p>
+                      <div className="form-field">
+                        <label style={{ fontSize: '0.8rem' }}>Contraseña de acceso *</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input
+                            type="text"
+                            value={newDirectoryForm.password}
+                            onChange={(e) => setNewDirectoryForm({ ...newDirectoryForm, password: e.target.value })}
+                            placeholder="Mínimo 6 caracteres"
+                            required={newDirectoryForm.createAccount}
+                          />
+                          <button
+                            type="button"
+                            className="ui-btn ui-btn--secondary ui-btn--small"
+                            onClick={() => {
+                              const randomPass = 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!';
+                              setNewDirectoryForm({ ...newDirectoryForm, password: randomPass });
+                            }}
+                            title="Generar contraseña sugerida"
+                          >
+                            Generar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
                 <button
                   type="button"
@@ -5601,6 +5778,94 @@ function App() {
                 </button>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: GENERAR O CAMBIAR CREDENCIALES DE ACCESO */}
+      {accountModalMember && (
+        <div className="modal-overlay" style={{ zIndex: 1250 }} onClick={() => setAccountModalMember(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icons.ShieldAdmin />
+                <span>{accountModalMember.hasUserAccount ? 'Restablecer Credenciales de Acceso' : 'Generar Credenciales de Acceso'}</span>
+              </h3>
+              <button className="close-btn modal-close-btn" onClick={() => setAccountModalMember(null)} title="Cerrar">
+                <Icons.Close />
+              </button>
+            </div>
+
+            <form onSubmit={handleGenerateAccountForMember} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ background: 'var(--surface-elevated)', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--line-200)' }}>
+                <div style={{ fontWeight: 700, color: 'var(--ink-900)', fontSize: '0.95rem' }}>{accountModalMember.name}</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--ink-500)', marginTop: '2px' }}>
+                  {accountModalMember.organization || 'Equipo Nexus'} · Tipo: {accountModalMember.role === 'admin' ? 'Administrador' : 'Colaborador'}
+                </div>
+              </div>
+
+              <div className="form-field">
+                <label>Correo Electrónico (Usuario de acceso) *</label>
+                <input
+                  type="email"
+                  value={accountPasswordForm.email !== undefined ? accountPasswordForm.email : (accountModalMember.email || '')}
+                  onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, email: e.target.value })}
+                  placeholder="usuario@nexus.local"
+                  required
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Rol de Acceso en Nexus *</label>
+                <select
+                  value={accountPasswordForm.role}
+                  onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, role: e.target.value })}
+                >
+                  <option value="admin">Administrador (Control total de proyectos y equipos)</option>
+                  <option value="member">Colaborador (Acceso y reporte de tareas)</option>
+                </select>
+              </div>
+
+              <div className="form-field">
+                <label>Contraseña Asignada *</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={accountPasswordForm.password}
+                    onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary ui-btn--small"
+                    onClick={() => {
+                      const randomPass = 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!';
+                      setAccountPasswordForm({ ...accountPasswordForm, password: randomPass });
+                    }}
+                    title="Generar contraseña sugerida"
+                  >
+                    Generar
+                  </button>
+                </div>
+                <small className="muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
+                  Entrega esta contraseña al usuario para que pueda iniciar sesión.
+                </small>
+              </div>
+
+              <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--secondary"
+                  onClick={() => setAccountModalMember(null)}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="ui-btn ui-btn--primary">
+                  <Icons.Check /> <span>Guardar Credenciales</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

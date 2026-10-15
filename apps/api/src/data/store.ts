@@ -559,6 +559,10 @@ function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
 }
 
 export function getDbPath(): string {
+  if (process.env.DB_PATH) {
+    return path.resolve(process.env.DB_PATH);
+  }
+
   const candidates = [
     path.resolve(process.cwd(), 'data', 'db.json'),
     path.resolve(process.cwd(), 'apps', 'api', 'data', 'db.json'),
