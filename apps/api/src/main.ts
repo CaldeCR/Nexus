@@ -76,6 +76,8 @@ const projectSchema = z.object({
   template: z.enum(['kanban', 'scrum', 'pmi', 'custom']),
   status: z.enum(['preproject', 'review', 'execution', 'completed', 'discarded']).default('preproject'),
   role: z.enum(['lead', 'collaborator']).default('lead'),
+  space: z.enum(['work', 'personal']).default('work'),
+  organization: z.string().optional(),
   admins: z.array(z.string()).optional(),
   members: z.array(z.string()).optional(),
   teamMembers: z.array(projectMemberSchema).optional(),
@@ -109,8 +111,12 @@ const workItemSchema = z.object({
   dueDate: z.string().optional(),
   completionType: z.enum(['full', 'partial']).optional(),
   completionReport: z.string().optional(),
+  closeType: z.enum(['completed', 'canceled', 'discarded', 'superseded']).optional(),
+  replacedBy: z.string().optional(),
   continuationTaskId: z.string().optional(),
   completedAt: z.string().optional(),
+  closedAt: z.string().optional(),
+  closedBy: z.string().optional(),
   progressLogs: z.array(taskProgressEntrySchema).optional()
 });
 
@@ -128,13 +134,22 @@ const workItemUpdateSchema = z.object({
   dueDate: z.string().optional(),
   completionType: z.enum(['full', 'partial']).optional(),
   completionReport: z.string().optional(),
+  closeType: z.enum(['completed', 'canceled', 'discarded', 'superseded']).optional(),
+  replacedBy: z.string().optional(),
   continuationTaskId: z.string().optional(),
   completedAt: z.string().optional(),
+  closedAt: z.string().optional(),
+  closedBy: z.string().optional(),
   progressLogs: z.array(taskProgressEntrySchema).optional()
 });
 
 const workItemStatusSchema = z.object({
-  status: z.enum(['backlog', 'in_progress', 'review', 'done'])
+  status: z.enum(['backlog', 'in_progress', 'review', 'done']),
+  closeType: z.enum(['completed', 'canceled', 'discarded', 'superseded']).optional(),
+  completionReport: z.string().optional(),
+  completionType: z.enum(['full', 'partial']).optional(),
+  replacedBy: z.string().optional(),
+  closedBy: z.string().optional()
 });
 
 function getToken(req: express.Request): string | undefined {
@@ -320,7 +335,11 @@ app.get('/api/projects', (req, res) => {
   }
 
   const db = readDb();
-  res.json({ items: db.projects });
+  const space = req.query.space as string | undefined;
+  const filtered = space && space !== 'all'
+    ? db.projects.filter((p) => (p.space || 'work') === space)
+    : db.projects;
+  res.json({ items: filtered });
 });
 
 app.post('/api/projects', (req, res) => {
@@ -344,6 +363,8 @@ app.post('/api/projects', (req, res) => {
     template: parsed.data.template,
     status: parsed.data.status,
     role: parsed.data.role,
+    space: parsed.data.space || 'work',
+    organization: parsed.data.organization,
     admins: parsed.data.admins && parsed.data.admins.length > 0 ? parsed.data.admins : [user.name || 'Jorge'],
     members: parsed.data.members || [],
     teamMembers: parsed.data.teamMembers
@@ -385,6 +406,8 @@ app.put('/api/projects/:id', (req, res) => {
     ...(req.body.description !== undefined && { description: req.body.description }),
     ...(req.body.status && { status: req.body.status }),
     ...(req.body.role && { role: req.body.role }),
+    ...(req.body.space !== undefined && { space: req.body.space }),
+    ...(req.body.organization !== undefined && { organization: req.body.organization }),
     ...(req.body.template && { template: req.body.template }),
     ...(req.body.admins !== undefined && { admins: req.body.admins }),
     ...(req.body.members !== undefined && { members: req.body.members }),
@@ -990,8 +1013,24 @@ app.put('/api/work-items/:id', (req, res) => {
   }
 
   if (updateData.status === 'done') {
+    const report = (updateData.completionReport ?? db.workItems[itemIndex].completionReport ?? '').trim();
+    if (report.length < 20) {
+      return res.status(422).json({
+        message: 'El informe de cierre / resultado debe tener al menos 20 caracteres.',
+        errors: { completionReport: ['Debe contener al menos 20 caracteres explicando el resultado o motivo.'] }
+      });
+    }
     if (!updateData.completedAt && !db.workItems[itemIndex].completedAt) {
       updateData.completedAt = new Date().toISOString();
+    }
+    if (!updateData.closedAt && !db.workItems[itemIndex].closedAt) {
+      updateData.closedAt = new Date().toISOString();
+    }
+    if (!updateData.closedBy && !db.workItems[itemIndex].closedBy) {
+      updateData.closedBy = user.name || user.email;
+    }
+    if (!updateData.closeType && !db.workItems[itemIndex].closeType) {
+      updateData.closeType = 'completed';
     }
     if (!updateData.completionType && !db.workItems[itemIndex].completionType) {
       updateData.completionType = 'full';
@@ -1025,12 +1064,28 @@ app.put('/api/work-items/:id/status', (req, res) => {
   }
 
   const isNowDone = parsed.data.status === 'done';
+  if (isNowDone) {
+    const report = (parsed.data.completionReport ?? db.workItems[itemIndex].completionReport ?? '').trim();
+    if (report.length < 20) {
+      return res.status(422).json({
+        message: 'El informe de cierre / resultado debe tener al menos 20 caracteres.',
+        errors: { completionReport: ['Debe contener al menos 20 caracteres explicando el resultado o motivo.'] }
+      });
+    }
+  }
 
   db.workItems[itemIndex] = {
     ...db.workItems[itemIndex],
     status: parsed.data.status,
+    ...(parsed.data.closeType ? { closeType: parsed.data.closeType } : {}),
+    ...(parsed.data.completionReport !== undefined ? { completionReport: parsed.data.completionReport } : {}),
+    ...(parsed.data.completionType ? { completionType: parsed.data.completionType } : {}),
+    ...(parsed.data.replacedBy !== undefined ? { replacedBy: parsed.data.replacedBy } : {}),
     ...(isNowDone && !db.workItems[itemIndex].completedAt ? { completedAt: new Date().toISOString() } : {}),
-    ...(isNowDone && !db.workItems[itemIndex].completionType ? { completionType: 'full' } : {})
+    ...(isNowDone && !db.workItems[itemIndex].closedAt ? { closedAt: new Date().toISOString() } : {}),
+    ...(isNowDone && !db.workItems[itemIndex].closedBy ? { closedBy: parsed.data.closedBy || user.name || user.email } : {}),
+    ...(isNowDone && !db.workItems[itemIndex].closeType && !parsed.data.closeType ? { closeType: 'completed' } : {}),
+    ...(isNowDone && !db.workItems[itemIndex].completionType && !parsed.data.completionType ? { completionType: 'full' } : {})
   };
 
   writeDb(db);

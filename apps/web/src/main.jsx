@@ -1,12 +1,25 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 import './styles/tokens.css';
+import './styles/shell.css';
+import './styles/ui.css';
 import './styles/dashboard.css';
 import './styles/gantt.css';
 import './styles/kanban.css';
 import './styles/portfolio.css';
 import './styles/agenda.css';
 import './styles/roadmap.css';
+
+import { AppShell } from './components/layout/AppShell';
+import { HomeView } from './views/HomeView';
+import { TasksView } from './views/TasksView';
+import { ProjectsView } from './views/ProjectsView';
+import { KanbanView } from './views/KanbanView';
+import { TimelineView } from './views/TimelineView';
+import { AgendaView } from './views/AgendaView';
+import { DirectoryView } from './views/DirectoryView';
+import { ProjectDrawer } from './components/forms/ProjectDrawer';
+import { TaskDrawer } from './components/forms/TaskDrawer';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -237,6 +250,18 @@ const Icons = {
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
+  ),
+  Zap: () => (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
+  DailyCheck: () => (
+    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <path d="M9 14l2 2 4-4" />
+    </svg>
   )
 };
 
@@ -272,6 +297,63 @@ const laneOrder = [
   { key: 'in_progress', label: 'En curso' },
   { key: 'review', label: 'Validación' },
   { key: 'done', label: 'Hecho' }
+];
+
+const INITIAL_MEETINGS = [
+  {
+    id: 'meet-1',
+    projectId: 'p-1',
+    projectCode: 'P1',
+    title: 'Alineación de Objetivos y Priorización del Ciclo',
+    date: '2026-10-18',
+    time: '09:00 - 10:15 AM',
+    attendees: ['Jorge Calderón', 'Marta', 'DevOps'],
+    notes: 'Se evaluaron los requerimientos clave para el cierre del sprint actual.\n\n• Se acordó priorizar la seguridad en endpoints y la validación de backups automáticos.\n• Se identificó una posible demora con la respuesta de soporte externo, por lo que se asignó un punto de contacto directo.',
+    actionItems: [
+      {
+        id: 'act-1',
+        text: 'Configurar variables de entorno y certificados en staging',
+        assignee: 'Jorge Calderón',
+        dueDate: '2026-10-24',
+        createdTaskId: null
+      },
+      {
+        id: 'act-2',
+        text: 'Verificar logs de auditoría en el módulo de acceso',
+        assignee: 'Marta',
+        dueDate: '2026-10-23',
+        createdTaskId: null
+      }
+    ],
+    createdAt: '2026-10-18T10:15:00.000Z'
+  },
+  {
+    id: 'meet-2',
+    projectId: 'p7',
+    projectCode: 'P7',
+    title: 'Alineación de Hallazgos y Priorización TrueSec',
+    date: '2026-10-19',
+    time: '14:00 - 15:30 PM',
+    attendees: ['Jorge Calderón', 'Auditor TrueSec', 'Jean Paul TI', 'CISO'],
+    notes: 'Revisión exhaustiva de las observaciones de seguridad emitidas por TrueSec.\n\n• Hallazgos críticos: 2 asociados con hardening en APIs y secretos en Key Vault.\n• Hallazgos medios: 8 relacionados con retención de logs y roles IAM de privilegio mínimo.\n• Compromiso: Remediaciones quincenales con reporte ejecutivo los viernes.',
+    actionItems: [
+      {
+        id: 'act-3',
+        text: 'Depurar cuentas con privilegios administrativos huérfanas en Azure AD',
+        assignee: 'Jean Paul TI',
+        dueDate: '2026-10-25',
+        createdTaskId: null
+      },
+      {
+        id: 'act-4',
+        text: 'Habilitar MFA condicional estricto para accesos externos y VPN',
+        assignee: 'Jorge Calderón',
+        dueDate: '2026-10-22',
+        createdTaskId: null
+      }
+    ],
+    createdAt: '2026-10-19T15:30:00.000Z'
+  }
 ];
 
 function formatDateYMD(d) {
@@ -310,6 +392,83 @@ function formatDateTime(isoStr) {
   const ampm = hours >= 12 ? 'pm' : 'am';
   hours = hours % 12 || 12;
   return `${day} ${month} ${year}, ${hours}:${minutes} ${ampm}`;
+}
+
+function getTaskFreshness(task, todayStr) {
+  if (!task) return { status: 'none', days: 0, label: '', isStale: false };
+  if (task.status === 'done') {
+    return { status: 'done', days: 0, label: 'Completada', isStale: false };
+  }
+
+  let latestDate = null;
+  let latestLogText = null;
+  let latestAuthor = null;
+
+  if (Array.isArray(task.progressLogs) && task.progressLogs.length > 0) {
+    const validLogs = task.progressLogs.filter((l) => l && l.createdAt);
+    if (validLogs.length > 0) {
+      const sorted = [...validLogs].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      const d = new Date(sorted[0].createdAt);
+      if (!isNaN(d.getTime())) {
+        latestDate = d;
+        latestLogText = sorted[0].text;
+        latestAuthor = sorted[0].author;
+      }
+    }
+  }
+
+  if (!latestDate && task.createdAt) {
+    const d = new Date(task.createdAt);
+    if (!isNaN(d.getTime())) {
+      latestDate = d;
+    }
+  }
+
+  if (!latestDate) {
+    return {
+      status: 'stale',
+      days: 3,
+      label: '> 2 días sin update',
+      isStale: true,
+      latestLogText: null,
+      latestAuthor: null
+    };
+  }
+
+  const now = new Date();
+  const diffMs = now.getTime() - latestDate.getTime();
+  const diffDays = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+
+  if (diffDays === 0) {
+    return {
+      status: 'fresh',
+      days: 0,
+      label: 'Al día (hoy)',
+      isStale: false,
+      latestLogText,
+      latestAuthor
+    };
+  } else if (diffDays === 1) {
+    return {
+      status: 'attention',
+      days: 1,
+      label: '1 día sin update',
+      isStale: false,
+      latestLogText,
+      latestAuthor
+    };
+  } else {
+    return {
+      status: 'stale',
+      days: diffDays,
+      label: `${diffDays} días sin update`,
+      isStale: true,
+      latestLogText,
+      latestAuthor
+    };
+  }
 }
 
 function getTaskAssignees(item) {
@@ -535,14 +694,16 @@ function App() {
   const [token, setToken] = useState(() => localStorage.getItem('nexus-token') || '');
   const user = session;
 
-  // MODO OSCURO COMO DEFAULT
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('nexus-theme');
-    return saved !== null ? saved === 'dark' : true; // DEFAULT: Modo Oscuro
-  });
+  // TEMA: CLARO POR DEFECTO (OPCIÓN A OSCURO)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('nexus-theme') === 'dark');
 
-  // Navigation
-  const [activeView, setActiveView] = useState('portfolio');
+  // Navigation & Espacio (Todos / Trabajo / Personal)
+  const [activeView, setActiveView] = useState('home');
+  const [space, setSpace] = useState(() => localStorage.getItem('nexus-space') || 'all');
+  const handleSpaceChange = (newSpace) => {
+    setSpace(newSpace);
+    localStorage.setItem('nexus-space', newSpace);
+  };
   const [portfolioSubView, setPortfolioSubView] = useState('cards'); // 'cards' | 'timeline'
   const [timelineFilter, setTimelineFilter] = useState('all'); // 'all' | 'extended' | 'ontrack'
   const [justificationModalProject, setJustificationModalProject] = useState(null);
@@ -561,6 +722,23 @@ function App() {
   const [projects, setProjects] = useState([]);
   const [workItems, setWorkItems] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [meetings, setMeetings] = useState(() => {
+    try {
+      const saved = localStorage.getItem('nexus-project-meetings');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.warn('Error reading nexus-project-meetings', e);
+    }
+    return INITIAL_MEETINGS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nexus-project-meetings', JSON.stringify(meetings));
+    } catch (e) {
+      console.warn('Error saving nexus-project-meetings', e);
+    }
+  }, [meetings]);
 
   // Filters
   const [roleFilter, setRoleFilter] = useState('all');
@@ -591,6 +769,17 @@ function App() {
   const [newProgressText, setNewProgressText] = useState('');
   const [newProgressAuthor, setNewProgressAuthor] = useState('');
   const [isAddingProgress, setIsAddingProgress] = useState(false);
+
+  // Cadencia y Daily Check-in de Tareas
+  const [isDailyCheckinModalOpen, setIsDailyCheckinModalOpen] = useState(false);
+  const [dailyCheckinTasks, setDailyCheckinTasks] = useState([]);
+  const [dailyCheckinIndex, setDailyCheckinIndex] = useState(0);
+  const [dailyCheckinInputText, setDailyCheckinInputText] = useState('');
+  const [isSubmittingDailyCheckin, setIsSubmittingDailyCheckin] = useState(false);
+  const [kanbanRadarOnly, setKanbanRadarOnly] = useState(false);
+  const [inlineUpdateTaskId, setInlineUpdateTaskId] = useState(null);
+  const [inlineUpdateText, setInlineUpdateText] = useState('');
+  const [isSubmittingInlineUpdate, setIsSubmittingInlineUpdate] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [projectToDelete, setProjectToDelete] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
@@ -1030,16 +1219,26 @@ function App() {
     }
   };
 
-  const handleCreateProject = async (e) => {
-    e.preventDefault();
+  const handleCreateProject = async (payloadOrEvent) => {
+    if (payloadOrEvent?.preventDefault) {
+      payloadOrEvent.preventDefault();
+    }
     setError('');
     try {
-      const adminsArray = projectForm.admins
-        ? projectForm.admins.split(',').map((s) => s.trim()).filter(Boolean)
-        : ['Jorge'];
-      const membersArray = projectForm.members
-        ? projectForm.members.split(',').map((s) => s.trim()).filter(Boolean)
-        : [];
+      const dataToSave = (payloadOrEvent && !payloadOrEvent.preventDefault)
+        ? payloadOrEvent
+        : {
+            ...projectForm,
+            admins: projectForm.admins ? projectForm.admins.split(',').map((s) => s.trim()).filter(Boolean) : ['Jorge'],
+            members: projectForm.members ? projectForm.members.split(',').map((s) => s.trim()).filter(Boolean) : []
+          };
+
+      const adminsArray = Array.isArray(dataToSave.admins)
+        ? dataToSave.admins
+        : (dataToSave.admins ? String(dataToSave.admins).split(',').map((s) => s.trim()).filter(Boolean) : ['Jorge']);
+      const membersArray = Array.isArray(dataToSave.members)
+        ? dataToSave.members
+        : (dataToSave.members ? String(dataToSave.members).split(',').map((s) => s.trim()).filter(Boolean) : []);
 
       const res = await fetch(`${API_BASE}/projects`, {
         method: 'POST',
@@ -1048,15 +1247,16 @@ function App() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: projectForm.name,
-          description: projectForm.description,
-          template: projectForm.template,
-          status: projectForm.status,
-          role: projectForm.role,
+          name: dataToSave.name,
+          description: dataToSave.description || '',
+          template: dataToSave.template || 'kanban',
+          status: dataToSave.status || 'execution',
+          role: dataToSave.role || 'lead',
+          space: dataToSave.space || 'work',
           admins: adminsArray,
           members: membersArray,
-          startDate: projectForm.startDate || todayStr,
-          targetDate: projectForm.targetDate
+          startDate: dataToSave.startDate || todayStr,
+          targetDate: dataToSave.targetDate
         })
       });
       const data = await res.json();
@@ -1136,11 +1336,24 @@ function App() {
     });
   };
 
-  const handleSaveEditProject = async (e) => {
-    e.preventDefault();
-    if (!editingProject || !editProjectForm.name.trim()) return;
+  const handleSaveEditProject = async (payloadOrEvent) => {
+    if (payloadOrEvent?.preventDefault) payloadOrEvent.preventDefault();
+    if (!editingProject) return;
+
+    const dataToSave = (payloadOrEvent && !payloadOrEvent.preventDefault)
+      ? payloadOrEvent
+      : editProjectForm;
+
+    if (!dataToSave.name || !dataToSave.name.trim()) return;
 
     try {
+      const adminsArray = Array.isArray(dataToSave.admins)
+        ? dataToSave.admins
+        : (dataToSave.admins ? String(dataToSave.admins).split(',').map((s) => s.trim()).filter(Boolean) : undefined);
+      const membersArray = Array.isArray(dataToSave.members)
+        ? dataToSave.members
+        : (dataToSave.members ? String(dataToSave.members).split(',').map((s) => s.trim()).filter(Boolean) : undefined);
+
       const res = await fetch(`${API_BASE}/projects/${editingProject.id}`, {
         method: 'PUT',
         headers: {
@@ -1148,13 +1361,16 @@ function App() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          name: editProjectForm.name.trim(),
-          description: editProjectForm.description,
-          template: editProjectForm.template,
-          status: editProjectForm.status,
-          role: editProjectForm.role,
-          startDate: editProjectForm.startDate,
-          targetDate: editProjectForm.targetDate
+          name: dataToSave.name.trim(),
+          description: dataToSave.description,
+          template: dataToSave.template,
+          status: dataToSave.status,
+          role: dataToSave.role,
+          space: dataToSave.space,
+          admins: adminsArray,
+          members: membersArray,
+          startDate: dataToSave.startDate,
+          targetDate: dataToSave.targetDate
         })
       });
 
@@ -1167,6 +1383,170 @@ function App() {
     } catch (err) {
       setError(err.message || 'Error de conexión al actualizar proyecto');
     }
+  };
+
+  const handleQuickUpdateProjectStatus = async (projectId, newStatus) => {
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al actualizar estado');
+      setProjects((prev) => prev.map((p) => (p.id === data.id ? { ...p, ...data } : p)));
+      setSuccess(`Estado del proyecto actualizado a "${newStatus}"`);
+    } catch (err) {
+      setError(err.message || 'Error al actualizar estado del proyecto');
+    }
+  };
+
+  /* --- GESTIÓN DE BITÁCORA DE REUNIONES & ACUERDOS --- */
+  const handleCreateMeeting = (newMeetingData) => {
+    const newMeeting = {
+      ...newMeetingData,
+      id: newMeetingData.id || `meet-${Date.now()}`,
+      createdAt: new Date().toISOString()
+    };
+    setMeetings((prev) => [newMeeting, ...prev]);
+    setSuccess('Minuta de reunión registrada en la bitácora.');
+  };
+
+  const handleUpdateMeeting = (updatedMeeting) => {
+    setMeetings((prev) =>
+      prev.map((m) => (m.id === updatedMeeting.id ? updatedMeeting : m))
+    );
+    setSuccess('Minuta de reunión actualizada.');
+  };
+
+  const handleDeleteMeeting = (meetingId) => {
+    setMeetings((prev) => prev.filter((m) => m.id !== meetingId));
+    setSuccess('Minuta eliminada de la bitácora.');
+  };
+
+  const handleCreateTaskFromMeetingAction = async (arg1, arg2, arg3) => {
+    let project = null;
+    let actionItem = null;
+    let meeting = null;
+
+    if (arg3 !== undefined) {
+      project = arg1;
+      actionItem = arg2;
+      meeting = arg3;
+    } else {
+      actionItem = arg1;
+      meeting = arg2;
+      project = projects.find((p) => p.id === meeting?.projectId || p.code === meeting?.projectCode) || { id: meeting?.projectId || selectedProjectId };
+    }
+
+    if (!actionItem || !actionItem.text) return;
+
+    // Resolver ID de proyecto válido
+    const matchedProject = projects.find(
+      (p) =>
+        (project?.id && p.id === project.id) ||
+        (project?.code && p.code === project.code) ||
+        (meeting?.projectId && p.id === meeting.projectId) ||
+        (meeting?.projectCode && p.code === meeting.projectCode)
+    ) || project || projects[0] || { id: selectedProjectId };
+
+    const resolvedProjId = matchedProject?.id || selectedProjectId || (projects[0] && projects[0].id) || 'p-1';
+    const meetingTitle = meeting?.title || 'Reunión de Proyecto';
+    const meetingDate = meeting?.date || todayStr;
+    const newTaskId = `wi-${Date.now()}`;
+    const nextCode = `T-${(workItems.length + 1).toString().padStart(3, '0')}`;
+    const assigneesToSave = [actionItem.assignee || 'Jorge'];
+    const finalAssigneeStr = assigneesToSave.join(', ');
+    const finalAssigneeType = assigneesToSave.some(isAssigneeMine) ? 'me' : 'team';
+
+    const newTask = {
+      id: newTaskId,
+      code: nextCode,
+      projectId: resolvedProjId,
+      title: actionItem.text,
+      description: `Tarea originada en reunión: "${meetingTitle}" (${meetingDate}).`,
+      type: 'task',
+      status: 'backlog',
+      priority: 'high',
+      assignees: assigneesToSave,
+      assignee: finalAssigneeStr,
+      assigneeType: finalAssigneeType,
+      dueDate: actionItem.dueDate || todayStr,
+      progressPct: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    // 1. Agregar inmediatamente a workItems local
+    setWorkItems((prev) => [newTask, ...prev]);
+
+    // 2. Vincular createdTaskId inmediatamente en meetings
+    setMeetings((prevMeetings) =>
+      prevMeetings.map((m) => {
+        if (meeting?.id && m.id !== meeting.id) return m;
+        return {
+          ...m,
+          actionItems: (m.actionItems || []).map((act) => {
+            if (act.id === actionItem.id || (act.text === actionItem.text && !act.createdTaskId)) {
+              return { ...act, createdTaskId: newTaskId };
+            }
+            return act;
+          })
+        };
+      })
+    );
+
+    setSuccess(`Compromiso convertido en tarea [${nextCode}]: "${actionItem.text}"`);
+
+    // 3. Persistir en el servidor si token está activo
+    if (token && resolvedProjId) {
+      try {
+        const res = await fetch(`${API_BASE}/work-items`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            projectId: resolvedProjId,
+            title: actionItem.text,
+            description: `Tarea originada en reunión: "${meetingTitle}" (${meetingDate}).`,
+            type: 'task',
+            status: 'backlog',
+            priority: 'high',
+            assignees: assigneesToSave,
+            assignee: finalAssigneeStr,
+            assigneeType: finalAssigneeType,
+            dueDate: actionItem.dueDate || todayStr
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.id) {
+            setMeetings((prevMeetings) =>
+              prevMeetings.map((m) => {
+                if (meeting?.id && m.id !== meeting.id) return m;
+                return {
+                  ...m,
+                  actionItems: (m.actionItems || []).map((act) => {
+                    if (act.id === actionItem.id || act.createdTaskId === newTaskId) {
+                      return { ...act, createdTaskId: data.id };
+                    }
+                    return act;
+                  })
+                };
+              })
+            );
+          }
+          await fetchWorkItems();
+        }
+      } catch (err) {
+        console.warn('Persistencia en background:', err);
+      }
+    }
+    return newTaskId;
   };
 
   const handleReturnToProjects = (targetProjId) => {
@@ -1322,16 +1702,23 @@ function App() {
     setIsNewTaskModalOpen(true);
   };
 
-  const handleCreateTask = async (e) => {
-    e.preventDefault();
+  const handleCreateTask = async (payloadOrEvent) => {
+    if (payloadOrEvent?.preventDefault) payloadOrEvent.preventDefault();
     setError('');
-    const targetProject = taskForm.projectId || selectedProjectId || (projects[0] && projects[0].id);
+
+    const sourceData = (payloadOrEvent && !payloadOrEvent.preventDefault)
+      ? payloadOrEvent
+      : taskForm;
+
+    const targetProject = sourceData.projectId || selectedProjectId || (projects[0] && projects[0].id);
     if (!targetProject) {
       setError('Debes asociar la tarea a un proyecto');
       return;
     }
     try {
-      const assigneesToSave = Array.isArray(taskForm.assignees) && taskForm.assignees.length > 0 ? taskForm.assignees : ['Jorge'];
+      const assigneesToSave = Array.isArray(sourceData.assignees) && sourceData.assignees.length > 0
+        ? sourceData.assignees
+        : (sourceData.assignee ? String(sourceData.assignee).split(',').map((s) => s.trim()).filter(Boolean) : ['Jorge']);
       const finalAssigneeStr = assigneesToSave.join(', ');
       const finalAssigneeType = assigneesToSave.some(isAssigneeMine)
         ? 'me'
@@ -1347,7 +1734,7 @@ function App() {
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...taskForm,
+          ...sourceData,
           projectId: targetProject,
           assignees: assigneesToSave,
           assignee: finalAssigneeStr,
@@ -1462,6 +1849,124 @@ function App() {
     }
   };
 
+  const submitTaskProgress = async (taskId, text, author) => {
+    if (!token || !taskId || !text.trim()) return null;
+    const authorToUse = author || session?.name || 'Jorge';
+    const res = await fetch(`${API_BASE}/work-items/${taskId}/progress-logs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        text: text.trim(),
+        author: authorToUse
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Error al registrar avance');
+    const updated = data.workItem || data;
+    setWorkItems((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    if (editingTask && editingTask.id === updated.id) {
+      setEditingTask(updated);
+      setEditTaskForm((prev) => ({
+        ...prev,
+        progressLogs: updated.progressLogs || []
+      }));
+    }
+    return updated;
+  };
+
+  const openDailyCheckinWizard = (customTasks = null) => {
+    const list = Array.isArray(customTasks) && customTasks.length > 0
+      ? customTasks
+      : workItems.filter((w) => w.status !== 'done' && getTaskFreshness(w, todayStr).isStale);
+
+    if (list.length === 0) {
+      setSuccess('🎉 ¡Excelente! Todas las tareas activas tienen avances registrados en las últimas 48 horas.');
+      return;
+    }
+
+    setDailyCheckinTasks(list);
+    setDailyCheckinIndex(0);
+    setDailyCheckinInputText('');
+    setIsDailyCheckinModalOpen(true);
+  };
+
+  const handleDailyCheckinAdvance = async (isTouch = false) => {
+    const currentTask = dailyCheckinTasks[dailyCheckinIndex];
+    if (!currentTask) return;
+
+    setIsSubmittingDailyCheckin(true);
+    setError('');
+    try {
+      const text = isTouch
+        ? 'Continúa en curso según lo planificado.'
+        : (dailyCheckinInputText.trim() || 'Avance verificado en curso.');
+
+      await submitTaskProgress(currentTask.id, text);
+      setSuccess(`✓ Avance registrado para ${currentTask.code || currentTask.title}`);
+      setDailyCheckinInputText('');
+
+      const nextIndex = dailyCheckinIndex + 1;
+      if (nextIndex < dailyCheckinTasks.length) {
+        setDailyCheckinIndex(nextIndex);
+      } else {
+        setIsDailyCheckinModalOpen(false);
+        setSuccess('🎉 ¡Daily Check-in completado! Todas las tareas quedaron con su seguimiento al día.');
+      }
+    } catch (err) {
+      setError(err.message || 'Error al registrar avance en el Daily Check-in');
+    } finally {
+      setIsSubmittingDailyCheckin(false);
+    }
+  };
+
+  const handleProjectDailyCheckin = (project) => {
+    if (!project) return;
+    const projectActiveTasks = workItems.filter((w) => w.projectId === project.id && w.status !== 'done');
+    const projectStaleTasks = projectActiveTasks.filter((w) => getTaskFreshness(w, todayStr).isStale);
+
+    if (projectStaleTasks.length > 0) {
+      openDailyCheckinWizard(projectStaleTasks);
+    } else if (projectActiveTasks.length > 0) {
+      openDailyCheckinWizard(projectActiveTasks);
+    } else {
+      setSuccess(`El proyecto "${project.name}" no tiene tareas activas pendientes.`);
+    }
+  };
+
+  const handleInlineSave = async (taskId) => {
+    if (!inlineUpdateText.trim()) return;
+    setIsSubmittingInlineUpdate(true);
+    setError('');
+    try {
+      await submitTaskProgress(taskId, inlineUpdateText.trim());
+      setSuccess('✓ Avance registrado exitosamente');
+      setInlineUpdateTaskId(null);
+      setInlineUpdateText('');
+    } catch (err) {
+      setError(err.message || 'Error al guardar avance');
+    } finally {
+      setIsSubmittingInlineUpdate(false);
+    }
+  };
+
+  const handleInlineQuickTouch = async (taskId) => {
+    setIsSubmittingInlineUpdate(true);
+    setError('');
+    try {
+      await submitTaskProgress(taskId, 'Continúa en curso según lo planificado.');
+      setSuccess('✓ Avance rápido registrado');
+      setInlineUpdateTaskId(null);
+      setInlineUpdateText('');
+    } catch (err) {
+      setError(err.message || 'Error al guardar avance');
+    } finally {
+      setIsSubmittingInlineUpdate(false);
+    }
+  };
+
   const handleUpdateTask = async (e) => {
     e.preventDefault();
     if (!editingTask) return;
@@ -1521,6 +2026,32 @@ function App() {
       setTaskToDelete(null);
     } catch (err) {
       setError(err.message);
+    }
+  };
+
+  const handleUpdateTaskData = async (taskId, patchData) => {
+    try {
+      const existing = workItems.find((w) => w.id === taskId);
+      if (!existing) return;
+      const res = await fetch(`${API_BASE}/work-items/${taskId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ...existing,
+          ...patchData
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al actualizar tarea');
+      setWorkItems((prev) => prev.map((item) => (item.id === data.id ? data : item)));
+      setSuccess(`✓ Tarea actualizada: ${data.title}`);
+      return data;
+    } catch (err) {
+      setError(err.message || 'Error al actualizar tarea');
+      throw err;
     }
   };
 
@@ -1703,6 +2234,9 @@ function App() {
         const list = getTaskAssignees(w);
         return list.some((a) => isAssigneeVendor(a, w));
       }).length;
+      const projectActiveTasks = items.filter((w) => w.status !== 'done');
+      const projectStaleTasks = projectActiveTasks.filter((w) => getTaskFreshness(w, todayStr).isStale);
+      const staleTasksCount = projectStaleTasks.length;
       const isOverdue = p.targetDate && p.targetDate < todayStr && p.status !== 'completed';
 
       // Cálculo de extensión / prórroga
@@ -1736,6 +2270,7 @@ function App() {
         myPending,
         teamPending,
         vendorPending,
+        staleTasksCount,
         isOverdue,
         hasExtension,
         extensionDurationText,
@@ -1748,17 +2283,19 @@ function App() {
 
   const filteredProjects = useMemo(() => {
     return enrichedProjects.filter((p) => {
+      if (space === 'work' && p.space === 'personal') return false;
+      if (space === 'personal' && p.space !== 'personal') return false;
       if (portfolioSubView === 'cards') {
         if (roleFilter !== 'all' && p.role !== roleFilter) return false;
       }
       if (stageFilter !== 'all' && (p.status || 'execution') !== stageFilter) return false;
-      if (portfolioSubView === 'timeline') {
+      if (portfolioSubView === 'timeline' || activeView === 'timeline') {
         if (timelineFilter === 'extended' && !p.hasExtension) return false;
         if (timelineFilter === 'ontrack' && p.hasExtension) return false;
       }
       return true;
     });
-  }, [enrichedProjects, roleFilter, stageFilter, portfolioSubView, timelineFilter]);
+  }, [enrichedProjects, roleFilter, stageFilter, portfolioSubView, timelineFilter, space, activeView]);
 
   const timelineScale = useMemo(() => {
     const now = new Date(todayStr + 'T12:00:00');
@@ -1882,6 +2419,10 @@ function App() {
     return { total, leadCount, collabCount, avgProg, totalMyPending, totalTeamPending, totalVendorPending };
   }, [enrichedProjects]);
 
+  const totalStaleCount = useMemo(() => {
+    return workItems.filter((w) => w.status !== 'done' && getTaskFreshness(w, todayStr).isStale).length;
+  }, [workItems, todayStr]);
+
   const agendaTasks = useMemo(() => {
     return workItems
       .filter((w) => {
@@ -1895,6 +2436,8 @@ function App() {
         if (agendaFilter === 'vendor') return isVendor;
         if (agendaFilter === 'overdue')
           return w.dueDate && w.dueDate < todayStr && w.status !== 'done';
+        if (agendaFilter === 'stale')
+          return w.status !== 'done' && getTaskFreshness(w, todayStr).isStale;
         return true;
       })
       .map((w) => {
@@ -1911,13 +2454,16 @@ function App() {
     const overdue = agendaTasks.filter(
       (t) => t.dueDate && t.dueDate < todayStr && t.status !== 'done'
     );
+    const stale = agendaTasks.filter(
+      (t) => t.status !== 'done' && (!t.dueDate || t.dueDate >= todayStr) && getTaskFreshness(t, todayStr).isStale
+    );
     const today = agendaTasks.filter((t) => t.dueDate === todayStr);
     const upcoming = agendaTasks.filter(
-      (t) => (!t.dueDate || t.dueDate > todayStr) && t.status !== 'done'
+      (t) => (!t.dueDate || t.dueDate > todayStr) && t.status !== 'done' && !getTaskFreshness(t, todayStr).isStale
     );
     const doneToday = agendaTasks.filter((t) => t.status === 'done');
 
-    return { overdue, today, upcoming, doneToday };
+    return { overdue, stale, today, upcoming, doneToday };
   }, [agendaTasks, todayStr]);
 
   const weekData = useMemo(() => {
@@ -2073,124 +2619,49 @@ function App() {
   }
 
   return (
-    <div className="app-shell" data-theme={darkMode ? 'dark' : 'light'}>
-      {/* BARRA DE NAVEGACIÓN SUPERIOR (TOP NAVBAR) */}
-      <header className="top-navbar">
-        <div className="top-navbar__inner">
-          {/* LOGO & IDENTIDAD */}
-          <div className="top-navbar__brand">
-            <div className="brand-mark brand-mark--img">
-              <img src="/logobase01.png" alt="Nexus Logo" />
-            </div>
-            <div className="top-navbar__brand-text">
-              <strong>Nexus</strong>
-              <small>
-                <span>Track your goals,</span>
-                <span>drive your moves</span>
-              </small>
-            </div>
-          </div>
-
-          {/* MENÚ DE VISTAS PRINCIPALES */}
-          <nav className="top-navbar__nav" aria-label="Navegación principal">
-            <a
-              className={`top-nav-item ${activeView === 'portfolio' ? 'active' : ''}`}
-              href="#portfolio"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveView('portfolio');
-              }}
-            >
-              <Icons.Portfolio />
-              <span>Mis Proyectos</span>
-            </a>
-
-            <a
-              className={`top-nav-item ${activeView === 'agenda' ? 'active' : ''}`}
-              href="#agenda"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveView('agenda');
-              }}
-            >
-              <Icons.Agenda />
-              <span>Agenda & Calendario</span>
-              {globalKpis.totalMyPending > 0 && (
-                <span className="stage-count stage-count--danger" style={{ fontSize: '0.72rem', padding: '1px 7px', minWidth: '18px', height: '18px' }}>
-                  {globalKpis.totalMyPending}
-                </span>
-              )}
-            </a>
-
-            <a
-              className={`top-nav-item ${activeView === 'kanban' ? 'active' : ''}`}
-              href="#kanban"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveView('kanban');
-              }}
-            >
-              <Icons.Kanban />
-              <span>Tablero Kanban</span>
-            </a>
-
-            <a
-              className={`top-nav-item ${activeView === 'directory' ? 'active' : ''}`}
-              href="#directory"
-              onClick={(e) => {
-                e.preventDefault();
-                setActiveView('directory');
-              }}
-            >
-              <Icons.UsersGear />
-              <span>Directorio & Equipo</span>
-              {teamDirectory.length > 0 && (
-                <span className="stage-count" style={{ fontSize: '0.72rem', padding: '1px 7px', minWidth: '18px', height: '18px' }}>
-                  {teamDirectory.length}
-                </span>
-              )}
-            </a>
-          </nav>
-
-          {/* ACCIONES DE PERFIL, TEMA Y CIERRE */}
-          <div className="top-navbar__actions">
-            <button
-              className="top-theme-btn"
-              type="button"
-              onClick={toggleTheme}
-              title={darkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-              aria-label="Cambiar tema de interfaz"
-            >
-              {darkMode ? <Icons.Sun /> : <Icons.Moon />}
-              <span className="top-theme-text">{darkMode ? 'Día' : 'Noche'}</span>
-            </button>
-
-            <div className="top-user-pill">
-              <div className="user-avatar" style={{ background: 'var(--brand-100)', color: 'var(--brand-300)' }}>
-                {session.name ? session.name.charAt(0) : 'J'}
-              </div>
-              <div className="top-user-info">
-                <strong>{session.name}</strong>
-                <small>Líder de TI / PM</small>
-              </div>
-            </div>
-
-            <button
-              className="ui-btn ui-btn--secondary ui-btn--small"
-              type="button"
-              onClick={logout}
-              title="Cerrar sesión"
-            >
-              Salir
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ÁREA DE CONTENIDO FLUIDO COMPLETO */}
-      <div className="dashboard-content-wrap">
-        {/* PANEL PRINCIPAL */}
-        <main className="main-panel">
+    <AppShell
+      view={activeView}
+      onNavigate={(newView) => {
+        setActiveView(newView);
+        window.scrollTo({ top: 0, behavior: 'instant' });
+        const el = document.getElementById('main-content');
+        if (el) el.scrollTop = 0;
+      }}
+      space={space}
+      onSpaceChange={handleSpaceChange}
+      projects={enrichedProjects}
+      selectedProjectId={selectedProjectId}
+      onSelectProject={(projId) => {
+        setSelectedProjectId(projId);
+      }}
+      totalStaleCount={totalStaleCount}
+      onOpenDailyCheckin={() => openDailyCheckinWizard()}
+      darkMode={darkMode}
+      onToggleTheme={toggleTheme}
+      user={session}
+      onLogout={logout}
+      onFabClick={() => {
+        if (activeView === 'portfolio') {
+          setIsNewProjectModalOpen(true);
+        } else {
+          openNewTaskModal();
+        }
+      }}
+      onCreatePersonalProject={() => {
+        setNewProjectForm({
+          name: '',
+          description: '',
+          template: 'kanban',
+          status: 'execution',
+          role: 'lead',
+          startDate: todayStr,
+          targetDate: '',
+          space: 'personal'
+        });
+        setIsNewProjectModalOpen(true);
+      }}
+    >
+      <div className="main-panel">
           {error && (
             <div className="notice-banner notice-banner--error" role="alert">
               <div className="notice-banner__content">
@@ -2229,2113 +2700,201 @@ function App() {
           )}
 
           {/* ======================================================== */}
-          {/* 1. VISTA: MIS PROYECTOS                                  */}
+          {/* 0. VISTA: INICIO / CENTRO DE MANDO EJECUTIVO              */}
+          {/* ======================================================== */}
+          {activeView === 'home' && (
+            <HomeView
+              projects={enrichedProjects}
+              workItems={workItems}
+              currentUser={session}
+              todayStr={todayStr}
+              space={space}
+              onSpaceChange={handleSpaceChange}
+              onSelectProject={(id) => {
+                setSelectedProjectId(id);
+                setActiveView('portfolio');
+              }}
+              onNavigate={setActiveView}
+              onOpenNewProject={() => setIsNewProjectModalOpen(true)}
+              onOpenNewTask={(initialData) => {
+                openNewTaskModal(typeof initialData === 'string' ? { projectId: initialData } : (initialData || {}));
+              }}
+              onOpenDailyCheckin={() => openDailyCheckinWizard()}
+              onSubmitProgress={submitTaskProgress}
+              onUpdateWorkItem={handleUpdateTaskData}
+            />
+          )}
+
+          {/* ======================================================== */}
+          {/* VISTA: MIS TAREAS (§7.4)                                  */}
+          {/* ======================================================== */}
+          {activeView === 'tasks' && (
+            <TasksView
+              workItems={workItems}
+              projects={enrichedProjects}
+              currentUser={session}
+              todayStr={todayStr}
+              onSubmitProgress={submitTaskProgress}
+              onUpdateWorkItem={handleUpdateTaskData}
+              onOpenNewTask={openNewTaskModal}
+            />
+          )}
+
+          {/* ======================================================== */}
+          {/* 1. VISTA: MIS PROYECTOS (§7.1 TABLA MODERNA)              */}
           {/* ======================================================== */}
           {activeView === 'portfolio' && (
-            <>
-              <div className="page-header">
-                <div>
-                  <p className="eyebrow">Control de Portafolio</p>
-                  <h2>Mis Proyectos</h2>
-                </div>
-                <div className="header-actions" style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                  <div className="portfolio-subview-toggle">
-                    <button
-                      type="button"
-                      className={`subview-toggle-btn ${portfolioSubView === 'cards' ? 'active' : ''}`}
-                      onClick={() => setPortfolioSubView('cards')}
-                      title="Vista tradicional de tarjetas"
-                    >
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
-                      <span>Tarjetas</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`subview-toggle-btn ${portfolioSubView === 'timeline' ? 'active' : ''}`}
-                      onClick={() => setPortfolioSubView('timeline')}
-                      title="Vista abstracta de cronograma con avance y prórrogas"
-                    >
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-                      <span>Cronograma & Avance</span>
-                      <span className="subview-pill-badge">NUEVO</span>
-                    </button>
-                  </div>
-
-                  <button
-                    className="ui-btn ui-btn--primary"
-                    type="button"
-                    onClick={() => setIsNewProjectModalOpen(true)}
-                  >
-                    <Icons.Plus /> <span>Nuevo Proyecto</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* TOOLBAR Y FILTROS HORIZONTALES COMPACTOS */}
-              <div className="portfolio-toolbar">
-                {portfolioSubView === 'cards' && (
-                  <div className="filter-group-inline">
-                    <span className="compact-filter-label">Mi Rol:</span>
-                    <div className="compact-btn-group">
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${roleFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setRoleFilter('all')}
-                      >
-                        Todos ({enrichedProjects.length})
-                      </button>
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${roleFilter === 'lead' ? 'active' : ''}`}
-                        onClick={() => setRoleFilter('lead')}
-                      >
-                        <Icons.Lead /> <span>Encargado ({globalKpis.leadCount})</span>
-                      </button>
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${roleFilter === 'collaborator' ? 'active' : ''}`}
-                        onClick={() => setRoleFilter('collaborator')}
-                      >
-                        <Icons.Collaborator /> <span>Colaborador ({globalKpis.collabCount})</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                <div className="filter-group-inline">
-                  <span className="compact-filter-label">Etapa:</span>
-                  <select
-                    className="compact-filter-select"
-                    value={stageFilter}
-                    onChange={(e) => setStageFilter(e.target.value)}
-                  >
-                    <option value="all">Todas las etapas</option>
-                    {projectStages.map((st) => (
-                      <option key={st.key} value={st.key}>{st.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {portfolioSubView === 'timeline' && (
-                  <div className="filter-group-inline">
-                    <span className="compact-filter-label">Plazos:</span>
-                    <div className="compact-btn-group">
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${timelineFilter === 'all' ? 'active' : ''}`}
-                        onClick={() => setTimelineFilter('all')}
-                      >
-                        Todos ({enrichedProjects.length})
-                      </button>
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${timelineFilter === 'extended' ? 'active-warning' : ''}`}
-                        onClick={() => setTimelineFilter('extended')}
-                      >
-                        ⚠️ Con Prórroga ({enrichedProjects.filter((p) => p.hasExtension).length})
-                      </button>
-                      <button
-                        type="button"
-                        className={`compact-pill-btn ${timelineFilter === 'ontrack' ? 'active' : ''}`}
-                        onClick={() => setTimelineFilter('ontrack')}
-                      >
-                        En Plazo ({enrichedProjects.filter((p) => !p.hasExtension).length})
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {portfolioSubView === 'cards' && (
-                  <div className="portfolio-toolbar-counter" style={{ marginLeft: 'auto' }}>
-                    Mostrando <strong>{filteredProjects.length}</strong> de {enrichedProjects.length} proyectos
-                  </div>
-                )}
-
-                {portfolioSubView === 'timeline' && (
-                  <div className="roadmap-legend-row" style={{ marginLeft: 'auto' }}>
-                    <div className="roadmap-legend-item">
-                      <span className="roadmap-legend-color roadmap-legend-color--fill" />
-                      <span>% Tareas</span>
-                    </div>
-                    <div className="roadmap-legend-item">
-                      <span className="roadmap-legend-color roadmap-legend-color--time" />
-                      <span>Plazo pactado</span>
-                    </div>
-                    <div className="roadmap-legend-item">
-                      <span className="roadmap-legend-color roadmap-legend-color--ext" />
-                      <span style={{ color: '#fbbf24', fontWeight: 600 }}>Prórroga</span>
-                    </div>
-                    <div className="roadmap-legend-item">
-                      <span className="roadmap-legend-color roadmap-legend-color--today" />
-                      <span style={{ color: '#f43f5e', fontWeight: 700 }}>Hoy ({formatDateShort(todayStr)})</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* VISTA 1: TARJETAS TRADICIONALES */}
-              {portfolioSubView === 'cards' && (
-                <div className="projects-portfolio-grid">
-                {filteredProjects.length === 0 ? (
-                  <div className="panel-card" style={{ textAlign: 'center', padding: '40px' }}>
-                    <p className="muted">No hay proyectos que coincidan con los filtros seleccionados.</p>
-                  </div>
-                ) : (
-                  filteredProjects.map((project) => (
-                    <article
-                      key={project.id}
-                      id={`project-card-${project.id}`}
-                      className={`project-portfolio-card ${highlightedProjectId === project.id ? 'project-card--highlight' : ''}`}
-                    >
-                      {/* HEADER: SUPERIOR IZQUIERDA (ESTADO + EQUIPO), CENTRO (TÍTULO), DERECHA (TABLERO) */}
-                      <div className="project-card-header">
-                        {/* PARTE SUPERIOR IZQUIERDA: ESTADO LLAMATIVO Y DEBAJO EL BOTÓN DE EQUIPO */}
-                        <div className="project-card-left-section">
-                          <div className={`project-stage-pill project-stage-pill--${project.status || 'execution'}`} title="Cambiar etapa del proyecto">
-                            <span className="project-stage-pill__icon">{renderStageIcon(project.status || 'execution')}</span>
-                            <span className="project-stage-pill__text">{stageLabelMap[project.status || 'execution'] || 'En ejecución'}</span>
-                            <span className="project-stage-pill__arrow">▾</span>
-                            <select
-                              value={project.status || 'execution'}
-                              onChange={(e) => updateProjectStage(project.id, e.target.value)}
-                              aria-label="Etapa del proyecto"
-                              className="project-stage-pill__native-select"
-                            >
-                              {projectStages.map((st) => (
-                                <option key={st.key} value={st.key}>{st.label}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="project-team-gear-btn"
-                            onClick={() => openTeamModal(project)}
-                            title="Gestionar Administradores, Colaboradores y Terceros"
-                          >
-                            <Icons.UsersGear />
-                            <span>Equipo ({project.teamMembers ? project.teamMembers.length : (project.admins?.length || 1) + (project.members?.length || 0)})</span>
-                          </button>
-                        </div>
-
-                        {/* SECCIÓN PRINCIPAL: TÍTULO, BADGES, DESCRIPCIÓN Y MIEMBROS */}
-                        <div className="project-card-main-info">
-                          <div className="project-card-title-row">
-                            {project.code && <span className="project-code-badge">{project.code}</span>}
-                            <h3>{project.name}</h3>
-
-                            <span className={`role-badge ${project.role === 'lead' ? 'role-badge--lead' : 'role-badge--collaborator'}`}>
-                              {project.role === 'lead' ? (
-                                <>
-                                  <Icons.Lead /> <span>Encargado</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Icons.Collaborator /> <span>Colaborador</span>
-                                </>
-                              )}
-                            </span>
-
-                            <span className="template-badge">
-                              {project.template}
-                            </span>
-                          </div>
-
-                          <p className="project-card-desc">
-                            {project.description || 'Sin descripción'}
-                          </p>
-
-                          {/* ADMINS Y EQUIPO */}
-                          <div className="project-members-row">
-                            <span className="project-member-tag project-member-tag--admin" title="Administrador(es) del proyecto">
-                              <Icons.ShieldAdmin />
-                              <span>Admin(s): {project.admins && project.admins.length > 0 ? project.admins.join(', ') : 'Jorge'}</span>
-                            </span>
-                            {project.members && project.members.length > 0 && (
-                              <span className="project-member-tag project-member-tag--member" title="Colaboradores y proveedores participantes">
-                                <Icons.Team />
-                                <span>Equipo / Terceros: {project.members.join(', ')}</span>
-                              </span>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* PARTE SUPERIOR DERECHA: BOTÓN TABLERO */}
-                        <div className="project-card-top-right">
-                          <button
-                            className="ui-btn ui-btn--primary ui-btn--small project-btn-board"
-                            type="button"
-                            onClick={() => {
-                              setSelectedProjectId(project.id);
-                              setActiveView('kanban');
-                            }}
-                            title="Abrir Tablero Kanban del proyecto"
-                          >
-                            <span>Tablero</span> <Icons.ArrowRight />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* META BAR / PROGRESO */}
-                      <div className="project-card-meta-bar">
-                        <div className="project-progress-section">
-                          <div className="progress-label-row">
-                            <span>Avance: <strong>{project.progressPct}%</strong></span>
-                            <span>{project.doneTasks} de {project.totalTasks} tareas hechas</span>
-                          </div>
-                          <div className="progress-track">
-                            <div className="progress-fill" style={{ width: `${project.progressPct}%` }} />
-                          </div>
-                        </div>
-
-                        <div className="pending-indicator-group">
-                          {project.myPending > 0 ? (
-                            <span className="pending-chip pending-chip--mine">
-                              <Icons.User /> {project.myPending} míos pendientes
-                            </span>
-                          ) : (
-                            <span className="pending-chip pending-chip--clean">
-                              <Icons.Check /> Al día conmigo
-                            </span>
-                          )}
-
-                          {project.teamPending > 0 && (
-                            <span className="pending-chip pending-chip--team">
-                              <Icons.Team /> {project.teamPending} del equipo
-                            </span>
-                          )}
-
-                          {project.vendorPending > 0 && (
-                            <span className="pending-chip pending-chip--vendor" title="Tareas pendientes de un tercero o proveedor">
-                              <Icons.Vendor /> {project.vendorPending} en proveedor
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* FOOTER: INFERIOR IZQUIERDA (ELIMINAR + EDITAR), INFERIOR DERECHA (FECHA META) */}
-                      <div className="project-card-footer">
-                        <div className="project-card-footer-left">
-                          <button
-                            className="project-compact-icon-btn btn-danger-hover"
-                            type="button"
-                            onClick={() => setProjectToDelete({ id: project.id, name: project.name })}
-                            title="Eliminar proyecto"
-                          >
-                            <Icons.Trash />
-                          </button>
-
-                          <button
-                            className="ui-btn ui-btn--secondary ui-btn--small project-btn-edit"
-                            type="button"
-                            onClick={() => openEditProjectModal(project)}
-                            title="Editar información del proyecto"
-                          >
-                            <Icons.Edit /> <span>Editar</span>
-                          </button>
-
-                          <button
-                            className="ui-btn ui-btn--status-report ui-btn--small"
-                            type="button"
-                            onClick={() => openProjectStatusModal(project)}
-                            title="Ver estatus y reporte ejecutivo 360° del proyecto"
-                          >
-                            <Icons.FileText /> <span>Estatus & Resumen</span>
-                          </button>
-                        </div>
-
-                        <div className="project-card-footer-right">
-                          <span className="project-target-date">
-                            <Icons.Calendar />
-                            <span>Meta:</span>
-                            <strong style={{ color: project.isOverdue ? 'var(--danger-600)' : 'inherit' }}>
-                              {project.targetDate || 'Sin fecha límite'}
-                            </strong>
-                            {project.isOverdue && <Icons.Alert />}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  ))
-                )}
-                </div>
-              )}
-
-              {/* VISTA 2: CRONOGRAMA ABSTRACTO & AVANCE DE METAS */}
-              {portfolioSubView === 'timeline' && (
-                <div className="roadmap-board-card">
-                  <div className="roadmap-layout">
-                    {/* SIDEBAR DE PROYECTOS */}
-                    <div className="roadmap-sidebar">
-                      <div className="roadmap-sidebar-header">
-                        <span>Proyecto & Metas</span>
-                        <span>Cumplimiento</span>
-                      </div>
-
-                      <div className="roadmap-sidebar-list">
-                        {filteredProjects.length === 0 ? (
-                          <div style={{ padding: '36px 20px', textAlign: 'center', color: 'var(--ink-500)', fontSize: '0.84rem' }}>
-                            No hay proyectos que coincidan con los filtros seleccionados.
-                          </div>
-                        ) : (
-                          filteredProjects.map((project) => (
-                            <div
-                              key={`sidebar-${project.id}`}
-                              className="roadmap-project-item"
-                              onClick={() => {
-                                if (project.hasExtension) {
-                                  setJustificationModalProject(project);
-                                } else {
-                                  setSelectedProjectId(project.id);
-                                  setActiveView('kanban');
-                                }
-                              }}
-                            >
-                              <div className="roadmap-item-title-row">
-                                <span className="roadmap-project-name" title={project.name} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {project.code && <span className="project-code-badge">{project.code}</span>}
-                                  <span>{project.name}</span>
-                                </span>
-                                <span className={`stage-tag stage-tag--${project.status || 'execution'}`}>
-                                  {stageLabelMap[project.status || 'execution'] || 'En ejecución'}
-                                </span>
-                              </div>
-
-                              <div className="roadmap-item-meta-row">
-                                <span className="roadmap-task-ratio">
-                                  <Icons.Check />
-                                  <span>
-                                    {project.doneTasks}/{project.totalTasks} tareas ({project.progressPct}%)
-                                  </span>
-                                </span>
-
-                                <button
-                                  type="button"
-                                  className="ui-btn ui-btn--ghost ui-btn--small"
-                                  style={{ fontSize: '0.72rem', padding: '2px 8px', color: 'var(--brand-300)', border: '1px solid rgba(56, 189, 248, 0.3)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openProjectStatusModal(project);
-                                  }}
-                                  title="Ver estatus y resumen ejecutivo de este proyecto"
-                                >
-                                  <Icons.FileText /> <span>Estatus</span>
-                                </button>
-
-                                {project.hasExtension ? (
-                                  <button
-                                    type="button"
-                                    className="roadmap-extension-badge"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setJustificationModalProject(project);
-                                    }}
-                                    title="Ver justificación técnica de la prórroga"
-                                  >
-                                    <span>⚠️ +{project.extensionDurationText}</span>
-                                  </button>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="ui-btn ui-btn--ghost ui-btn--small"
-                                    style={{ fontSize: '0.72rem', padding: '2px 8px', color: 'var(--ink-500)', border: '1px solid var(--line-200)' }}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setNewExtensionModalProject(project);
-                                      setExtensionForm({
-                                        newTargetDate: project.targetDate || todayStr,
-                                        reason: '',
-                                        requestedBy: '',
-                                        approvedBy: 'Jorge'
-                                      });
-                                    }}
-                                    title="Registrar una prórroga para este proyecto"
-                                  >
-                                    + Prórroga
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-
-                    {/* TIMELINE INTERACTIVO */}
-                    <div className="roadmap-timeline-view">
-                      {/* ENCABEZADOS DE MESES */}
-                      <div
-                        className="roadmap-header-track"
-                        style={{ gridTemplateColumns: `repeat(${timelineScale.monthCols.length}, 1fr)` }}
-                      >
-                        {timelineScale.monthCols.map((m, idx) => (
-                          <div
-                            key={`m-${idx}`}
-                            className={`roadmap-month-col ${m.isCurrent ? 'is-current-month' : ''}`}
-                          >
-                            <span className="roadmap-month-title" style={{ color: m.isCurrent ? 'var(--brand-300)' : 'inherit' }}>
-                              {m.label}
-                            </span>
-                            <span className="roadmap-month-sub">{m.isCurrent ? 'Mes Actual' : ''}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* CUERPO DEL CRONOGRAMA */}
-                      <div className="roadmap-body-track">
-                        {/* LÍNEAS DE CUADRÍCULA */}
-                        <div
-                          className="roadmap-grid-overlay"
-                          style={{ gridTemplateColumns: `repeat(${timelineScale.monthCols.length}, 1fr)` }}
-                        >
-                          {timelineScale.monthCols.map((_, idx) => (
-                            <div key={`grid-${idx}`} className="roadmap-grid-line" />
-                          ))}
-                        </div>
-
-                        {/* LÍNEA DE HOY */}
-                        {timelineScale.todayPct >= 0 && timelineScale.todayPct <= 100 && (
-                          <div
-                            className="roadmap-today-marker"
-                            style={{ left: `${timelineScale.todayPct}%` }}
-                            title={`Línea temporal de hoy (${todayStr})`}
-                          >
-                            <div className="roadmap-today-flag">Hoy: {formatDateShort(todayStr)}</div>
-                          </div>
-                        )}
-
-                        {/* FILAS DE BARRAS DE PROYECTOS */}
-                        {filteredProjects.map((project, index) => {
-                          const startPct = timelineScale.dateToPercent(project.effectiveStartDate);
-                          const origEndPct = timelineScale.dateToPercent(project.effectiveOriginalTargetDate);
-                          const baseWidth = Math.max(3, origEndPct - startPct);
-                          const isNearTop = index < 2;
-                          const maxEndPct = project.hasExtension ? timelineScale.dateToPercent(project.effectiveTargetDate) : origEndPct;
-                          const alignH = startPct < 15 ? 'align-left' : (maxEndPct > 85 ? 'align-right' : 'align-center');
-                          const tooltipClass = `${isNearTop ? 'tooltip-down' : 'tooltip-up'} ${alignH}`;
-
-                          if (!project.hasExtension) {
-                            return (
-                              <div key={`row-${project.id}`} className="roadmap-timeline-row">
-                                <div
-                                  className="roadmap-bar-composite"
-                                  style={{ left: `${startPct}%`, width: `${baseWidth}%` }}
-                                  onClick={() => {
-                                    setSelectedProjectId(project.id);
-                                    setActiveView('kanban');
-                                  }}
-                                >
-                                  {/* PIN DE FECHA DE INICIO */}
-                                  <div
-                                    className="roadmap-start-pin"
-                                    data-date={`Inicio: ${formatDateShort(project.effectiveStartDate)}`}
-                                    title={`Iniciado: ${formatDateFull(project.effectiveStartDate)}`}
-                                  />
-
-                                  <div className="roadmap-bar-base is-single-pill" style={{ width: '100%' }}>
-                                    <div
-                                      className="roadmap-progress-fill"
-                                      style={{ width: `${project.progressPct}%` }}
-                                    />
-                                    <div className="roadmap-bar-labels">
-                                      <span className="roadmap-bar-start-label">▶ {formatDateShort(project.effectiveStartDate)}</span>
-                                      <span className="roadmap-bar-prog-label">{project.progressPct}%</span>
-                                      <span className="roadmap-bar-end-label">🏁 {formatDateShort(project.effectiveOriginalTargetDate)}</span>
-                                    </div>
-
-                                    {/* PIN DE FECHA PACTADA */}
-                                    <div
-                                      className="roadmap-original-pin"
-                                      data-date={`Meta: ${formatDateShort(project.effectiveOriginalTargetDate)}`}
-                                      title={`Límite pactado: ${formatDateFull(project.effectiveOriginalTargetDate)}`}
-                                    />
-
-                                    {/* TOOLTIP ON HOVER CON FECHAS DE INICIO Y FINALIZACIÓN */}
-                                    <div className={`roadmap-bar-hover-tooltip ${tooltipClass}`}>
-                                      <div className="roadmap-tooltip-header">
-                                        {project.code && <span className="project-code-badge" style={{ fontSize: '0.68rem', padding: '0 5px' }}>{project.code}</span>}
-                                        <span>{project.name}</span>
-                                      </div>
-                                      <div className="roadmap-tooltip-dates-grid">
-                                        <div className="tooltip-date-row">
-                                          <span className="tooltip-date-label">📅 Fecha de Inicio:</span>
-                                          <span className="tooltip-date-val is-start">{formatDateFull(project.effectiveStartDate)}</span>
-                                        </div>
-                                        <div className="tooltip-date-row">
-                                          <span className="tooltip-date-label">🏁 Fecha de Finalización:</span>
-                                          <span className="tooltip-date-val is-end">{formatDateFull(project.effectiveOriginalTargetDate)}</span>
-                                        </div>
-                                      </div>
-                                      <div className="roadmap-tooltip-progress-row">
-                                        <span>Avance: <strong>{project.progressPct}%</strong> ({project.doneTasks}/{project.totalTasks} tareas)</span>
-                                      </div>
-                                      <div className="roadmap-tooltip-cta">
-                                        🖱️ Clic para ver tareas en Kanban
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          }
-
-                          // Barra con tramo extendido (prórroga)
-                          const extEndPct = timelineScale.dateToPercent(project.effectiveTargetDate);
-                          const extWidth = Math.max(2, extEndPct - origEndPct);
-                          const totalWidth = baseWidth + extWidth;
-                          const baseRatio = (baseWidth / totalWidth) * 100;
-                          const extRatio = (extWidth / totalWidth) * 100;
-
-                          return (
-                            <div key={`row-${project.id}`} className="roadmap-timeline-row">
-                              <div
-                                className="roadmap-bar-composite"
-                                style={{ left: `${startPct}%`, width: `${totalWidth}%` }}
-                              >
-                                {/* PIN DE FECHA DE INICIO */}
-                                <div
-                                  className="roadmap-start-pin"
-                                  data-date={`Inicio: ${formatDateShort(project.effectiveStartDate)}`}
-                                  title={`Iniciado: ${formatDateFull(project.effectiveStartDate)}`}
-                                />
-
-                                {/* TRAMO BASE (TIEMPO PACTADO ORIGINAL) */}
-                                <div
-                                  className="roadmap-bar-base"
-                                  style={{ width: `${baseRatio}%` }}
-                                  onClick={() => {
-                                    setSelectedProjectId(project.id);
-                                    setActiveView('kanban');
-                                  }}
-                                >
-                                  <div
-                                    className="roadmap-progress-fill"
-                                    style={{ width: `${project.progressPct}%` }}
-                                  />
-                                  <div className="roadmap-bar-labels">
-                                    <span className="roadmap-bar-start-label">▶ {formatDateShort(project.effectiveStartDate)}</span>
-                                    <span className="roadmap-bar-prog-label">{project.progressPct}%</span>
-                                    <span className="roadmap-bar-end-label">{formatDateShort(project.effectiveOriginalTargetDate)}</span>
-                                  </div>
-
-                                  {/* PIN DE FECHA PACTADA */}
-                                  <div
-                                    className="roadmap-original-pin"
-                                    data-date={`Pactado: ${formatDateShort(project.effectiveOriginalTargetDate)}`}
-                                    title={`Límite pactado original: ${formatDateFull(project.effectiveOriginalTargetDate)}`}
-                                  />
-
-                                  {/* TOOLTIP ON HOVER CON FECHAS DE INICIO Y FINALIZACIÓN */}
-                                  <div className={`roadmap-bar-hover-tooltip ${tooltipClass}`}>
-                                    <div className="roadmap-tooltip-header">
-                                      {project.code && <span className="project-code-badge" style={{ fontSize: '0.68rem', padding: '0 5px' }}>{project.code}</span>}
-                                      <span>{project.name}</span>
-                                    </div>
-                                    <div className="roadmap-tooltip-dates-grid">
-                                      <div className="tooltip-date-row">
-                                        <span className="tooltip-date-label">📅 Fecha de Inicio:</span>
-                                        <span className="tooltip-date-val is-start">{formatDateFull(project.effectiveStartDate)}</span>
-                                      </div>
-                                      <div className="tooltip-date-row">
-                                        <span className="tooltip-date-label">🏁 Pactado Original:</span>
-                                        <span className="tooltip-date-val is-end">{formatDateFull(project.effectiveOriginalTargetDate)}</span>
-                                      </div>
-                                      <div className="tooltip-date-row">
-                                        <span className="tooltip-date-label">⚠️ Nueva Meta (Prórroga):</span>
-                                        <span className="tooltip-date-val is-ext">{formatDateFull(project.effectiveTargetDate)} (+{project.extensionDurationText})</span>
-                                      </div>
-                                    </div>
-                                    <div className="roadmap-tooltip-progress-row">
-                                      <span>Avance: <strong>{project.progressPct}%</strong> ({project.doneTasks}/{project.totalTasks} tareas)</span>
-                                    </div>
-                                    <div className="roadmap-tooltip-cta">
-                                      🖱️ Clic en barra para Kanban / Clic en prórroga para justificación
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* TRAMO EXTENDIDO (PRÓRROGA) */}
-                                <div
-                                  className="roadmap-bar-extension"
-                                  style={{ width: `${extRatio}%` }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setJustificationModalProject(project);
-                                  }}
-                                >
-                                  <span className="roadmap-extension-pill">
-                                    <span>⚠️ +{project.extensionDurationText}</span>
-                                  </span>
-
-                                  {/* TOOLTIP INTERACTIVO AL PASAR EL CURSOR */}
-                                  <div className={`roadmap-extension-tooltip ${tooltipClass}`}>
-                                    <div className="roadmap-tooltip-header">
-                                      <span>&gt; Tiempo extendido, {project.extensionDurationText}</span>
-                                    </div>
-                                    <div className="roadmap-tooltip-body">
-                                      {project.dateExtensions && project.dateExtensions.length > 0
-                                        ? project.dateExtensions[project.dateExtensions.length - 1].reason
-                                        : 'El plazo original fue extendido. Clic para ver detalles.'}
-                                    </div>
-                                    <div className="roadmap-tooltip-dates">
-                                      <div>
-                                        <strong>Pactado original:</strong> {formatDateShort(project.effectiveOriginalTargetDate)}
-                                      </div>
-                                      <div style={{ color: '#fbbf24' }}>
-                                        <strong>Nueva meta:</strong> {formatDateShort(project.effectiveTargetDate)}
-                                      </div>
-                                    </div>
-                                    <div className="roadmap-tooltip-cta">
-                                      🖱️ Clic para ver la justificación técnica
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SECCIÓN INFERIOR: RESUMEN */}
-              <section className="portfolio-summary-section">
-                <div className="portfolio-summary-header">
-                  <div>
-                    <p className="eyebrow" style={{ marginBottom: '2px' }}>Métricas & Indicadores</p>
-                    <h3 className="portfolio-summary-title">Resumen</h3>
-                  </div>
-                  <span className="portfolio-summary-badge">
-                    Consolidado de {globalKpis.total} proyectos
-                  </span>
-                </div>
-
-                <div className="portfolio-metrics-grid">
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon kpi-card__icon--brand">
-                      <Icons.Portfolio />
-                    </div>
-                    <div className="kpi-card__value">{globalKpis.total}</div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">Total Proyectos</span>
-                      <span className="kpi-card__sub">Activos en el espacio</span>
-                    </div>
-                  </div>
-
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon kpi-card__icon--brand">
-                      <Icons.Lead />
-                    </div>
-                    <div className="kpi-card__value">{globalKpis.leadCount}</div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">Soy Encargado</span>
-                      <span className="kpi-card__sub">Liderazgo directo</span>
-                    </div>
-                  </div>
-
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon kpi-card__icon--success">
-                      <Icons.Collaborator />
-                    </div>
-                    <div className="kpi-card__value">{globalKpis.collabCount}</div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">En Colaboración</span>
-                      <span className="kpi-card__sub">Equipo conjunto</span>
-                    </div>
-                  </div>
-
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon kpi-card__icon--danger">
-                      <Icons.Alert />
-                    </div>
-                    <div className="kpi-card__value" style={{ color: globalKpis.totalMyPending > 0 ? 'var(--danger-600)' : 'var(--success-600)' }}>
-                      {globalKpis.totalMyPending}
-                    </div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">Mis Pendientes</span>
-                      <span className="kpi-card__sub">Asignados a mí</span>
-                    </div>
-                  </div>
-
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon" style={{ background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.35)' }}>
-                      <Icons.Vendor />
-                    </div>
-                    <div className="kpi-card__value" style={{ color: globalKpis.totalVendorPending > 0 ? '#c084fc' : 'var(--ink-500)' }}>
-                      {globalKpis.totalVendorPending}
-                    </div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">En Proveedores</span>
-                      <span className="kpi-card__sub">Esperando terceros</span>
-                    </div>
-                  </div>
-
-                  <div className="kpi-card">
-                    <div className="kpi-card__icon kpi-card__icon--warning">
-                      <Icons.TargetPulse />
-                    </div>
-                    <div className="kpi-card__value">{globalKpis.avgProg}%</div>
-                    <div className="kpi-card__details">
-                      <span className="kpi-card__label">Avance Promedio</span>
-                      <span className="kpi-card__sub">Consolidado general</span>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </>
+            <ProjectsView
+              projects={filteredProjects}
+              allProjects={enrichedProjects}
+              currentUser={session}
+              todayStr={todayStr}
+              space={space}
+              onSpaceChange={handleSpaceChange}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={(id) => {
+                setSelectedProjectId(id);
+              }}
+              workItems={workItems}
+              onSubmitProgress={submitTaskProgress}
+              onUpdateWorkItem={handleUpdateTaskData}
+              onOpenNewTask={(initialData) => {
+                openNewTaskModal(typeof initialData === 'string' ? { projectId: initialData } : (initialData || {}));
+              }}
+              onOpenNewProject={() => setIsNewProjectModalOpen(true)}
+              onEditProject={(proj) => openEditProjectModal(proj)}
+              onOpenTeamModal={(proj) => openTeamModal(proj)}
+              onOpenStatusModal={(proj) => openProjectStatusModal(proj)}
+              onDeleteProject={(proj) => setProjectToDelete({ id: proj.id, name: proj.name })}
+              onDailyCheckProject={(proj) => handleProjectDailyCheckin(proj)}
+              onQuickUpdateProjectStatus={handleQuickUpdateProjectStatus}
+              onNavigate={setActiveView}
+              onCreatePersonalProject={() => {
+                setProjectForm({
+                  name: '',
+                  description: '',
+                  template: 'kanban',
+                  status: 'execution',
+                  role: 'lead',
+                  startDate: todayStr,
+                  targetDate: '',
+                  space: 'personal'
+                });
+                setIsNewProjectModalOpen(true);
+              }}
+              meetings={meetings}
+              onCreateMeeting={handleCreateMeeting}
+              onUpdateMeeting={handleUpdateMeeting}
+              onDeleteMeeting={handleDeleteMeeting}
+              onCreateTaskFromAction={handleCreateTaskFromMeetingAction}
+            />
           )}
 
           {/* ======================================================== */}
-          {/* 2. VISTA: AGENDA & CALENDARIO                            */}
+          {/* 2. VISTA: CRONOGRAMA & AVANCE (§7.3)                      */}
+          {/* ======================================================== */}
+          {activeView === 'timeline' && (
+            <TimelineView
+              projects={enrichedProjects}
+              workItems={workItems}
+              todayStr={todayStr}
+              onSelectProject={(id) => {
+                setSelectedProjectId(id);
+                setActiveView('kanban');
+              }}
+              onOpenNewProject={() => setIsNewProjectModalOpen(true)}
+              onOpenJustification={(proj) => setJustificationModalProject(proj)}
+              onOpenNewExtension={(proj) => {
+                setNewExtensionModalProject(proj);
+                setExtensionForm({
+                  newTargetDate: proj.targetDate || todayStr,
+                  reason: '',
+                  requestedBy: '',
+                  approvedBy: 'Jorge'
+                });
+              }}
+              onOpenStatusModal={(proj) => {
+                setStatusModalProject(proj);
+                setIsProjectStatusModalOpen(true);
+              }}
+            />
+          )}
+
+          {/* ======================================================== */}
+          {/* 3. VISTA: AGENDA (§7.5)                                   */}
           {/* ======================================================== */}
           {activeView === 'agenda' && (
-            <div className="agenda-shell">
-              <div className="page-header">
-                <div>
-                  <p className="eyebrow">Seguimiento Temporal</p>
-                  <h2>Agenda & Calendario</h2>
-                </div>
-                <div className="header-actions">
-                  <button
-                    className="ui-btn ui-btn--primary"
-                    type="button"
-                    onClick={() => openNewTaskModal({ dueDate: todayStr })}
-                  >
-                    <Icons.Plus /> <span>Agregar Compromiso</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* BARRA DE NAVEGACIÓN TEMPORAL */}
-              <div className="agenda-header-bar">
-                <div className="segmented-control">
-                  <button
-                    type="button"
-                    className={`segment-btn ${agendaSubView === 'day' ? 'active' : ''}`}
-                    onClick={() => setAgendaSubView('day')}
-                  >
-                    <Icons.Day /> <span>Vista Día (Hoy)</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`segment-btn ${agendaSubView === 'week' ? 'active' : ''}`}
-                    onClick={() => setAgendaSubView('week')}
-                  >
-                    <Icons.Week /> <span>Vista Semana</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`segment-btn ${agendaSubView === 'month' ? 'active' : ''}`}
-                    onClick={() => setAgendaSubView('month')}
-                  >
-                    <Icons.Month /> <span>Calendario Mensual</span>
-                  </button>
-                </div>
-
-                <div className="filter-group">
-                  <span className="filter-label">Mostrar:</span>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('all')}
-                  >
-                    Todo el equipo
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'mine' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('mine')}
-                  >
-                    <Icons.User /> <span>Mis pendientes ({globalKpis.totalMyPending})</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'team' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('team')}
-                  >
-                    <Icons.Team /> <span>Colaboradores ({globalKpis.totalTeamPending})</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'vendor' ? 'active-warning' : ''}`}
-                    onClick={() => setAgendaFilter('vendor')}
-                  >
-                    <Icons.Vendor /> <span>Proveedores / Terceros ({globalKpis.totalVendorPending})</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'overdue' ? 'active-danger' : ''}`}
-                    onClick={() => setAgendaFilter('overdue')}
-                  >
-                    <Icons.Alert /> <span>Atrasados ({dayViewGroups.overdue.length})</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* SUBVIEW 1: VISTA DÍA */}
-              {agendaSubView === 'day' && (
-                <div className="day-view-container">
-                  {/* ATRASADAS / URGENTES */}
-                  {dayViewGroups.overdue.length > 0 && (
-                    <section className="day-section">
-                      <div className="day-section__title" style={{ color: 'var(--danger-600)' }}>
-                        <Icons.Alert />
-                        <span>Compromisos Atrasados</span>
-                        <span className="day-section__badge day-section__badge--danger">
-                          {dayViewGroups.overdue.length}
-                        </span>
-                      </div>
-                      {dayViewGroups.overdue.map((task) => (
-                        <div key={task.id} className="task-item-card" style={{ borderColor: 'rgba(248, 113, 113, 0.4)' }}>
-                          <div className="task-item-left">
-                            <button
-                              type="button"
-                              className={`quick-check-btn ${task.status === 'done' ? 'checked' : ''}`}
-                              onClick={() => toggleTaskStatus(task)}
-                              title="Marcar como completada"
-                            >
-                              {task.status === 'done' ? <Icons.Check /> : null}
-                            </button>
-                            <div className="task-info-block">
-                              <div className="task-meta-top">
-                                {task.code && <span className="task-code-badge">{task.code}</span>}
-                                <span className="project-tag">{task.projectName}</span>
-                                <span className="task-badge">{task.type}</span>
-                                <span className="task-priority priority-high">Urgente</span>
-                              </div>
-                              <span className="task-title">{task.title}</span>
-                            </div>
-                          </div>
-
-                          <div className="task-item-right">
-                            <AssigneeBadge item={task} />
-                            <span className="due-date-pill is-overdue">
-                              <Icons.Calendar /> {task.dueDate}
-                            </span>
-                            <button
-                              type="button"
-                              className="task-action-btn"
-                              onClick={() => openEditTaskModal(task)}
-                              title="Editar compromiso"
-                            >
-                              <Icons.Edit />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </section>
-                  )}
-
-                  {/* PARA HOY */}
-                  <section className="day-section">
-                    <div className="day-section__title">
-                      <Icons.Day />
-                      <span>Para Hoy ({todayStr})</span>
-                      <span className="day-section__badge day-section__badge--brand">
-                        {dayViewGroups.today.length}
-                      </span>
-                    </div>
-
-                    {dayViewGroups.today.length === 0 ? (
-                      <div className="panel-card" style={{ textAlign: 'center', padding: '24px' }}>
-                        <p className="muted">No hay entregas programadas específicamente para hoy.</p>
-                      </div>
-                    ) : (
-                      dayViewGroups.today.map((task) => (
-                        <div
-                          key={task.id}
-                          className={`task-item-card ${task.status === 'done' ? 'is-done' : ''}`}
-                        >
-                          <div className="task-item-left">
-                            <button
-                              type="button"
-                              className={`quick-check-btn ${task.status === 'done' ? 'checked' : ''}`}
-                              onClick={() => toggleTaskStatus(task)}
-                              title="Marcar como completada"
-                            >
-                              {task.status === 'done' ? <Icons.Check /> : null}
-                            </button>
-                            <div className="task-info-block">
-                              <div className="task-meta-top">
-                                {task.code && <span className="task-code-badge">{task.code}</span>}
-                                <span className="project-tag">{task.projectName}</span>
-                                <span className="task-badge">{task.type}</span>
-                                <span className={`task-priority priority-${task.priority || 'medium'}`}>
-                                  {task.priority || 'medium'}
-                                </span>
-                              </div>
-                              <span className="task-title">{task.title}</span>
-                            </div>
-                          </div>
-
-                          <div className="task-item-right">
-                            <AssigneeBadge item={task} />
-                            <span className="due-date-pill is-today">Hoy</span>
-                            <button
-                              type="button"
-                              className="task-action-btn"
-                              onClick={() => openEditTaskModal(task)}
-                              title="Editar compromiso"
-                            >
-                              <Icons.Edit />
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </section>
-
-                  {/* PRÓXIMAS / ACTIVAS */}
-                  <section className="day-section">
-                    <div className="day-section__title">
-                      <Icons.Calendar />
-                      <span>Próximas Entregas & Tareas Activas</span>
-                      <span className="day-section__badge day-section__badge--neutral">
-                        {dayViewGroups.upcoming.length}
-                      </span>
-                    </div>
-
-                    {dayViewGroups.upcoming.slice(0, 10).map((task) => (
-                      <div key={task.id} className="task-item-card">
-                        <div className="task-item-left">
-                          <button
-                            type="button"
-                            className="quick-check-btn"
-                            onClick={() => toggleTaskStatus(task)}
-                            title="Marcar como completada"
-                          />
-                          <div className="task-info-block">
-                            <div className="task-meta-top">
-                              {task.code && <span className="task-code-badge">{task.code}</span>}
-                              <span className="project-tag">{task.projectName}</span>
-                              <span className="task-badge">{task.type}</span>
-                            </div>
-                            <span className="task-title">{task.title}</span>
-                          </div>
-                        </div>
-
-                        <div className="task-item-right">
-                          <AssigneeBadge item={task} />
-                          <span className="due-date-pill">
-                            {task.dueDate ? task.dueDate : 'Sin fecha'}
-                          </span>
-                          <button
-                            type="button"
-                            className="task-action-btn"
-                            onClick={() => openEditTaskModal(task)}
-                            title="Editar compromiso"
-                          >
-                            <Icons.Edit />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </section>
-                </div>
-              )}
-
-              {/* SUBVIEW 2: VISTA SEMANA */}
-              {agendaSubView === 'week' && (
-                <div className="calendar-card" style={{ padding: 'var(--space-4)' }}>
-                  <div className="calendar-nav-bar" style={{ marginBottom: 'var(--space-4)' }}>
-                    <div className="cal-nav-actions">
-                      <button
-                        type="button"
-                        className="cal-nav-btn"
-                        onClick={handlePrevWeek}
-                        title="Ir a la semana anterior"
-                      >
-                        ‹ Semana Anterior
-                      </button>
-                      <button
-                        type="button"
-                        className={`cal-nav-btn ${weekData.isCurrentWeek ? 'active' : ''}`}
-                        onClick={handleCurrentWeek}
-                        title="Ir a la semana en curso"
-                      >
-                        Esta Semana
-                      </button>
-                      <button
-                        type="button"
-                        className="cal-nav-btn"
-                        onClick={handleNextWeek}
-                        title="Ir a la semana siguiente"
-                      >
-                        Semana Siguiente ›
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                      <h3 style={{ textTransform: 'capitalize', margin: 0, fontSize: '1.15rem', color: 'var(--ink-900)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Semana: {weekData.rangeLabel}</span>
-                        {weekData.isCurrentWeek && (
-                          <span className="stage-count stage-count--info" style={{ fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--radius-full)', height: 'auto', minWidth: 'auto', fontWeight: 600 }}>
-                            Semana en curso
-                          </span>
-                        )}
-                      </h3>
-
-                      <div className="segmented-control" style={{ padding: '2px' }}>
-                        <button
-                          type="button"
-                          className={`segment-btn ${!weekIncludeWeekend ? 'active' : ''}`}
-                          onClick={() => setWeekIncludeWeekend(false)}
-                          style={{ padding: '3px 10px', fontSize: '0.75rem' }}
-                          title="Lunes a Viernes"
-                        >
-                          5 Días (Laboral)
-                        </button>
-                        <button
-                          type="button"
-                          className={`segment-btn ${weekIncludeWeekend ? 'active' : ''}`}
-                          onClick={() => setWeekIncludeWeekend(true)}
-                          style={{ padding: '3px 10px', fontSize: '0.75rem' }}
-                          title="Lunes a Domingo"
-                        >
-                          7 Días (Completa)
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`week-board ${weekIncludeWeekend ? 'cols-7' : 'cols-5'}`}>
-                    {weekData.days.map((col) => (
-                      <div
-                        key={col.dateStr}
-                        className={`week-column ${col.isToday ? 'is-today-col' : ''}`}
-                      >
-                        <div className="week-col-header">
-                          <div className="week-day-title">
-                            <strong>{col.name}</strong>
-                            <small>{col.dayNum} {col.monthStr} {col.isToday ? '· (Hoy)' : ''}</small>
-                          </div>
-                          <span className={`stage-count ${col.isToday ? 'stage-count--info' : 'stage-count--neutral'}`}>
-                            {col.tasks.length}
-                          </span>
-                        </div>
-
-                        <div className="week-column-cards">
-                          {col.tasks.length === 0 ? (
-                            <div className="empty-day-placeholder">Sin pendientes</div>
-                          ) : (
-                            col.tasks.map((task) => (
-                              <div
-                                key={task.id}
-                                className="week-card"
-                                onClick={() => toggleTaskStatus(task)}
-                                title="Clic para alternar estado completado"
-                              >
-                                <div className="week-card-top">
-                                  {task.code && <span className="task-code-badge" style={{ fontSize: '0.66rem', padding: '0 4px' }}>{task.code}</span>}
-                                  <span className="project-tag" style={{ fontSize: '0.68rem' }}>
-                                    {task.projectName}
-                                  </span>
-                                  {task.status === 'done' ? (
-                                    <span style={{ color: 'var(--success-600)', fontSize: '0.78rem', fontWeight: 600 }}>✓ Hecho</span>
-                                  ) : (
-                                    <span className={`task-priority priority-${task.priority || 'medium'}`} style={{ fontSize: '0.65rem' }}>
-                                      {task.priority || 'medium'}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <div className="week-card-title">
-                                  {task.title}
-                                </div>
-
-                                <div className="week-card-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                  <AssigneeBadge item={task} />
-                                  <button
-                                    type="button"
-                                    className="task-action-btn"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditTaskModal(task);
-                                    }}
-                                    title="Editar compromiso"
-                                  >
-                                    <Icons.Edit />
-                                  </button>
-                                </div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SUBVIEW 3: VISTA CALENDARIO */}
-              {agendaSubView === 'month' && (
-                <div className="calendar-view-container">
-                  <div className="calendar-card">
-                    <div className="calendar-nav-bar">
-                      <div className="cal-nav-actions">
-                        <button
-                          type="button"
-                          className="cal-nav-btn"
-                          onClick={() => {
-                            const prev = new Date(calDate);
-                            prev.setMonth(prev.getMonth() - 1);
-                            setCalDate(prev);
-                          }}
-                        >
-                          ‹ Mes Anterior
-                        </button>
-                        <button
-                          type="button"
-                          className="cal-nav-btn"
-                          onClick={() => setCalDate(new Date())}
-                        >
-                          Hoy
-                        </button>
-                        <button
-                          type="button"
-                          className="cal-nav-btn"
-                          onClick={() => {
-                            const next = new Date(calDate);
-                            next.setMonth(next.getMonth() + 1);
-                            setCalDate(next);
-                          }}
-                        >
-                          Mes Siguiente ›
-                        </button>
-                      </div>
-
-                      <h3 style={{ textTransform: 'capitalize' }}>
-                        {calendarData.monthName}
-                      </h3>
-                    </div>
-
-                    <div className="calendar-weekdays-grid">
-                      <div>Lun</div>
-                      <div>Mar</div>
-                      <div>Mié</div>
-                      <div>Jue</div>
-                      <div>Vie</div>
-                      <div>Sáb</div>
-                      <div>Dom</div>
-                    </div>
-
-                    <div className="calendar-days-grid">
-                      {calendarData.cells.map((cell, idx) => (
-                        <div
-                          key={idx}
-                          className={`cal-day-cell ${cell.isCurrentMonth ? '' : 'is-other-month'} ${cell.isToday ? 'is-today' : ''} ${selectedCalDay === cell.dateStr ? 'is-selected' : ''}`}
-                          onClick={() => setSelectedCalDay(cell.dateStr)}
-                        >
-                          <div className="cal-day-top">
-                            <span className="cal-day-num">{cell.dayNum}</span>
-                            {cell.tasks.length > 0 && (
-                              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--brand-300)' }}>
-                                {cell.tasks.length}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="cal-events-list">
-                            {cell.tasks.slice(0, 2).map((t) => (
-                              <div
-                                key={t.id}
-                                className={`cal-event-pill ${t.assignee === 'Jorge' ? 'is-mine' : ''}`}
-                                title={`${t.projectName}: ${t.title} (${t.assignee})`}
-                              >
-                                {t.title}
-                              </div>
-                            ))}
-                            {cell.tasks.length > 2 && (
-                              <div className="cal-more-pill">
-                                +{cell.tasks.length - 2} más
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* INSPECTOR LATERAL DEL DÍA SELECCIONADO */}
-                  <div className="selected-day-panel">
-                    <div className="selected-day-header">
-                      <div>
-                        <p className="eyebrow small">Día Seleccionado</p>
-                        <h4>{selectedCalDay}</h4>
-                      </div>
-                      <button
-                        className="ui-btn ui-btn--primary ui-btn--small"
-                        type="button"
-                        onClick={() => openNewTaskModal({ dueDate: selectedCalDay })}
-                      >
-                        <Icons.Plus /> <span>Tarea</span>
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      {selectedDayTasks.length === 0 ? (
-                        <p className="muted" style={{ fontSize: '0.85rem', padding: '12px 0' }}>
-                          Sin entregas programadas para esta fecha.
-                        </p>
-                      ) : (
-                        selectedDayTasks.map((task) => (
-                          <div key={task.id} className="task-item-card" style={{ padding: '8px 12px' }}>
-                            <div className="task-item-left">
-                              <button
-                                type="button"
-                                className={`quick-check-btn ${task.status === 'done' ? 'checked' : ''}`}
-                                onClick={() => toggleTaskStatus(task)}
-                              >
-                                {task.status === 'done' ? <Icons.Check /> : null}
-                              </button>
-                              <div className="task-info-block">
-                                <span className="project-tag" style={{ fontSize: '0.65rem' }}>{task.projectName}</span>
-                                <span className="task-title" style={{ fontSize: '0.88rem' }}>{task.title}</span>
-                              </div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <AssigneeBadge item={task} />
-                              <button
-                                type="button"
-                                className="task-action-btn"
-                                onClick={() => openEditTaskModal(task)}
-                                title="Editar compromiso"
-                              >
-                                <Icons.Edit />
-                              </button>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <AgendaView
+              workItems={workItems}
+              projects={enrichedProjects}
+              todayStr={todayStr}
+              onSelectProject={(id) => {
+                setSelectedProjectId(id);
+                setActiveView('kanban');
+              }}
+              onNavigateToTasks={() => setActiveView('tasks')}
+            />
           )}
 
           {/* ======================================================== */}
-          {/* 3. VISTA: TABLERO KANBAN                                 */}
+          {/* 4. VISTA: TABLERO KANBAN (§7.2)                           */}
           {/* ======================================================== */}
           {activeView === 'kanban' && (
-            <>
-              <div className="page-header">
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                    <button
-                      type="button"
-                      className="kanban-back-link"
-                      onClick={() => handleReturnToProjects(selectedProjectId)}
-                      title="Regresar a Mis Proyectos y enfocar este proyecto"
-                    >
-                      <Icons.ArrowLeft />
-                      <span>Volver a Mis Proyectos</span>
-                    </button>
-                  </div>
-                  <p className="eyebrow">
-                    Tablero Operativo {(() => {
-                      const activeProj = projects.find((p) => p.id === selectedProjectId);
-                      return activeProj ? `• ${activeProj.name}` : '';
-                    })()}
-                  </p>
-                  <h2>Kanban de Trabajo</h2>
-                </div>
-                <div className="header-actions">
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn--secondary back-to-projects-btn"
-                    onClick={() => handleReturnToProjects(selectedProjectId)}
-                    title="Regresar a Mis Proyectos y enfocar este proyecto"
-                  >
-                    <Icons.ArrowLeft />
-                    <span>Volver a Mis Proyectos</span>
-                  </button>
-                  <button
-                    className="ui-btn ui-btn--primary"
-                    type="button"
-                    onClick={() => openNewTaskModal({ projectId: selectedProjectId })}
-                  >
-                    <Icons.Plus /> <span>Nueva Tarea</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="portfolio-toolbar">
-                <div className="filter-group">
-                  <span className="filter-label">Proyecto activo:</span>
-                  <select
-                    value={selectedProjectId}
-                    onChange={(e) => setSelectedProjectId(e.target.value)}
-                    style={{ minWidth: '240px', fontWeight: 600 }}
-                  >
-                    {projects.map((proj) => (
-                      <option key={proj.id} value={proj.id}>
-                        {proj.code ? `[${proj.code}] ` : ''}{proj.name} ({proj.role === 'lead' ? 'Encargado' : 'Colaborador'})
-                      </option>
-                    ))}
-                  </select>
-
-                  {(() => {
-                    const activeProj = projects.find((p) => p.id === selectedProjectId) || projects[0];
-                    if (!activeProj) return null;
-                    const membersCount = activeProj.teamMembers?.length || (activeProj.admins?.length || 1) + (activeProj.members?.length || 0);
-                    return (
-                      <button
-                        type="button"
-                        className="ui-btn ui-btn--secondary ui-btn--small"
-                        onClick={() => openTeamModal(activeProj)}
-                        title="Gestionar Administradores, Colaboradores y Terceros de este proyecto"
-                      >
-                        <Icons.Team />
-                        <span>Equipo & Roles ({membersCount})</span>
-                      </button>
-                    );
-                  })()}
-
-                  {(() => {
-                    const activeProj = projects.find((p) => p.id === selectedProjectId) || projects[0];
-                    if (!activeProj) return null;
-                    return (
-                      <button
-                        type="button"
-                        className="ui-btn ui-btn--status-report ui-btn--small"
-                        onClick={() => openProjectStatusModal(activeProj)}
-                        title="Ver resumen ejecutivo y estatus 360° del proyecto"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Icons.FileText />
-                        <span>Estatus del Proyecto</span>
-                      </button>
-                    );
-                  })()}
-
-                  {(() => {
-                    const activeProj = projects.find((p) => p.id === selectedProjectId) || projects[0];
-                    const doneCount = workItems.filter((w) => w.projectId === (activeProj ? activeProj.id : '') && w.status === 'done').length;
-                    return (
-                      <button
-                        type="button"
-                        className="ui-btn ui-btn--secondary ui-btn--small"
-                        onClick={() => setIsDoneReportModalOpen(true)}
-                        title="Ver reporte ejecutivo de tareas realizadas, entregables y continuaciones"
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Icons.Tasks />
-                        <span>Reporte de Hechos ({doneCount})</span>
-                      </button>
-                    );
-                  })()}
-                </div>
-
-                <div className="filter-group">
-                  <span className="filter-label">Filtrar tareas:</span>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('all')}
-                  >
-                    Todas
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'mine' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('mine')}
-                  >
-                    <Icons.User /> <span>Solo mías</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'team' ? 'active' : ''}`}
-                    onClick={() => setAgendaFilter('team')}
-                  >
-                    <Icons.Team /> <span>Equipo</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={`pill-btn ${agendaFilter === 'vendor' ? 'active-warning' : ''}`}
-                    onClick={() => setAgendaFilter('vendor')}
-                  >
-                    <Icons.Vendor /> <span>Proveedores / Terceros</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="kanban-board">
-                {laneOrder.map((lane) => {
-                  const laneTasks = workItems.filter(
-                    (item) => {
-                      if (item.projectId !== selectedProjectId || item.status !== lane.key) return false;
-                      const list = getTaskAssignees(item);
-                      const isMine = list.some(isAssigneeMine);
-                      const isTeam = list.some((a) => !isAssigneeMine(a) && !isAssigneeVendor(a, item));
-                      const isVendor = list.some((a) => isAssigneeVendor(a, item));
-
-                      if (agendaFilter === 'mine') return isMine;
-                      if (agendaFilter === 'team') return isTeam;
-                      if (agendaFilter === 'vendor') return isVendor;
-                      return true;
-                    }
-                  );
-
-                  return (
-                    <div key={lane.key} className="kanban-lane">
-                      <div className="lane-header">
-                        <h4>{lane.label}</h4>
-                        <span>{laneTasks.length}</span>
-                      </div>
-
-                      <div className="lane-cards">
-                        {laneTasks.length === 0 ? (
-                          <div className="kanban-empty">Sin tareas</div>
-                        ) : (
-                          laneTasks.map((item) => (
-                            <div key={item.id} className="kanban-card">
-                              <div className="task-topline">
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  {item.code && <span className="task-code-badge">{item.code}</span>}
-                                  <span className="task-badge">{item.type}</span>
-                                  <span className={`task-priority priority-${item.priority || 'medium'}`}>
-                                    {item.priority || 'medium'}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  className="card-edit-btn"
-                                  onClick={() => openEditTaskModal(item)}
-                                  title="Editar tarea"
-                                >
-                                  <Icons.Edit />
-                                </button>
-                              </div>
-
-                              <strong
-                                onClick={() => openEditTaskModal(item)}
-                                style={{ cursor: 'pointer' }}
-                                title="Clic para editar tarea"
-                              >
-                                {item.title}
-                              </strong>
-                              <p>{item.description || 'Sin descripción'}</p>
-
-                              {item.status === 'done' && (
-                                <div
-                                  className={`kanban-completion-badge ${item.completionType === 'partial' ? 'is-partial' : 'is-full'}`}
-                                  onClick={() => openEditTaskModal(item)}
-                                  title="Clic para ver o editar el reporte de lo realizado"
-                                >
-                                  {item.completionType === 'partial' ? (
-                                    <>
-                                      <span className="completion-tag partial">⚠️ Continuada</span>
-                                      <span className="completion-snippet">
-                                        {item.completionReport || 'Clic para detallar por qué se continuó'}
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span className="completion-tag full">✓ Hecho</span>
-                                      <span className="completion-snippet">
-                                        {item.completionReport || 'Clic para reportar qué se hizo'}
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-                              )}
-
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px' }}>
-                                <AssigneeBadge item={item} />
-
-                                {item.dueDate && (
-                                  <span className={`due-date-pill ${item.dueDate < todayStr && item.status !== 'done' ? 'is-overdue' : ''}`}>
-                                    <Icons.Calendar /> {item.dueDate}
-                                  </span>
-                                )}
-                              </div>
-
-                              {Array.isArray(item.progressLogs) && item.progressLogs.length > 0 && (
-                                <div
-                                  className="task-progress-count-badge"
-                                  onClick={() => openEditTaskModal(item)}
-                                  title={`Ver bitácora de avances (${item.progressLogs.length} registros)`}
-                                >
-                                  <Icons.History />
-                                  <span>{item.progressLogs.length} {item.progressLogs.length === 1 ? 'avance' : 'avances'}</span>
-                                  {item.progressLogs[item.progressLogs.length - 1]?.text && (
-                                    <span className="task-progress-latest-snippet">
-                                      · {item.progressLogs[item.progressLogs.length - 1].text}
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-
-                              <div className="task-meta">
-                                <small style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>Mover a:</small>
-                                <select
-                                  value={item.status}
-                                  onChange={(e) => changeTaskStatus(item.id, e.target.value)}
-                                  aria-label="Cambiar estado de tarea"
-                                >
-                                  {laneOrder.map((option) => (
-                                    <option key={option.key} value={option.key}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+            <KanbanView
+              workItems={workItems}
+              projects={enrichedProjects}
+              selectedProjectId={selectedProjectId}
+              onSelectProject={(id) => setSelectedProjectId(id)}
+              currentUser={session}
+              todayStr={todayStr}
+              onUpdateWorkItem={handleUpdateTaskData}
+              onOpenNewTask={openNewTaskModal}
+              onOpenStatusModal={(proj) => openProjectStatusModal(proj)}
+              onDeleteTask={(task) => handleDeleteTask(task.id)}
+            />
           )}
 
+          {/* ======================================================== */}
+          {/* 5. VISTA: DIRECTORIO (§7.6)                               */}
+          {/* ======================================================== */}
           {activeView === 'directory' && (
-            <>
-              {/* HEADER DEL DIRECTORIO */}
-              <div className="directory-header-section">
-                <div>
-                  <h1 className="portfolio-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Icons.UsersGear />
-                    <span>Directorio de Equipo & Terceros</span>
-                  </h1>
-                  <p className="portfolio-subtitle">
-                    Gestión centralizada de Administradores, Colaboradores y Proveedores reutilizables en todos los proyectos de TI.
-                  </p>
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    className="ui-btn ui-btn--primary"
-                    onClick={() => setIsNewDirectoryModalOpen(true)}
-                  >
-                    + Registrar Integrante / Tercero
-                  </button>
-                </div>
-              </div>
-
-              {/* BARRA DE HERRAMIENTAS: FILTROS POR ROL Y BUSCADOR */}
-              <div className="directory-toolbar-stack">
-                {/* FILA 1: BOTONES CON ÍCONO MÁS GRANDE Y TEXTO EN UNA SOLA LÍNEA */}
-                <div className="directory-filter-row" role="group" aria-label="Filtrar por rol">
-                  <button
-                    type="button"
-                    className={`dir-filter-tab ${directoryRoleFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setDirectoryRoleFilter('all')}
-                  >
-                    <Icons.UsersGear />
-                    <span>Todos</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`dir-filter-tab ${directoryRoleFilter === 'admin' ? 'active' : ''}`}
-                    onClick={() => setDirectoryRoleFilter('admin')}
-                  >
-                    <Icons.ShieldAdmin />
-                    <span>Administradores</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`dir-filter-tab ${directoryRoleFilter === 'collaborator' ? 'active' : ''}`}
-                    onClick={() => setDirectoryRoleFilter('collaborator')}
-                  >
-                    <Icons.Collaborator />
-                    <span>Colaboradores</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`dir-filter-tab ${directoryRoleFilter === 'vendor' ? 'active' : ''}`}
-                    onClick={() => setDirectoryRoleFilter('vendor')}
-                  >
-                    <Icons.Vendor />
-                    <span>Proveedores / Terceros</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className={`dir-filter-tab ${directoryRoleFilter === 'has_account' ? 'active' : ''}`}
-                    onClick={() => setDirectoryRoleFilter('has_account')}
-                    title="Ver solo integrantes con credenciales de acceso a Nexus"
-                  >
-                    <Icons.ShieldAdmin />
-                    <span>Con Cuenta de Acceso</span>
-                  </button>
-                </div>
-
-                {/* FILA 2: BARRA DE BÚSQUEDA CON LUPA */}
-                <div className="directory-search-row">
-                  <div className="directory-search-box">
-                    <span className="directory-search-icon" aria-hidden="true">
-                      <Icons.Search />
-                    </span>
-                    <input
-                      type="text"
-                      placeholder="Buscar por nombre, entidad u organización..."
-                      value={directorySearch}
-                      onChange={(e) => setDirectorySearch(e.target.value)}
-                      className="directory-search-input"
-                    />
-                    {directorySearch && (
-                      <button
-                        type="button"
-                        className="directory-search-clear"
-                        onClick={() => setDirectorySearch('')}
-                        title="Limpiar búsqueda"
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* GRID DE INTEGRANTES */}
-              {(() => {
-                const searchLower = directorySearch.toLowerCase().trim();
-                const filteredMembers = teamDirectory.filter((member) => {
-                  if (directoryRoleFilter === 'has_account') {
-                    if (!member.hasUserAccount) return false;
-                  } else if (directoryRoleFilter !== 'all' && member.role !== directoryRoleFilter) {
-                    return false;
-                  }
-                  if (searchLower) {
-                    const matchName = member.name.toLowerCase().includes(searchLower);
-                    const matchEmail = (member.email || '').toLowerCase().includes(searchLower);
-                    const matchOrg = (member.organization || '').toLowerCase().includes(searchLower);
-                    const matchPhone = (member.phone || '').toLowerCase().includes(searchLower);
-                    return matchName || matchEmail || matchOrg || matchPhone;
-                  }
-                  return true;
+            <DirectoryView
+              teamDirectory={teamDirectory}
+              workItems={workItems}
+              onOpenNewDirectoryMember={() => setIsNewDirectoryModalOpen(true)}
+              onEditDirectoryMember={(m) => {
+                setEditingDirectoryMember(m);
+                setEditDirectoryForm({
+                  name: m.name,
+                  role: m.role || 'collaborator',
+                  organization: m.organization || '',
+                  email: m.email || '',
+                  phone: m.phone || ''
                 });
-
-                if (filteredMembers.length === 0) {
-                  return (
-                    <div className="directory-empty-state">
-                      <Icons.UsersGear />
-                      <h3>No se encontraron integrantes</h3>
-                      <p>Intenta ajustar el filtro de búsqueda o registra un nuevo integrante o tercero.</p>
-                      <button
-                        type="button"
-                        className="ui-btn ui-btn--primary"
-                        onClick={() => setIsNewDirectoryModalOpen(true)}
-                        style={{ marginTop: '12px' }}
-                      >
-                        + Registrar Integrante
-                      </button>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="directory-grid">
-                    {filteredMembers.map((member) => {
-                      const targetName = member.name.trim().toLowerCase();
-                      const assignedTasks = workItems.filter((w) => {
-                        if (Array.isArray(w.assignees) && w.assignees.length > 0) {
-                          return w.assignees.some((a) => a && a.trim().toLowerCase() === targetName);
-                        }
-                        if (typeof w.assignee === 'string' && w.assignee.trim()) {
-                          return w.assignee.split(',').map((s) => s.trim().toLowerCase()).includes(targetName);
-                        }
-                        return false;
-                      });
-
-                      const roleLabel =
-                        member.role === 'admin'
-                          ? 'Administrador'
-                          : member.role === 'vendor'
-                          ? 'Proveedor / Tercero'
-                          : 'Colaborador';
-
-                      const roleClass =
-                        member.role === 'admin'
-                          ? 'dir-role--admin'
-                          : member.role === 'vendor'
-                          ? 'dir-role--vendor'
-                          : 'dir-role--collab';
-
-                      return (
-                        <div key={member.id} className="directory-card">
-                          <div className="directory-card__header">
-                            <div className="directory-card__avatar-wrap">
-                              <div className={`directory-card__avatar ${roleClass}`}>
-                                {member.role === 'admin' ? (
-                                  <Icons.ShieldAdmin />
-                                ) : member.role === 'vendor' ? (
-                                  <Icons.Vendor />
-                                ) : (
-                                  member.name.charAt(0).toUpperCase()
-                                )}
-                              </div>
-                              <div className="directory-card__main-info">
-                                <h3 className="directory-card__name">{member.name}</h3>
-                                {member.organization && (
-                                  <span className="directory-card__org">{member.organization}</span>
-                                )}
-                              </div>
-                            </div>
-
-                            <span className={`directory-role-badge ${roleClass}`}>
-                              {roleLabel}
-                            </span>
-                          </div>
-
-                          <div className="directory-card__body">
-                            {member.email && (
-                              <div className="directory-contact-row">
-                                <span className="contact-label">Email:</span>
-                                <span className="contact-val" title={member.email}>{member.email}</span>
-                              </div>
-                            )}
-                            {member.phone && (
-                              <div className="directory-contact-row">
-                                <span className="contact-label">Contacto:</span>
-                                <span className="contact-val">{member.phone}</span>
-                              </div>
-                            )}
-
-                            <div className="directory-status-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                              {assignedTasks.length > 0 ? (
-                                <span className="directory-status-pill directory-status-pill--assigned" title={`Asignado a ${assignedTasks.length} tarea(s)`}>
-                                  <Icons.Check /> {assignedTasks.length} tarea{assignedTasks.length !== 1 ? 's' : ''} asignada{assignedTasks.length !== 1 ? 's' : ''}
-                                </span>
-                              ) : (
-                                <span className="directory-status-pill directory-status-pill--free">
-                                  Sin tareas asignadas
-                                </span>
-                              )}
-
-                              {member.hasUserAccount && (
-                                <span
-                                  className="directory-status-pill"
-                                  style={{
-                                    background: 'rgba(59, 130, 246, 0.15)',
-                                    color: 'var(--brand-300)',
-                                    border: '1px solid rgba(59, 130, 246, 0.35)',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                  }}
-                                  title="Dispone de cuenta de acceso activa en Nexus"
-                                >
-                                  🔑 Acceso Activo
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="directory-card__footer">
-                            {(session?.role === 'owner' || session?.role === 'admin') && (
-                              <button
-                                type="button"
-                                className={`ui-btn ui-btn--small ${member.hasUserAccount ? 'ui-btn--secondary' : 'ui-btn--primary'}`}
-                                onClick={() => {
-                                  setAccountModalMember(member);
-                                  setAccountPasswordForm({
-                                    email: member.email || '',
-                                    password: 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!',
-                                    role: member.role === 'admin' ? 'admin' : 'member'
-                                  });
-                                }}
-                                title={member.hasUserAccount ? 'Restablecer contraseña de acceso' : 'Generar credenciales de usuario para este integrante'}
-                              >
-                                <span>🔑 {member.hasUserAccount ? 'Cambiar Clave' : 'Generar Acceso'}</span>
-                              </button>
-                            )}
-
-                            <button
-                              type="button"
-                              className="ui-btn ui-btn--secondary ui-btn--small"
-                              onClick={() => {
-                                setEditingDirectoryMember(member);
-                                setEditDirectoryForm({
-                                  name: member.name,
-                                  role: member.role || 'collaborator',
-                                  organization: member.organization || '',
-                                  email: member.email || '',
-                                  phone: member.phone || ''
-                                });
-                              }}
-                              title="Editar datos del integrante"
-                            >
-                              <Icons.Edit /> <span>Editar</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              className="ui-btn ui-btn--danger ui-btn--small"
-                              onClick={() => requestDeleteDirectoryMember(member)}
-                              title="Eliminar del directorio"
-                            >
-                              <Icons.Trash /> <span>Eliminar</span>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </>
+              }}
+              onDeleteDirectoryMember={(m) => requestDeleteDirectoryMember(m)}
+            />
           )}
-        </main>
-      </div>
-
-      {/* MODAL: NUEVO PROYECTO */}
-      {isNewProjectModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsNewProjectModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/logobase01.png" alt="" style={{ width: '22px', height: '22px', borderRadius: '5px', objectFit: 'contain' }} />
-                <span>Crear Nuevo Proyecto</span>
-              </h3>
-              <button className="close-btn modal-close-btn" onClick={() => setIsNewProjectModalOpen(false)} aria-label="Cerrar ventana" title="Cerrar">
-                <Icons.Close />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateProject} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-field">
-                <label>Nombre del proyecto *</label>
-                <input
-                  type="text"
-                  value={projectForm.name}
-                  onChange={(e) => setProjectForm({ ...projectForm, name: e.target.value })}
-                  placeholder="Ej. Migración CRM o Arquitectura Core"
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Descripción</label>
-                <textarea
-                  rows="2"
-                  value={projectForm.description}
-                  onChange={(e) => setProjectForm({ ...projectForm, description: e.target.value })}
-                  placeholder="Objetivo principal del proyecto"
-                />
-              </div>
-
-              <div className="form-grid-2">
-                <div className="form-field">
-                  <label>Mi Rol en el proyecto</label>
-                  <select
-                    value={projectForm.role}
-                    onChange={(e) => setProjectForm({ ...projectForm, role: e.target.value })}
-                  >
-                    <option value="lead">Soy el Encargado (Líder)</option>
-                    <option value="collaborator">Soy Colaborador</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Metodología</label>
-                  <select
-                    value={projectForm.template}
-                    onChange={(e) => setProjectForm({ ...projectForm, template: e.target.value })}
-                  >
-                    <option value="kanban">Kanban</option>
-                    <option value="scrum">Scrum</option>
-                    <option value="pmi">PMI (Tradicional)</option>
-                    <option value="custom">Personalizada</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-grid-2">
-                <div className="form-field">
-                  <label>Administradores (separados por coma) *</label>
-                  <input
-                    type="text"
-                    value={projectForm.admins}
-                    onChange={(e) => setProjectForm({ ...projectForm, admins: e.target.value })}
-                    placeholder="Ej. Jorge, Carlos Gómez"
-                    required
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Tienen control de metas y alcance</small>
-                </div>
-
-                <div className="form-field">
-                  <label>Equipo / Proveedores / Terceros</label>
-                  <input
-                    type="text"
-                    value={projectForm.members}
-                    onChange={(e) => setProjectForm({ ...projectForm, members: e.target.value })}
-                    placeholder="Ej. Lucía, Proveedor AWS, Soporte Dell"
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Colaboradores o terceros involucrados</small>
-                </div>
-              </div>
-
-              <div className="form-field">
-                <label>Etapa inicial</label>
-                <select
-                  value={projectForm.status}
-                  onChange={(e) => setProjectForm({ ...projectForm, status: e.target.value })}
-                >
-                  {projectStages.map((st) => (
-                    <option key={st.key} value={st.key}>{st.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-grid-2">
-                <div className="form-field">
-                  <label>Fecha de inicio</label>
-                  <input
-                    type="date"
-                    value={projectForm.startDate}
-                    onChange={(e) => setProjectForm({ ...projectForm, startDate: e.target.value })}
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Día de arranque del proyecto</small>
-                </div>
-
-                <div className="form-field">
-                  <label>Fecha meta / finalización</label>
-                  <input
-                    type="date"
-                    value={projectForm.targetDate}
-                    onChange={(e) => setProjectForm({ ...projectForm, targetDate: e.target.value })}
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Compromiso pactado de entrega</small>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--secondary"
-                  onClick={() => setIsNewProjectModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="ui-btn ui-btn--primary">
-                  Guardar Proyecto
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
-      )}
 
-      {/* MODAL: NUEVA TAREA */}
-      {isNewTaskModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsNewTaskModalOpen(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <img src="/logobase01.png" alt="" style={{ width: '22px', height: '22px', borderRadius: '5px', objectFit: 'contain' }} />
-                <span>Agregar Tarea o Compromiso</span>
-              </h3>
-              <button className="close-btn modal-close-btn" onClick={() => setIsNewTaskModalOpen(false)} aria-label="Cerrar ventana" title="Cerrar">
-                <Icons.Close />
-              </button>
-            </div>
+      {/* 520px DRAWER: NUEVO PROYECTO (§7.7) */}
+      <ProjectDrawer
+        isOpen={isNewProjectModalOpen}
+        onClose={() => setIsNewProjectModalOpen(false)}
+        onSubmit={handleCreateProject}
+        currentUser={session}
+      />
 
-            <form onSubmit={handleCreateTask} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="form-field">
-                <label>Proyecto asociado *</label>
-                <select
-                  value={taskForm.projectId || selectedProjectId}
-                  onChange={(e) => setTaskForm({ ...taskForm, projectId: e.target.value })}
-                  required
-                >
-                  {projects.map((proj) => (
-                    <option key={proj.id} value={proj.id}>
-                      {proj.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-field">
-                <label>Título de la tarea o entrega *</label>
-                <input
-                  type="text"
-                  value={taskForm.title}
-                  onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
-                  placeholder="Ej. Revisar contrato de hosting"
-                  required
-                />
-              </div>
-
-              <TaskAssigneesSelector
-                projectId={taskForm.projectId || selectedProjectId}
-                projects={projects}
-                teamDirectory={teamDirectory}
-                selectedAssignees={taskForm.assignees || ['Jorge']}
-                onChangeAssignees={(newAssignees) => {
-                  setTaskForm((prev) => ({
-                    ...prev,
-                    assignees: newAssignees,
-                    assignee: newAssignees.join(', '),
-                    assigneeType: newAssignees.some(isAssigneeMine) ? 'me' : (newAssignees.some(a => isAssigneeVendor(a)) ? 'vendor' : 'team')
-                  }));
-                }}
-                onOpenNewDirectoryModal={() => setIsNewDirectoryModalOpen(true)}
-              />
-
-              <div className="form-grid-3">
-                <div className="form-field">
-                  <label>Fecha de entrega / límite</label>
-                  <input
-                    type="date"
-                    value={taskForm.dueDate}
-                    onChange={(e) => setTaskForm({ ...taskForm, dueDate: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label>Tipo</label>
-                  <select
-                    value={taskForm.type}
-                    onChange={(e) => setTaskForm({ ...taskForm, type: e.target.value })}
-                  >
-                    <option value="task">Tarea</option>
-                    <option value="story">Historia</option>
-                    <option value="bug">Bug</option>
-                    <option value="milestone">Hito</option>
-                    <option value="risk">Riesgo</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Prioridad</label>
-                  <select
-                    value={taskForm.priority}
-                    onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value })}
-                  >
-                    <option value="low">Baja</option>
-                    <option value="medium">Media</option>
-                    <option value="high">Alta / Urgente</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--secondary"
-                  onClick={() => setIsNewTaskModalOpen(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="ui-btn ui-btn--primary">
-                  Guardar Tarea
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 520px DRAWER: NUEVA TAREA (§7.7) */}
+      <TaskDrawer
+        isOpen={isNewTaskModalOpen}
+        onClose={() => setIsNewTaskModalOpen(false)}
+        onSubmit={handleCreateTask}
+        projects={projects}
+        selectedProjectId={taskForm.projectId || selectedProjectId}
+        currentUser={session}
+        teamDirectory={teamDirectory}
+      />
 
       {/* MODAL: EDITAR TAREA */}
       {isEditTaskModalOpen && editingTask && (
@@ -4696,6 +3255,126 @@ function App() {
         </div>
       )}
 
+      {/* MODAL: DAILY CHECK-IN DE TAREAS (SEGUIMIENTO Y CADENCIA) */}
+      {isDailyCheckinModalOpen && dailyCheckinTasks.length > 0 && (
+        <div className="modal-overlay" onClick={() => setIsDailyCheckinModalOpen(false)}>
+          <div
+            className="modal-card modal-card--daily-checkin"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Icons.Zap />
+                <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Daily Check-in de Tareas</h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span className="daily-checkin-step-tag">
+                  Tarea {dailyCheckinIndex + 1} de {dailyCheckinTasks.length}
+                </span>
+                <button
+                  type="button"
+                  className="close-btn modal-close-btn"
+                  onClick={() => setIsDailyCheckinModalOpen(false)}
+                  aria-label="Cerrar ventana"
+                  title="Cerrar"
+                >
+                  <Icons.Close />
+                </button>
+              </div>
+            </div>
+
+            <div className="daily-checkin-progress-track">
+              <div
+                className="daily-checkin-progress-fill"
+                style={{ width: `${((dailyCheckinIndex + 1) / dailyCheckinTasks.length) * 100}%` }}
+              />
+            </div>
+
+            {(() => {
+              const currentTask = dailyCheckinTasks[dailyCheckinIndex];
+              if (!currentTask) return null;
+              const freshness = getTaskFreshness(currentTask, todayStr);
+              const proj = projects.find((p) => p.id === currentTask.projectId);
+
+              return (
+                <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div className="daily-checkin-task-preview">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        {currentTask.code && <span className="task-code-badge">{currentTask.code}</span>}
+                        <span className="project-tag">{proj?.name || 'Proyecto'}</span>
+                      </div>
+                      <span className="task-freshness-pill warning">
+                        <Icons.Clock /> {freshness.label}
+                      </span>
+                    </div>
+
+                    <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--ink-900)' }}>
+                      {currentTask.title}
+                    </h4>
+
+                    <div style={{ display: 'flex', gap: '12px', fontSize: '0.8rem', color: 'var(--ink-500)', alignItems: 'center' }}>
+                      <span>Resp: <strong>{currentTask.assignee || 'Equipo'}</strong></span>
+                      {currentTask.dueDate && <span>Límite: <strong>{currentTask.dueDate}</strong></span>}
+                    </div>
+
+                    {freshness.latestLogText && (
+                      <div className="task-latest-log-quote" style={{ margin: 0 }}>
+                        <Icons.History />
+                        <span>
+                          Último reporte ({freshness.latestAuthor || 'Equipo'}): "{freshness.latestLogText}"
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px', color: 'var(--ink-700)' }}>
+                      ¿Qué avance hubo hoy o cuál es el siguiente paso para [{currentTask.code || currentTask.title}]?
+                    </label>
+                    <input
+                      type="text"
+                      className="ui-input"
+                      style={{ width: '100%' }}
+                      placeholder="Escribe el avance... (ej: Se coordinó con proveedor, confirman entrega el jueves)"
+                      value={dailyCheckinInputText}
+                      onChange={(e) => setDailyCheckinInputText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleDailyCheckinAdvance(false);
+                      }}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap', gap: '10px' }}>
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn--secondary"
+                      onClick={() => handleDailyCheckinAdvance(true)}
+                      disabled={isSubmittingDailyCheckin}
+                      title="Registrar que la tarea continúa en curso sin cambios relevantes"
+                    >
+                      <Icons.Check /> <span>Continúa en curso (Sin cambios)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn--primary"
+                      onClick={() => handleDailyCheckinAdvance(false)}
+                      disabled={isSubmittingDailyCheckin}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <span>Guardar y siguiente</span>
+                      <Icons.ArrowRight />
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
       {/* MODAL: REPORTE DE TAREAS HECHAS Y CUMPLIMIENTO */}
       {isDoneReportModalOpen && (
         <div className="modal-overlay" onClick={() => setIsDoneReportModalOpen(false)}>
@@ -5034,126 +3713,15 @@ function App() {
         </div>
       )}
 
-      {/* MODAL EDITAR PROYECTO */}
-      {editingProject && (
-        <div className="modal-overlay" onClick={() => setEditingProject(null)}>
-          <div className="modal-card" style={{ maxWidth: '580px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Icons.Edit />
-                <span>Editar Proyecto</span>
-              </h3>
-              <button
-                className="close-btn modal-close-btn"
-                onClick={() => setEditingProject(null)}
-                aria-label="Cerrar ventana"
-                title="Cerrar"
-              >
-                <Icons.Close />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEditProject} style={{ display: 'grid', gap: '14px', marginTop: '4px' }}>
-              <div className="form-field">
-                <label>Nombre del proyecto *</label>
-                <input
-                  type="text"
-                  required
-                  value={editProjectForm.name}
-                  onChange={(e) => setEditProjectForm({ ...editProjectForm, name: e.target.value })}
-                  placeholder="Nombre identificador del proyecto"
-                />
-              </div>
-
-              <div className="form-field">
-                <label>Descripción</label>
-                <textarea
-                  rows={3}
-                  value={editProjectForm.description}
-                  onChange={(e) => setEditProjectForm({ ...editProjectForm, description: e.target.value })}
-                  placeholder="Objetivos o alcance del proyecto..."
-                />
-              </div>
-
-              <div className="form-grid-3">
-                <div className="form-field">
-                  <label>Mi Rol</label>
-                  <select
-                    value={editProjectForm.role}
-                    onChange={(e) => setEditProjectForm({ ...editProjectForm, role: e.target.value })}
-                  >
-                    <option value="lead">Encargado (Líder)</option>
-                    <option value="collaborator">Colaborador</option>
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Etapa / Estado</label>
-                  <select
-                    value={editProjectForm.status}
-                    onChange={(e) => setEditProjectForm({ ...editProjectForm, status: e.target.value })}
-                  >
-                    {projectStages.map((st) => (
-                      <option key={st.key} value={st.key}>{st.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Metodología</label>
-                  <select
-                    value={editProjectForm.template}
-                    onChange={(e) => setEditProjectForm({ ...editProjectForm, template: e.target.value })}
-                  >
-                    <option value="kanban">Kanban</option>
-                    <option value="scrum">Scrum</option>
-                    <option value="pmi">PMI Tradicional</option>
-                    <option value="custom">Personalizada</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-grid-2">
-                <div className="form-field">
-                  <label>Fecha de inicio</label>
-                  <input
-                    type="date"
-                    value={editProjectForm.startDate}
-                    onChange={(e) => setEditProjectForm({ ...editProjectForm, startDate: e.target.value })}
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Día de arranque del proyecto</small>
-                </div>
-
-                <div className="form-field">
-                  <label>Fecha meta / finalización</label>
-                  <input
-                    type="date"
-                    value={editProjectForm.targetDate}
-                    onChange={(e) => setEditProjectForm({ ...editProjectForm, targetDate: e.target.value })}
-                  />
-                  <small className="muted" style={{ fontSize: '0.72rem' }}>Compromiso pactado de entrega</small>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--secondary"
-                  onClick={() => setEditingProject(null)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="ui-btn ui-btn--primary"
-                >
-                  Guardar Cambios
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* 520px DRAWER: EDITAR PROYECTO (§7.7) */}
+      <ProjectDrawer
+        isOpen={Boolean(editingProject)}
+        onClose={() => setEditingProject(null)}
+        onSubmit={handleSaveEditProject}
+        initialData={editingProject}
+        isEdit={true}
+        currentUser={session}
+      />
 
       {/* MODAL: GESTIÓN DE EQUIPO, ADMINISTRADORES, COLABORADORES Y TERCEROS */}
       {isTeamModalOpen && managingProject && (
@@ -6500,6 +5068,19 @@ function App() {
                   <button
                     type="button"
                     className="ui-btn ui-btn--secondary"
+                    onClick={() => {
+                      setIsProjectStatusModalOpen(false);
+                      handleProjectDailyCheckin(proj);
+                    }}
+                    title="Realizar Daily Check-in de tareas de este proyecto"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Icons.DailyCheck />
+                    <span>Daily Check-in</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary"
                     onClick={() => setIsProjectStatusModalOpen(false)}
                   >
                     Cerrar
@@ -6522,7 +5103,7 @@ function App() {
           </div>
         );
       })()}
-      </div>
+    </AppShell>
   );
 }
 

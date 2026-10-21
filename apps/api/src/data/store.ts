@@ -44,6 +44,8 @@ export type Project = {
   targetDate?: string;
   originalTargetDate?: string;
   dateExtensions?: DateExtension[];
+  space?: 'work' | 'personal';
+  organization?: string;
 };
 
 export type TaskProgressEntry = {
@@ -69,6 +71,10 @@ export type WorkItem = {
   createdAt: string;
   completionType?: 'full' | 'partial';
   completionReport?: string;
+  closeType?: 'completed' | 'canceled' | 'cancelled' | 'discarded' | 'superseded' | 'replaced';
+  replacedBy?: string;
+  closedAt?: string;
+  closedBy?: string;
   continuationTaskId?: string;
   completedAt?: string;
   progressLogs?: TaskProgressEntry[];

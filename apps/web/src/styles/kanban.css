@@ -700,4 +700,82 @@
   white-space: nowrap;
 }
 
+/* Kanban Cadence & Freshness Indicators */
+.kanban-card.is-stale {
+  border-left: 3.5px solid var(--warning-600);
+}
+
+.kanban-freshness-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.7rem;
+  font-weight: 700;
+  width: fit-content;
+}
+
+.kanban-freshness-pill.is-fresh {
+  background: var(--success-100);
+  color: var(--success-600);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.kanban-freshness-pill.is-attention {
+  background: var(--warning-100);
+  color: var(--warning-600);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.kanban-freshness-pill.is-stale {
+  background: var(--danger-100);
+  color: var(--danger-600);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.kanban-quick-update-btn {
+  background: transparent;
+  border: 1px solid var(--line-200);
+  color: var(--brand-300);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 4px);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all var(--transition-base, 0.15s ease);
+}
+
+.kanban-quick-update-btn:hover {
+  background: var(--brand-100);
+  border-color: var(--brand-600);
+  color: #ffffff;
+}
+
+/* Project Kanban Daily Check-in Button */
+.project-kanban-daily-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-base, 0.15s ease);
+}
+
+.project-kanban-daily-btn.has-pending {
+  background: rgba(245, 158, 11, 0.12) !important;
+  border-color: rgba(245, 158, 11, 0.5) !important;
+  color: var(--warning-600) !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+  animation: attentionGlow 3s infinite ease-in-out;
+}
+
+.project-kanban-daily-btn.has-pending:hover {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: var(--warning-600) !important;
+  color: #fbbf24 !important;
+}
+
 

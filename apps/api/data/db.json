@@ -284,8 +284,13 @@
       "assigneeType": "me",
       "dueDate": "2026-10-13",
       "createdAt": "2026-10-08T22:42:19.625Z",
-      "completionReport": "",
-      "progressLogs": []
+      "completionReport": "Se complet� la validaci�n del requerimiento t�cnico de integraci�n.",
+      "progressLogs": [],
+      "completionType": "full",
+      "completedAt": "2026-10-20T20:30:18.819Z",
+      "closedAt": "2026-10-20T20:30:18.819Z",
+      "closedBy": "Jorge",
+      "closeType": "completed"
     },
     {
       "id": "wi-1791492272340",

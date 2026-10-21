@@ -735,6 +735,82 @@
   transform: scale(1.05);
 }
 
+/* Project Card Daily Check-in Button */
+.project-daily-checkin-btn {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-elevated);
+  border: 1px solid var(--line-200);
+  color: var(--ink-700);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.project-daily-checkin-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.project-daily-checkin-btn.has-pending {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: var(--warning-600);
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.15);
+  animation: attentionGlow 3s infinite ease-in-out;
+}
+
+.project-daily-checkin-btn.is-clean {
+  color: var(--ink-500);
+}
+
+.project-daily-checkin-btn:hover {
+  background: var(--surface-card);
+  color: var(--ink-900);
+  border-color: var(--brand-600);
+  transform: translateY(-1px);
+}
+
+.project-daily-checkin-btn.has-pending:hover {
+  background: rgba(245, 158, 11, 0.22);
+  border-color: var(--warning-600);
+  color: #fbbf24;
+}
+
+.project-daily-checkin-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border-radius: var(--radius-full);
+  font-size: 0.65rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface-card);
+  line-height: 1;
+}
+
+.project-daily-checkin-badge.danger {
+  background: var(--danger-600);
+  color: #ffffff;
+}
+
+.project-daily-checkin-badge.success {
+  background: var(--success-600);
+  color: #ffffff;
+  font-size: 0.58rem;
+}
+
 .project-btn-edit {
   display: inline-flex;
   align-items: center;

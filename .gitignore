@@ -48,3 +48,22 @@ lerna-debug.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Temporary exploration & inspection scripts
+/real_templates/
+/clean_templates/
+/clean_ascii/
+/unpacked_ref/
+*_ref.html
+*-ref.html
+prototipo-seguimiento-tareas.html
+clean_1_mis_proyectos.html
+check_*.js
+inspect_*.js
+extract_*.js
+dump_*.js
+make_*.js
+replace_*.js
+analyze_*.js
+unpack_*.js
+clean_all_templates.js
