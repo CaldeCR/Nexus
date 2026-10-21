@@ -294,7 +294,7 @@ export function HomeView({
               <Icons.DailyCheck size={16} />
               <span>Daily Check</span>
               {taskRisks.stale.length > 0 && (
-                <span className="top-daily-checkin-badge danger" style={{ marginLeft: 4 }}>
+                <span className="top-daily-checkin-badge danger">
                   {taskRisks.stale.length}
                 </span>
               )}

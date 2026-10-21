@@ -189,6 +189,7 @@ textarea:focus {
   --btn-bg: var(--nexus-teal);
   --btn-color: #ffffff;
   --btn-border: transparent;
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;

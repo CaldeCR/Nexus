@@ -308,7 +308,7 @@ export function ProjectsView({
               <Icons.DailyCheck size={15} />
               <span>Daily Check</span>
               {selectedProject.staleTasksCount > 0 && (
-                <span className="top-daily-checkin-badge danger" style={{ marginLeft: 4 }}>
+                <span className="top-daily-checkin-badge danger">
                   {selectedProject.staleTasksCount}
                 </span>
               )}

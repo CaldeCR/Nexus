@@ -1264,6 +1264,8 @@ body:not(.dark-mode) .notice .close-btn:hover {
   justify-content: center;
   border: 2px solid var(--surface-card);
   line-height: 1;
+  z-index: 2;
+  pointer-events: none;
 }
 
 .top-daily-checkin-badge.danger {
