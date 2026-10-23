@@ -4,8 +4,8 @@
       "id": "u-1",
       "email": "jorge@nexus.local",
       "name": "Jorge",
-      "password": "123456",
-      "role": "owner"
+      "role": "owner",
+      "passwordHash": "$2b$12$qQqxfmLXIFbYU/J3mkcDGOVijM7FILhJ.fP5Ykwk12xqGSqMsQ/Zy"
     },
     {
       "id": "u-1792019074625",

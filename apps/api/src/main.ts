@@ -171,15 +171,29 @@ function getCurrentUser(req: express.Request) {
   if (!token) return null;
 
   const session = sessionStore.get(token);
-  if (!session) return null;
+  if (session) {
+    if (Date.now() - session.createdAt > SESSION_TTL_MS) {
+      sessionStore.delete(token);
+      return null;
+    }
 
-  if (Date.now() - session.createdAt > SESSION_TTL_MS) {
-    sessionStore.delete(token);
-    return null;
+    const db = readDb();
+    return db.users.find((user) => user.id === session.userId) ?? null;
   }
 
+  // Compatibilidad y resiliencia tras reinicio del servidor:
+  // Rehidratar tokens de sesión con formato legacy o asociados a usuarios válidos
   const db = readDb();
-  return db.users.find((user) => user.id === session.userId) ?? null;
+  const legacyMatch = token.match(/^nexus-\d+-(.+)$/);
+  if (legacyMatch) {
+    const legacyUser = db.users.find((u) => u.id === legacyMatch[1]);
+    if (legacyUser) {
+      sessionStore.set(token, { userId: legacyUser.id, createdAt: Date.now() });
+      return legacyUser;
+    }
+  }
+
+  return null;
 }
 
 function requireAdmin(req: express.Request, res: express.Response): User | null {

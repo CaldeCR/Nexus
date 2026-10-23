@@ -831,7 +831,8 @@ function App() {
       if (list.length && !selectedProjectId) {
         setSelectedProjectId(list[0].id);
       }
-    } catch {
+    } catch (err) {
+      console.error('Error al conectar con la API de proyectos:', err);
       setProjects([]);
     }
   };
@@ -848,7 +849,8 @@ function App() {
       }
       const data = await res.json();
       setWorkItems(data.items || []);
-    } catch {
+    } catch (err) {
+      console.error('Error al conectar con la API de tareas:', err);
       setWorkItems([]);
     }
   };
@@ -865,7 +867,8 @@ function App() {
       }
       const data = await res.json();
       setTeamDirectory(data.items || []);
-    } catch {
+    } catch (err) {
+      console.error('Error al conectar con la API del directorio:', err);
       setTeamDirectory([]);
     }
   };
