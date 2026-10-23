@@ -662,6 +662,17 @@ export function HomeView({
     year: 'numeric'
   });
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return 'Buenos días';
+    } else if (hour >= 12 && hour < 19) {
+      return 'Buenas tardes';
+    } else {
+      return 'Buenas noches';
+    }
+  };
+
   return (
     <div className="home-dashboard-container">
       {/* 1. CABECERA HERO EJECUTIVA */}
@@ -669,13 +680,13 @@ export function HomeView({
         <div className="home-hero-content">
           <div className="home-hero-badge">
             <span className="home-hero-pulse-dot" />
-            <span>Centro de Mando · Nexus Portfolio Cadence</span>
+            <span>Nexus - Centro de control general de proyectos o tareas.</span>
           </div>
           <h1 className="home-hero-title">
-            Buenos días, {activeUserName.split(' ')[0]} 👋
+            {getGreeting()}, {activeUserName.split(' ')[0]} 👋
           </h1>
           <p className="home-hero-subtitle">
-            {dateHeading.charAt(0).toUpperCase() + dateHeading.slice(1)} — Radar central de cadencia, proyectos y seguimiento ejecutivo.
+            {dateHeading.charAt(0).toUpperCase() + dateHeading.slice(1)}
           </p>
         </div>
 
@@ -897,7 +908,7 @@ export function HomeView({
               <div>
                 <h2 className="home-section-title">Así vamos</h2>
                 <span className="home-section-subtitle">
-                  Rendimiento global, tacómetro y radiografía de todos los proyectos
+                  Gráficas generales de los proyectos o tareas.
                 </span>
               </div>
             </div>
