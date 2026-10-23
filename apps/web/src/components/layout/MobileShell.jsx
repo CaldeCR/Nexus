@@ -28,7 +28,8 @@ export function MobileShell({
     agenda: 'Agenda',
     kanban: 'Tablero',
     timeline: 'Cronograma',
-    directory: 'Directorio'
+    directory: 'Directorio',
+    'daily-check': 'Daily Check-in'
   };
 
   const currentTitle = viewTitles[view] || 'Nexus';
@@ -75,8 +76,8 @@ export function MobileShell({
           {/* DAILY CHECK-IN BUTTON */}
           <button
             type="button"
-            className={`top-daily-checkin-btn ${totalStaleCount > 0 ? 'has-pending' : 'is-clean'}`}
-            onClick={onOpenDailyCheckin}
+            className={`top-daily-checkin-btn ${totalStaleCount > 0 ? 'has-pending' : 'is-clean'} ${view === 'daily-check' ? 'is-active' : ''}`}
+            onClick={() => onNavigate('daily-check')}
             title={`Daily Check-in (${totalStaleCount} pendientes)`}
             aria-label="Daily Check-in"
             style={{ width: '32px', height: '32px' }}
@@ -156,10 +157,10 @@ export function MobileShell({
             <div className="mobile-drawer-footer">
               <button
                 type="button"
-                className="mobile-drawer-footer-btn"
+                className={`mobile-drawer-footer-btn ${view === 'daily-check' ? 'is-active' : ''}`}
                 onClick={() => {
                   setDrawerOpen(false);
-                  onOpenDailyCheckin();
+                  onNavigate('daily-check');
                 }}
               >
                 <NavIcons.DailyCheck size={18} />

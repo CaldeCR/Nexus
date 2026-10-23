@@ -146,12 +146,12 @@ export function Rail({
         {/* BOTÓN DAILY CHECK-IN */}
         <button
           type="button"
-          className={`rail-bottom-item ${railExpanded ? 'is-expanded-btn' : ''} ${totalStaleCount > 0 ? 'has-pending' : 'is-clean'}`}
-          onClick={onOpenDailyCheckin}
+          className={`rail-bottom-item ${railExpanded ? 'is-expanded-btn' : ''} ${totalStaleCount > 0 ? 'has-pending' : 'is-clean'} ${activeView === 'daily-check' ? 'is-active' : ''}`}
+          onClick={() => onNavigate('daily-check')}
           title={
             totalStaleCount > 0
               ? `Daily Check-in: ${totalStaleCount} ${totalStaleCount === 1 ? 'tarea requiere' : 'tareas requieren'} atención hoy`
-              : 'Daily Check-in: Todas las tareas al día'
+              : 'Daily Check-in: Bitácora y seguimiento continuo'
           }
           aria-label="Daily Check-in"
         >

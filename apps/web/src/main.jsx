@@ -18,6 +18,7 @@ import { KanbanView } from './views/KanbanView';
 import { TimelineView } from './views/TimelineView';
 import { AgendaView } from './views/AgendaView';
 import { DirectoryView } from './views/DirectoryView';
+import { DailyCheckView } from './views/DailyCheckView';
 import { ProjectDrawer } from './components/forms/ProjectDrawer';
 import { TaskDrawer } from './components/forms/TaskDrawer';
 import { AssigneeDropdownPicker } from './components/forms/AssigneeDropdownPicker';
@@ -2665,6 +2666,24 @@ function App() {
               onUpdateWorkItem={handleUpdateTaskData}
               onEditTask={openEditTaskModal}
               onOpenNewTask={openNewTaskModal}
+            />
+          )}
+
+          {/* ======================================================== */}
+          {/* VISTA: DAILY CHECK-IN & BITÁCORA                          */}
+          {/* ======================================================== */}
+          {activeView === 'daily-check' && (
+            <DailyCheckView
+              workItems={workItems}
+              projects={enrichedProjects}
+              currentUser={session}
+              todayStr={todayStr}
+              onSubmitProgress={submitTaskProgress}
+              onUpdateWorkItem={handleUpdateTaskData}
+              onEditTask={openEditTaskModal}
+              onOpenNewTask={openNewTaskModal}
+              onOpenDailyWizard={(tasks) => openDailyCheckinWizard(tasks)}
+              onNavigate={setActiveView}
             />
           )}
 
