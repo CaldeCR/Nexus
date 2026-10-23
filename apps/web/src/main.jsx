@@ -20,6 +20,7 @@ import { AgendaView } from './views/AgendaView';
 import { DirectoryView } from './views/DirectoryView';
 import { ProjectDrawer } from './components/forms/ProjectDrawer';
 import { TaskDrawer } from './components/forms/TaskDrawer';
+import { AssigneeDropdownPicker } from './components/forms/AssigneeDropdownPicker';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -568,120 +569,38 @@ function TaskAssigneesSelector({
   teamDirectory = [],
   selectedAssignees,
   onChangeAssignees,
-  onOpenNewDirectoryModal
+  onOpenNewDirectoryModal,
+  currentUser = null
 }) {
-  const currentList = Array.isArray(selectedAssignees) && selectedAssignees.length > 0 ? selectedAssignees : ['Jorge'];
-
-  // 1. Jorge (Yo) siempre disponible
-  const candidateMap = new Map();
-  candidateMap.set('Jorge', { name: 'Jorge', type: 'me', label: 'Jorge (Yo)' });
-
-  // 2. EXCLUSIVAMENTE integrantes activos del Directorio Global Centralizado
-  // (Las personas eliminadas del Directorio jamás aparecerán aquí)
-  if (Array.isArray(teamDirectory) && teamDirectory.length > 0) {
-    teamDirectory.forEach((m) => {
-      if (m.name && m.name.trim().toLowerCase() !== 'jorge') {
-        const trimmedName = m.name.trim();
-        const type = m.role === 'vendor' ? 'vendor' : m.role === 'admin' ? 'admin' : 'team';
-        const roleLabel = m.role === 'vendor' ? ' (Proveedor)' : m.role === 'admin' ? ' (Admin)' : ' (Colaborador)';
-        candidateMap.set(trimmedName, { name: trimmedName, type, label: `${trimmedName}${roleLabel}` });
-      }
-    });
-  }
-
-  const candidates = Array.from(candidateMap.values());
-
-  const toggleAssignee = (name) => {
-    if (currentList.includes(name)) {
-      if (currentList.length === 1) return; // Mantener al menos un responsable
-      onChangeAssignees(currentList.filter((a) => a !== name));
-    } else {
-      onChangeAssignees([...currentList, name]);
-    }
-  };
-
-  const removeAssignee = (name) => {
-    if (currentList.length > 1) {
-      onChangeAssignees(currentList.filter((a) => a !== name));
-    }
-  };
-
   return (
-    <div className="assignees-selector-block">
-      <div className="assignees-selector-header">
-        <label>
-          Personas Asignadas / Ejecutores *
-          <span className="assignees-count-badge">({currentList.length} seleccionado{currentList.length !== 1 ? 's' : ''})</span>
-        </label>
-        <small className="muted">Puedes seleccionar uno o varios responsables para esta tarea</small>
-      </div>
-
-      <div className="selected-assignees-pills">
-        {currentList.map((name) => {
-          const isMine = isAssigneeMine(name);
-          const dirMember = teamDirectory.find(
-            (m) => m.name && m.name.trim().toLowerCase() === String(name).trim().toLowerCase()
-          );
-          const isVendor = dirMember ? dirMember.role === 'vendor' : isAssigneeVendor(name);
-          const isAdmin = dirMember ? dirMember.role === 'admin' : false;
-          const chipClass = isMine ? 'is-mine' : isVendor ? 'is-vendor' : isAdmin ? 'is-admin' : 'is-team';
-          const IconComp = isMine ? Icons.User : isVendor ? Icons.Vendor : isAdmin ? Icons.ShieldAdmin : Icons.Team;
-
-          return (
-            <span key={name} className={`selected-assignee-tag ${chipClass}`}>
-              <IconComp />
-              <span>{isMine ? 'Jorge (Yo)' : name}</span>
-              {currentList.length > 1 && (
-                <button
-                  type="button"
-                  className="remove-assignee-btn"
-                  onClick={() => removeAssignee(name)}
-                  title={`Quitar a ${name}`}
-                >
-                  ×
-                </button>
-              )}
-            </span>
-          );
-        })}
-      </div>
-
-      <div className="candidate-members-grid">
-        <span className="candidate-label">Selección rápida de participantes (máximo 4 visibles, desplaza para ver más):</span>
-        <div className="candidate-pills-row">
-          {candidates.map((c) => {
-            const isSelected = currentList.includes(c.name);
-            const IconComp = c.type === 'me' ? Icons.User : c.type === 'vendor' ? Icons.Vendor : c.type === 'admin' ? Icons.ShieldAdmin : Icons.Team;
-            return (
-              <button
-                key={c.name}
-                type="button"
-                className={`candidate-toggle-btn ${isSelected ? 'is-selected' : ''} is-${c.type}`}
-                onClick={() => toggleAssignee(c.name)}
-                title={isSelected ? `Quitar a ${c.name}` : `Asignar a ${c.name}`}
-              >
-                <IconComp />
-                <span className="candidate-btn-label">{c.label}</span>
-                <span className="candidate-check-mark">{isSelected ? '✓' : '+'}</span>
-              </button>
-            );
-          })}
+    <div className="assignees-selector-block" style={{ padding: '10px 12px' }}>
+      <AssigneeDropdownPicker
+        id="task-edit-assignees"
+        label="Personas Asignadas / Ejecutores"
+        required={true}
+        allowMultiple={true}
+        selectedAssignees={selectedAssignees}
+        onChangeAssignees={onChangeAssignees}
+        teamDirectory={teamDirectory}
+        currentUser={currentUser}
+        placeholder="-- Seleccionar de la lista de usuarios --"
+        hint="Selecciona de la lista desplegable los usuarios registrados en el sistema."
+      />
+      {onOpenNewDirectoryModal && (
+        <div className="custom-assignee-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '8px', paddingTop: '6px', borderTop: '1px dashed var(--line-200)' }}>
+          <button
+            type="button"
+            className="ui-btn ui-btn--secondary ui-btn--small"
+            onClick={onOpenNewDirectoryModal}
+            title="Abrir formulario para registrar nuevo participante en el Directorio Global"
+          >
+            <Icons.Plus /> <span>Registrar nuevo en Directorio</span>
+          </button>
+          <span className="muted" style={{ fontSize: '0.78rem' }}>
+            Si la persona aún no está registrada en el sistema
+          </span>
         </div>
-      </div>
-
-      <div className="custom-assignee-row" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-        <button
-          type="button"
-          className="ui-btn ui-btn--secondary ui-btn--small"
-          onClick={() => onOpenNewDirectoryModal && onOpenNewDirectoryModal()}
-          title="Abrir formulario para registrar nuevo participante en el Directorio Global"
-        >
-          <Icons.Plus /> <span>Añadir</span>
-        </button>
-        <span className="muted" style={{ fontSize: '0.8rem' }}>
-          Registrar nuevo colaborador, administrador o proveedor en el Directorio Global
-        </span>
-      </div>
+      )}
     </div>
   );
 }
@@ -2754,6 +2673,7 @@ function App() {
               projects={filteredProjects}
               allProjects={enrichedProjects}
               currentUser={session}
+              teamDirectory={teamDirectory}
               todayStr={todayStr}
               space={space}
               onSpaceChange={handleSpaceChange}
@@ -2892,6 +2812,7 @@ function App() {
         onClose={() => setIsNewProjectModalOpen(false)}
         onSubmit={handleCreateProject}
         currentUser={session}
+        teamDirectory={teamDirectory}
       />
 
       {/* 520px DRAWER: NUEVA TAREA (§7.7) */}
@@ -2991,6 +2912,7 @@ function App() {
                   }));
                 }}
                 onOpenNewDirectoryModal={() => setIsNewDirectoryModalOpen(true)}
+                currentUser={session}
               />
 
               <div className="form-grid-2">
@@ -3730,6 +3652,7 @@ function App() {
         initialData={editingProject}
         isEdit={true}
         currentUser={session}
+        teamDirectory={teamDirectory}
       />
 
       {/* MODAL: GESTIÓN DE EQUIPO, ADMINISTRADORES, COLABORADORES Y TERCEROS */}

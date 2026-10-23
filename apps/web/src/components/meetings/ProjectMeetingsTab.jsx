@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Icons } from '../layout/NavIcons';
+import { AssigneeDropdownPicker, getSystemCandidates } from '../forms/AssigneeDropdownPicker';
 
 export function ProjectMeetingsTab({
   project,
@@ -7,6 +8,7 @@ export function ProjectMeetingsTab({
   workItems = [],
   todayStr = '',
   currentUser,
+  teamDirectory = [],
   onCreateMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
@@ -29,6 +31,11 @@ export function ProjectMeetingsTab({
   const [formActionItems, setFormActionItems] = useState([
     { text: '', assignee: currentUser?.name || 'Jorge Calderón', dueDate: todayStr, autoCreateTask: true }
   ]);
+
+  const systemCandidates = useMemo(
+    () => getSystemCandidates(teamDirectory, currentUser),
+    [teamDirectory, currentUser]
+  );
 
   // Filtrar reuniones asociadas a este proyecto
   const projectMeetings = useMemo(() => {
@@ -466,13 +473,17 @@ export function ProjectMeetingsTab({
 
               {/* Asistentes */}
               <div className="meeting-form-field">
-                <label>Asistentes / Participantes (separados por coma)</label>
-                <input
-                  type="text"
-                  className="meeting-form-input"
-                  placeholder="ej. Jorge Calderón, Jean Paul, Esteban Montoya, Auditor TrueSec"
-                  value={formAttendees}
-                  onChange={(e) => setFormAttendees(e.target.value)}
+                <AssigneeDropdownPicker
+                  id="meeting-attendees"
+                  label="Asistentes / Participantes"
+                  required={false}
+                  allowMultiple={true}
+                  selectedAssignees={formAttendees}
+                  onChangeAssignees={(newAttendees) => setFormAttendees(newAttendees.join(', '))}
+                  teamDirectory={teamDirectory}
+                  currentUser={currentUser}
+                  placeholder="-- Seleccionar Asistente de la lista --"
+                  hint="Selecciona los participantes desde la lista de usuarios del sistema."
                 />
               </div>
 
@@ -516,14 +527,19 @@ export function ProjectMeetingsTab({
                         value={act.text}
                         onChange={(e) => handleActionChange(idx, 'text', e.target.value)}
                       />
-                      <input
-                        type="text"
+                      <select
                         className="meeting-form-input"
-                        style={{ fontSize: '12px', padding: '7px 9px' }}
-                        placeholder="Responsable"
+                        style={{ fontSize: '12px', padding: '7px 9px', cursor: 'pointer' }}
                         value={act.assignee}
                         onChange={(e) => handleActionChange(idx, 'assignee', e.target.value)}
-                      />
+                      >
+                        <option value="" disabled>-- Responsable --</option>
+                        {systemCandidates.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.label}
+                          </option>
+                        ))}
+                      </select>
                       <input
                         type="date"
                         className="meeting-form-input"

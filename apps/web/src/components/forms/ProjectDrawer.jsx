@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../ui';
+import { AssigneeDropdownPicker } from './AssigneeDropdownPicker';
 
 export function ProjectDrawer({
   isOpen,
@@ -7,7 +8,8 @@ export function ProjectDrawer({
   onSubmit,
   initialData = null,
   isEdit = false,
-  currentUser = null
+  currentUser = null,
+  teamDirectory = []
 }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -256,30 +258,34 @@ export function ProjectDrawer({
 
           {/* Administradores */}
           <div className="ui-drawer-field">
-            <label className="ui-drawer-label" htmlFor="proj-admins">Administradores</label>
-            <input
+            <AssigneeDropdownPicker
               id="proj-admins"
-              type="text"
-              className="ui-drawer-input"
-              value={formData.admins}
-              onChange={(e) => setFormData({ ...formData, admins: e.target.value })}
-              placeholder="Ej. Jorge, Carlos Gómez"
+              label="Administradores del Proyecto"
+              required={false}
+              allowMultiple={true}
+              selectedAssignees={formData.admins}
+              onChangeAssignees={(newAdmins) => setFormData({ ...formData, admins: newAdmins.join(', ') })}
+              teamDirectory={teamDirectory}
+              currentUser={currentUser}
+              placeholder="-- Seleccionar Administrador --"
+              hint="Usuarios del sistema con permisos de administración sobre este proyecto."
             />
-            <span className="ui-drawer-hint">Separados por coma</span>
           </div>
 
           {/* Equipo / Terceros */}
           <div className="ui-drawer-field">
-            <label className="ui-drawer-label" htmlFor="proj-members">Equipo / Colaboradores / Terceros</label>
-            <input
+            <AssigneeDropdownPicker
               id="proj-members"
-              type="text"
-              className="ui-drawer-input"
-              value={formData.members}
-              onChange={(e) => setFormData({ ...formData, members: e.target.value })}
-              placeholder="Ej. Lucía, Proveedor AWS"
+              label="Equipo / Colaboradores / Terceros"
+              required={false}
+              allowMultiple={true}
+              selectedAssignees={formData.members}
+              onChangeAssignees={(newMembers) => setFormData({ ...formData, members: newMembers.join(', ') })}
+              teamDirectory={teamDirectory}
+              currentUser={currentUser}
+              placeholder="-- Seleccionar Colaborador o Proveedor --"
+              hint="Colaboradores del sistema asignados al equipo de trabajo de este proyecto."
             />
-            <span className="ui-drawer-hint">Separados por coma</span>
           </div>
         </form>
 

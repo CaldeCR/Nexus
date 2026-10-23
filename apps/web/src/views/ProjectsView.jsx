@@ -12,6 +12,7 @@ export function ProjectsView({
   projects = [],
   allProjects = [],
   currentUser = null,
+  teamDirectory = [],
   todayStr = '',
   space = 'all',
   onSpaceChange,
@@ -745,6 +746,7 @@ export function ProjectsView({
             workItems={workItems}
             todayStr={todayStr}
             currentUser={currentUser}
+            teamDirectory={teamDirectory}
             onCreateMeeting={onCreateMeeting}
             onUpdateMeeting={onUpdateMeeting}
             onDeleteMeeting={onDeleteMeeting}

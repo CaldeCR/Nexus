@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Icons } from '../ui';
+import { AssigneeDropdownPicker } from './AssigneeDropdownPicker';
 
 export function TaskDrawer({
   isOpen,
@@ -69,7 +70,10 @@ export function TaskDrawer({
   // 4 campos obligatorios (§7.7): Título, Proyecto, Responsable, Fecha límite
   const validTitle = formData.title.trim().length >= 2;
   const validProject = Boolean(formData.projectId);
-  const validAssignee = Boolean(formData.assignee.trim());
+  const validAssignee = Boolean(
+    (Array.isArray(formData.assignees) && formData.assignees.length > 0) ||
+    (typeof formData.assignee === 'string' && formData.assignee.trim())
+  );
   const validDueDate = Boolean(formData.dueDate);
 
   const completedCount = [validTitle, validProject, validAssignee, validDueDate].filter(Boolean).length;
@@ -79,10 +83,15 @@ export function TaskDrawer({
     e.preventDefault();
     if (!isValid) return;
 
+    const assigneesList = Array.isArray(formData.assignees) && formData.assignees.length > 0
+      ? formData.assignees
+      : (formData.assignee ? formData.assignee.split(',').map((s) => s.trim()).filter(Boolean) : [currentUser?.name || 'Jorge']);
+
     const payload = {
       ...formData,
       title: formData.title.trim(),
-      assignees: formData.assignee.split(',').map((s) => s.trim()).filter(Boolean)
+      assignees: assigneesList,
+      assignee: assigneesList.join(', ')
     };
 
     onSubmit(payload);
@@ -153,19 +162,22 @@ export function TaskDrawer({
 
           {/* 3. Responsable */}
           <div className="ui-drawer-field">
-            <label className="ui-drawer-label" htmlFor="task-assignee">
-              3. Responsable / Asignado <span className="ui-drawer-req">*</span>
-            </label>
-            <input
+            <AssigneeDropdownPicker
               id="task-assignee"
-              type="text"
-              className="ui-drawer-input"
-              value={formData.assignee}
-              onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
-              placeholder="Ej. Jorge, Carlos Gómez"
-              required
+              label="3. Responsable / Asignado"
+              required={true}
+              selectedAssignees={formData.assignees || (formData.assignee ? [formData.assignee] : [currentUser?.name || 'Jorge'])}
+              onChangeAssignees={(newAssignees) => {
+                setFormData({
+                  ...formData,
+                  assignees: newAssignees,
+                  assignee: newAssignees.join(', ')
+                });
+              }}
+              teamDirectory={teamDirectory}
+              currentUser={currentUser}
+              hint="Selecciona de la lista desplegable los usuarios del sistema. Puedes asignar uno o varios responsables."
             />
-            <span className="ui-drawer-hint">Puedes separar múltiples nombres con comas</span>
           </div>
 
           {/* 4. Fecha límite */}
