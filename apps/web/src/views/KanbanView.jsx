@@ -10,6 +10,7 @@ export function KanbanView({
   currentUser = null,
   todayStr = '',
   onUpdateWorkItem,
+  onEditTask,
   onOpenNewTask,
   onOpenStatusModal,
   onDeleteTask
@@ -368,6 +369,33 @@ export function KanbanView({
                       ))}
                     </div>
 
+                    {/* Botón Editar Móvil */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditTask && onEditTask(c);
+                      }}
+                      aria-label="Editar tarea"
+                      title="Editar tarea"
+                      style={{
+                        height: '32px',
+                        padding: '0 8px',
+                        border: '1px solid #DDE2E4',
+                        borderRadius: '6px',
+                        background: '#FFFFFF',
+                        color: '#3A4650',
+                        font: 'inherit',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <NavIcons.Edit size={13} />
+                    </button>
+
                     {/* Botón Mover */}
                     <button
                       type="button"
@@ -622,6 +650,7 @@ export function KanbanView({
                   return (
                     <article
                       key={c.id}
+                      onClick={() => onEditTask && onEditTask(c)}
                       style={{
                         background: '#FFFFFF',
                         border: '1px solid #E1E5E6',
@@ -630,13 +659,37 @@ export function KanbanView({
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '10px',
-                        boxShadow: 'none'
+                        boxShadow: 'none',
+                        cursor: onEditTask ? 'pointer' : 'default',
+                        transition: 'box-shadow 0.15s ease, border-color 0.15s ease'
                       }}
                     >
-                      {/* Proyecto & Tag */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#5F6B76' }}>
-                        <span style={{ width: '8px', height: '8px', borderRadius: '2px', flex: 'none', background: c.projTone }} />
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.projName}</span>
+                      {/* Proyecto & Tag + Botón Editar */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', fontSize: '12px', color: '#5F6B76' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '2px', flex: 'none', background: c.projTone }} />
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.projName}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTask && onEditTask(c);
+                          }}
+                          title="Editar tarea"
+                          style={{
+                            background: 'transparent',
+                            border: 0,
+                            padding: '2px 4px',
+                            color: '#5F6B76',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <NavIcons.Edit size={13} />
+                        </button>
                       </div>
 
                       {/* Título */}

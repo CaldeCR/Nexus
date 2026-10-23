@@ -2029,11 +2029,15 @@ function App() {
     }
   };
 
-  const handleUpdateTaskData = async (taskId, patchData) => {
+  const handleUpdateTaskData = async (taskIdOrTask, patchData) => {
     try {
-      const existing = workItems.find((w) => w.id === taskId);
+      const isObj = typeof taskIdOrTask === 'object' && taskIdOrTask !== null;
+      const realId = isObj ? taskIdOrTask.id : taskIdOrTask;
+      const realPatch = isObj && !patchData ? taskIdOrTask : patchData;
+
+      const existing = workItems.find((w) => w.id === realId);
       if (!existing) return;
-      const res = await fetch(`${API_BASE}/work-items/${taskId}`, {
+      const res = await fetch(`${API_BASE}/work-items/${realId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -2041,7 +2045,7 @@ function App() {
         },
         body: JSON.stringify({
           ...existing,
-          ...patchData
+          ...realPatch
         })
       });
       const data = await res.json();
@@ -2722,6 +2726,7 @@ function App() {
               onOpenDailyCheckin={() => openDailyCheckinWizard()}
               onSubmitProgress={submitTaskProgress}
               onUpdateWorkItem={handleUpdateTaskData}
+              onEditTask={openEditTaskModal}
             />
           )}
 
@@ -2736,6 +2741,7 @@ function App() {
               todayStr={todayStr}
               onSubmitProgress={submitTaskProgress}
               onUpdateWorkItem={handleUpdateTaskData}
+              onEditTask={openEditTaskModal}
               onOpenNewTask={openNewTaskModal}
             />
           )}
@@ -2758,6 +2764,7 @@ function App() {
               workItems={workItems}
               onSubmitProgress={submitTaskProgress}
               onUpdateWorkItem={handleUpdateTaskData}
+              onEditTask={openEditTaskModal}
               onOpenNewTask={(initialData) => {
                 openNewTaskModal(typeof initialData === 'string' ? { projectId: initialData } : (initialData || {}));
               }}
@@ -2833,6 +2840,7 @@ function App() {
                 setActiveView('kanban');
               }}
               onNavigateToTasks={() => setActiveView('tasks')}
+              onEditTask={openEditTaskModal}
             />
           )}
 
@@ -2848,6 +2856,7 @@ function App() {
               currentUser={session}
               todayStr={todayStr}
               onUpdateWorkItem={handleUpdateTaskData}
+              onEditTask={openEditTaskModal}
               onOpenNewTask={openNewTaskModal}
               onOpenStatusModal={(proj) => openProjectStatusModal(proj)}
               onDeleteTask={(task) => handleDeleteTask(task.id)}

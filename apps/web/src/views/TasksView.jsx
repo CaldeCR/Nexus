@@ -10,7 +10,8 @@ export function TasksView({
   todayStr = '',
   onSubmitProgress,
   onUpdateWorkItem,
-  onOpenNewTask
+  onOpenNewTask,
+  onEditTask
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -265,7 +266,11 @@ export function TasksView({
                           </span>
                         </button>
 
-                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px', paddingTop: '10px' }}>
+                        <div
+                          style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px', paddingTop: '10px', cursor: onEditTask ? 'pointer' : 'default' }}
+                          onClick={() => onEditTask && onEditTask(t)}
+                          title="Editar tarea"
+                        >
                           <span
                             style={{
                               fontWeight: 500,
@@ -286,6 +291,20 @@ export function TasksView({
                             </span>
                           </span>
                         </div>
+
+                        {/* Botón Editar Móvil */}
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn--ghost ui-btn--small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditTask && onEditTask(t);
+                          }}
+                          title="Editar tarea"
+                          style={{ padding: '4px 6px', color: '#5F6B76', marginTop: '6px' }}
+                        >
+                          <NavIcons.Edit size={14} />
+                        </button>
                       </div>
 
                       {/* Formulario de cierre si está abierto */}
@@ -496,7 +515,10 @@ export function TasksView({
                         <button
                           type="button"
                           className={`tasks-circle-check ${isDone ? 'is-checked' : ''}`}
-                          onClick={() => handleStartClosing(task)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartClosing(task);
+                          }}
                           title={isDone ? 'Tarea cerrada (clic para reabrir)' : 'Completar y registrar cierre de esta tarea'}
                           aria-label={isDone ? 'Reabrir tarea' : 'Cerrar tarea'}
                         >
@@ -509,7 +531,12 @@ export function TasksView({
                         </span>
 
                         {/* Título & Detalle */}
-                        <div className="tasks-title-cell">
+                        <div
+                          className="tasks-title-cell"
+                          onClick={() => onEditTask && onEditTask(task)}
+                          style={{ cursor: onEditTask ? 'pointer' : 'default' }}
+                          title="Editar tarea"
+                        >
                           <span className={`tasks-title-text ${isDone ? 'is-struck' : ''}`}>
                             {task.title}
                           </span>
@@ -560,6 +587,22 @@ export function TasksView({
                           ) : (
                             <span className="tasks-date-none">Sin fecha</span>
                           )}
+                        </div>
+
+                        {/* Botón Editar */}
+                        <div className="tasks-action-cell" style={{ display: 'flex', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            className="ui-btn ui-btn--ghost ui-btn--small"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditTask && onEditTask(task);
+                            }}
+                            title="Editar tarea"
+                            style={{ padding: '4px 6px', color: 'var(--ink-500)' }}
+                          >
+                            <NavIcons.Edit size={14} />
+                          </button>
                         </div>
                       </div>
 

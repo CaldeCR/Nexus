@@ -6,7 +6,8 @@ export function AgendaView({
   projects = [],
   todayStr = '',
   onSelectProject,
-  onNavigateToTasks
+  onNavigateToTasks,
+  onEditTask
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -134,6 +135,7 @@ export function AgendaView({
             todayItems.map((item) => (
               <div
                 key={item.id}
+                onClick={() => onEditTask && onEditTask(item)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -143,8 +145,10 @@ export function AgendaView({
                   borderRadius: '8px',
                   padding: '12px',
                   minHeight: '48px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  cursor: onEditTask ? 'pointer' : 'default'
                 }}
+                title="Editar tarea"
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: projectToneMap[item.projectId] || '#2A6F62', flex: 'none' }} />
                 <span style={{ flex: 1, lineHeight: '20px', fontSize: '14px' }}>{item.title}</span>
@@ -165,6 +169,7 @@ export function AgendaView({
             tomorrowItems.map((item) => (
               <div
                 key={item.id}
+                onClick={() => onEditTask && onEditTask(item)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -174,8 +179,10 @@ export function AgendaView({
                   borderRadius: '8px',
                   padding: '12px',
                   minHeight: '48px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  cursor: onEditTask ? 'pointer' : 'default'
                 }}
+                title="Editar tarea"
               >
                 <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: projectToneMap[item.projectId] || '#2A6F62', flex: 'none' }} />
                 <span style={{ flex: 1, lineHeight: '20px', fontSize: '14px' }}>{item.title}</span>
@@ -411,6 +418,7 @@ export function AgendaView({
                   {dayTasks.map((t) => (
                     <div
                       key={t.id}
+                      onClick={() => onEditTask && onEditTask(t)}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -420,9 +428,10 @@ export function AgendaView({
                         padding: '2px 4px',
                         fontSize: '11px',
                         color: t.status === 'done' ? '#5F6B76' : '#1D2A33',
-                        textDecoration: t.status === 'done' ? 'line-through' : 'none'
+                        textDecoration: t.status === 'done' ? 'line-through' : 'none',
+                        cursor: onEditTask ? 'pointer' : 'default'
                       }}
-                      title={t.title}
+                      title={`Editar tarea: ${t.title}`}
                     >
                       <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: projectToneMap[t.projectId] || '#2A6F62', flex: 'none' }} />
                       <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>

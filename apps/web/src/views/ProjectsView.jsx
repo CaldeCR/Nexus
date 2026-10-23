@@ -20,6 +20,7 @@ export function ProjectsView({
   workItems = [],
   onSubmitProgress,
   onUpdateWorkItem,
+  onEditTask,
   onOpenNewTask,
   onOpenNewProject,
   onEditProject,
@@ -109,7 +110,7 @@ export function ProjectsView({
   const handleToggleTask = (task) => {
     if (task.status === 'done') {
       if (onUpdateWorkItem) {
-        onUpdateWorkItem({ ...task, status: 'todo', progressPct: 0 });
+        onUpdateWorkItem(task.id, { status: 'todo', progressPct: 0 });
       }
     } else {
       if (onSubmitProgress) {
@@ -119,7 +120,7 @@ export function ProjectsView({
           report: 'Tarea finalizada directamente desde el Hub del Proyecto.'
         });
       } else if (onUpdateWorkItem) {
-        onUpdateWorkItem({ ...task, status: 'done', progressPct: 100 });
+        onUpdateWorkItem(task.id, { status: 'done', progressPct: 100 });
       }
     }
   };
@@ -648,7 +649,10 @@ export function ProjectsView({
                       <button
                         type="button"
                         className={`project-task-check-btn ${isDone ? 'is-checked' : ''}`}
-                        onClick={() => handleToggleTask(task)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleTask(task);
+                        }}
                         title={isDone ? 'Marcar como pendiente' : 'Completar tarea'}
                         aria-label={isDone ? 'Marcar como pendiente' : 'Completar tarea'}
                       >
@@ -657,13 +661,23 @@ export function ProjectsView({
 
                       {/* Código de Tarea */}
                       {task.code && (
-                        <span className="project-task-code">
+                        <span
+                          className="project-task-code"
+                          onClick={() => onEditTask ? onEditTask(task) : (onUpdateWorkItem && onUpdateWorkItem(task))}
+                          style={{ cursor: onEditTask ? 'pointer' : 'default' }}
+                          title="Editar tarea"
+                        >
                           {task.code}
                         </span>
                       )}
 
                       {/* Título y descripción */}
-                      <div className="project-task-title-wrap">
+                      <div
+                        className="project-task-title-wrap"
+                        onClick={() => onEditTask ? onEditTask(task) : (onUpdateWorkItem && onUpdateWorkItem(task))}
+                        style={{ cursor: onEditTask ? 'pointer' : 'default' }}
+                        title="Editar tarea"
+                      >
                         <span className="project-task-title">{task.title}</span>
                         {task.description && (
                           <span style={{ fontSize: '11px', color: 'var(--ink-500)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -704,7 +718,14 @@ export function ProjectsView({
                         <button
                           type="button"
                           className="ui-btn ui-btn--ghost ui-btn--small"
-                          onClick={() => onUpdateWorkItem && onUpdateWorkItem(task)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onEditTask) {
+                              onEditTask(task);
+                            } else if (onUpdateWorkItem) {
+                              onUpdateWorkItem(task);
+                            }
+                          }}
                           title="Editar tarea"
                           style={{ padding: '4px 6px' }}
                         >
