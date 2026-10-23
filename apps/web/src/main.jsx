@@ -617,6 +617,19 @@ function App() {
   // TEMA: CLARO POR DEFECTO (OPCIÓN A OSCURO)
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('nexus-theme') === 'dark');
 
+  useEffect(() => {
+    const theme = darkMode ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    document.body.setAttribute('data-theme', theme);
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
+
   // Navigation & Espacio (Todos / Trabajo / Personal)
   const [activeView, setActiveView] = useState('home');
   const [space, setSpace] = useState(() => localStorage.getItem('nexus-space') || 'all');

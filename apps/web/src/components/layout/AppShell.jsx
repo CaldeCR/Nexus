@@ -94,7 +94,10 @@ export function AppShell({
   }
 
   return (
-    <div className={`app-shell ${railExpanded ? 'is-rail-expanded' : ''}`}>
+    <div
+      className={`app-shell ${railExpanded ? 'is-rail-expanded' : ''} ${darkMode ? 'dark' : ''}`}
+      data-theme={darkMode ? 'dark' : 'light'}
+    >
       {/* 1. RIEL GLOBAL (64px o 240px expandido) */}
       <Rail
         activeView={view}

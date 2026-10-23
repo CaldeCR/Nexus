@@ -5,19 +5,32 @@
 .app-shell {
   display: flex;
   flex-direction: row;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   width: 100%;
   background: var(--surface-bg);
   position: relative;
+  overflow: hidden;
+}
+
+.app-shell.app-shell--auth {
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow-y: auto;
 }
 
 .mobile-shell-wrapper {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   width: 100%;
   background: var(--surface-bg);
   position: relative;
+  overflow: hidden;
 }
 
 /* ------------------------------------------------------------ */
@@ -25,9 +38,9 @@
 /* ------------------------------------------------------------ */
 .rail {
   width: var(--rail-w, 64px);
-  height: 100vh;
-  position: sticky;
-  top: 0;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
   background: var(--nav-bg);
   color: var(--nav-ink);
   display: flex;
@@ -38,8 +51,14 @@
   z-index: 50;
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   transition: width 180ms cubic-bezier(0.4, 0, 0.2, 1), padding 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
   overflow-x: hidden;
   box-sizing: border-box;
+  scrollbar-width: none;
+}
+
+.rail::-webkit-scrollbar {
+  display: none;
 }
 
 .rail.is-expanded {
@@ -407,7 +426,9 @@
 /* ------------------------------------------------------------ */
 .side-panel {
   width: var(--panel-w);
-  height: 100vh;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
   position: sticky;
   top: 0;
   background: var(--surface-card);
@@ -754,10 +775,13 @@
 .app-content {
   flex: 1;
   min-width: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Overlay para tablet / drawer móvil */

@@ -49,7 +49,10 @@ export function MobileShell({
   ];
 
   return (
-    <div className="mobile-shell-wrapper">
+    <div
+      className={`mobile-shell-wrapper ${darkMode ? 'dark' : ''}`}
+      data-theme={darkMode ? 'dark' : 'light'}
+    >
       {/* 1. BARRA SUPERIOR MÓVIL (56px) */}
       <header className="mobile-topbar" aria-label="Cabecera móvil">
         <div className="mobile-topbar-left">

@@ -101,7 +101,11 @@
 }
 
 /* Modo oscuro opcional — derivado del petróleo del logo, no negro azulado */
-[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'],
+:root.dark,
+body.dark,
+.dark {
   color-scheme: dark;
   --surface-bg: #0B2533;
   --surface-card: #0F3446;
@@ -126,21 +130,17 @@
   --focus-ring: 0 0 0 2px #0F3446, 0 0 0 4px var(--nexus-teal);
 }
 
-html {
-  font-family: var(--font-sans);
-  color: var(--ink-900);
-  background: var(--surface-bg);
-  overflow-x: hidden;
-}
-
-body {
+html,
+body,
+#root {
+  height: 100%;
   margin: 0;
-  min-height: 100vh;
-  background: var(--surface-bg);
-  color: var(--ink-900);
+  padding: 0;
   font-family: var(--font-sans);
+  color: var(--ink-900);
+  background: var(--surface-bg);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 * {
