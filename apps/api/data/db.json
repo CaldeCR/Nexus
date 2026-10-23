@@ -142,7 +142,7 @@
       "name": "RESPALDO MÁQUINAS VIRTUALES SOFTLAND",
       "description": "Hacer una copia completa de las máquinas virtuales donde está la base de datos de softland y opera el sistema actualmente. ",
       "template": "pmi",
-      "status": "execution",
+      "status": "completed",
       "role": "lead",
       "admins": [
         "Jorge"
