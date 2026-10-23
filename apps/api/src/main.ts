@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension } from './data/store';
 
 const app = express();
@@ -8,6 +10,12 @@ app.use(cors());
 app.use(express.json());
 
 const sessionStore = new Map<string, { userId: string; createdAt: number }>();
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas de validez
+
+// Rate Limiter para Login (5 intentos cada 15 minutos)
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -165,6 +173,11 @@ function getCurrentUser(req: express.Request) {
   const session = sessionStore.get(token);
   if (!session) return null;
 
+  if (Date.now() - session.createdAt > SESSION_TTL_MS) {
+    sessionStore.delete(token);
+    return null;
+  }
+
   const db = readDb();
   return db.users.find((user) => user.id === session.userId) ?? null;
 }
@@ -186,7 +199,17 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, status: 'healthy' });
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
+  const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now();
+  const attempt = loginAttempts.get(clientIp);
+
+  if (attempt && attempt.resetAt > now && attempt.count >= MAX_LOGIN_ATTEMPTS) {
+    const remainingSec = Math.ceil((attempt.resetAt - now) / 1000);
+    return res.status(429).json({
+      message: `Demasiados intentos fallidos. Bloqueado temporalmente. Reintente en ${remainingSec} segundos.`
+    });
+  }
   const parsed = loginSchema.safeParse(req.body);
 
   if (!parsed.success) {
@@ -194,13 +217,39 @@ app.post('/api/auth/login', (req, res) => {
   }
 
   const db = readDb();
-  const user = db.users.find((item) => item.email === parsed.data.email);
+  const emailInput = parsed.data.email.trim().toLowerCase();
+  const user = db.users.find((item) => item.email.toLowerCase() === emailInput);
 
-  if (!user || user.password !== parsed.data.password) {
+  if (!user) {
     return res.status(401).json({ message: 'Email o contraseña incorrectos' });
   }
 
-  const token = `nexus-${Date.now()}-${user.id}`;
+  let passwordValid = false;
+  if (user.passwordHash) {
+    passwordValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+  } else if (user.password) {
+    passwordValid = (user.password === parsed.data.password);
+    if (passwordValid) {
+      user.passwordHash = await bcrypt.hash(parsed.data.password, 12);
+      delete user.password;
+      writeDb(db);
+    }
+  }
+
+  if (!passwordValid) {
+    const current = loginAttempts.get(clientIp);
+    if (!current || current.resetAt <= now) {
+      loginAttempts.set(clientIp, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+    } else {
+      current.count += 1;
+    }
+    return res.status(401).json({ message: 'Email o contraseña incorrectos' });
+  }
+
+  // Login exitoso: limpiar contador de intentos
+  loginAttempts.delete(clientIp);
+
+  const token = `nexus-${randomBytes(32).toString("hex")}`;
   sessionStore.set(token, { userId: user.id, createdAt: Date.now() });
 
   return res.json({
@@ -217,11 +266,11 @@ app.get('/api/users', (req, res) => {
   if (!admin) return;
 
   const db = readDb();
-  const safeUsers = db.users.map(({ password, ...u }) => u);
+  const safeUsers = db.users.map(({ password, passwordHash, ...u }) => u);
   res.json({ items: safeUsers });
 });
 
-app.post('/api/users', (req, res) => {
+app.post('/api/users', async (req, res) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;
 
@@ -239,11 +288,13 @@ app.post('/api/users', (req, res) => {
     return res.status(409).json({ message: 'Ya existe un usuario con este correo electrónico' });
   }
 
+  const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+
   const newUser: User = {
     id: `u-${Date.now()}`,
     name: parsed.data.name.trim(),
     email: normalizedEmail,
-    password: parsed.data.password,
+    passwordHash,
     role: parsed.data.role || 'member'
   };
 

@@ -1,6 +1,20 @@
 nexus.mexicocentral.cloudapp.azure.com {
     encode gzip zstd
 
+    # Cabeceras de seguridad globales (OWASP / Cloudflare)
+    header {
+        # Prevenir que el sitio sea incrustado en iframes (Clickjacking)
+        X-Frame-Options "DENY"
+        # Prevenir MIME-type sniffing
+        X-Content-Type-Options "nosniff"
+        # Política de referencia segura
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Forzar HTTPS durante 1 año (HSTS)
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Quitar firma del servidor por discreción
+        -Server
+    }
+
     # Proxy para la API Express
     handle /api/* {
         reverse_proxy api:4001
