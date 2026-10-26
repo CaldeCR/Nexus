@@ -939,8 +939,8 @@ function App() {
         setError('Debes ingresar un correo electrónico para generar la cuenta de acceso.');
         return;
       }
-      if (!newDirectoryForm.password || newDirectoryForm.password.length < 6) {
-        setError('La contraseña de acceso debe tener al menos 6 caracteres.');
+      if (!newDirectoryForm.password || newDirectoryForm.password.length < 8) {
+        setError('La contraseña de acceso debe tener al menos 8 caracteres.');
         return;
       }
     }
@@ -1110,15 +1110,80 @@ function App() {
     }
   };
 
+  const generateSecurePassword = () => {
+    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lower = 'abcdefghijkmnopqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    let pass = 'Nx-';
+    for (let i = 0; i < 2; i++) pass += upper[Math.floor(Math.random() * upper.length)];
+    for (let i = 0; i < 3; i++) pass += lower[Math.floor(Math.random() * lower.length)];
+    pass += symbols[Math.floor(Math.random() * symbols.length)];
+    for (let i = 0; i < 3; i++) pass += numbers[Math.floor(Math.random() * numbers.length)];
+    return pass;
+  };
+
+  const handleOpenGenerateAccount = (member) => {
+    const pass = generateSecurePassword();
+    setAccountModalMember({ ...member, isReset: false });
+    setAccountPasswordForm({
+      email: member.email || member.userEmail || '',
+      password: pass,
+      role: member.role === 'admin' ? 'admin' : 'member',
+      showPassword: true,
+      copied: false
+    });
+  };
+
+  const handleOpenResetPassword = (member) => {
+    const pass = generateSecurePassword();
+    setAccountModalMember({ ...member, isReset: true });
+    setAccountPasswordForm({
+      email: member.email || member.userEmail || '',
+      password: pass,
+      role: member.userRole || (member.role === 'admin' ? 'admin' : 'member'),
+      showPassword: true,
+      copied: false
+    });
+  };
+
+  const handleRevokeAccess = async (member) => {
+    if (!member) return;
+    const confirmed = window.confirm(
+      `¿Deseas revocar el acceso al sistema para "${member.name}"?\n\nLa persona seguirá registrada en el directorio de contactos, pero su usuario y contraseña serán eliminados inmediatamente.`
+    );
+    if (!confirmed) return;
+
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/directory/${member.id}/revoke-access`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error al revocar acceso');
+
+      setSuccess(data.message || `Acceso al sistema revocado para "${member.name}".`);
+      fetchDirectory();
+    } catch (err) {
+      setError(err.message || 'No se pudo revocar el acceso.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGenerateAccountForMember = async (e) => {
     e.preventDefault();
     if (!accountModalMember) return;
     setError('');
     setSuccess('');
 
-    const pass = accountPasswordForm.password.trim();
-    if (!pass || pass.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres.');
+    const pass = (accountPasswordForm.password || '').trim();
+    if (!pass || pass.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
@@ -1128,9 +1193,14 @@ function App() {
       return;
     }
 
+    const isReset = Boolean(accountModalMember.hasUserAccount || accountModalMember.isReset);
+    const endpoint = isReset
+      ? `${API_BASE}/directory/${accountModalMember.id}/reset-password`
+      : `${API_BASE}/directory/${accountModalMember.id}/create-account`;
+
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/directory/${accountModalMember.id}/create-account`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1143,9 +1213,13 @@ function App() {
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Error al generar credenciales');
+      if (!res.ok) throw new Error(data.message || 'Error al procesar credenciales');
 
-      setSuccess(`Credenciales generadas exitosamente para "${accountModalMember.name}".`);
+      setSuccess(
+        isReset
+          ? `Contraseña de "${accountModalMember.name}" restablecida correctamente. Recuerda entregársela al usuario.`
+          : `Credenciales de acceso generadas exitosamente para "${accountModalMember.name}".`
+      );
       setAccountModalMember(null);
       fetchDirectory();
     } catch (err) {
@@ -1192,7 +1266,9 @@ function App() {
           admins: adminsArray,
           members: membersArray,
           startDate: dataToSave.startDate || todayStr,
-          targetDate: dataToSave.targetDate
+          targetDate: dataToSave.targetDate,
+          hasPhases: Boolean(dataToSave.hasPhases),
+          phases: dataToSave.phases
         })
       });
       const data = await res.json();
@@ -1208,7 +1284,9 @@ function App() {
         admins: 'Jorge',
         members: '',
         startDate: '',
-        targetDate: ''
+        targetDate: '',
+        hasPhases: false,
+        phases: []
       });
       await fetchProjects();
       setSelectedProjectId(data.id);
@@ -1306,7 +1384,9 @@ function App() {
           admins: adminsArray,
           members: membersArray,
           startDate: dataToSave.startDate,
-          targetDate: dataToSave.targetDate
+          targetDate: dataToSave.targetDate,
+          hasPhases: dataToSave.hasPhases !== undefined ? Boolean(dataToSave.hasPhases) : undefined,
+          phases: dataToSave.phases
         })
       });
 
@@ -1633,7 +1713,8 @@ function App() {
       assignees: ['Jorge'],
       assignee: 'Jorge',
       assigneeType: 'me',
-      dueDate: initialData.dueDate || todayStr
+      dueDate: initialData.dueDate || todayStr,
+      phaseIds: Array.isArray(initialData.phaseIds) ? initialData.phaseIds : []
     });
     setIsNewTaskModalOpen(true);
   };
@@ -1674,7 +1755,8 @@ function App() {
           projectId: targetProject,
           assignees: assigneesToSave,
           assignee: finalAssigneeStr,
-          assigneeType: finalAssigneeType
+          assigneeType: finalAssigneeType,
+          phaseIds: Array.isArray(sourceData.phaseIds) ? sourceData.phaseIds : []
         })
       });
       const data = await res.json();
@@ -1691,7 +1773,8 @@ function App() {
         assignees: ['Jorge'],
         assignee: 'Jorge',
         assigneeType: 'me',
-        dueDate: todayStr
+        dueDate: todayStr,
+        phaseIds: []
       });
       await fetchWorkItems();
     } catch (err) {
@@ -1720,7 +1803,8 @@ function App() {
       completionReport: task.completionReport || '',
       continuationTaskId: task.continuationTaskId || '',
       completedAt: task.completedAt || '',
-      progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : []
+      progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : [],
+      phaseIds: Array.isArray(task.phaseIds) ? task.phaseIds : []
     });
     setIsEditTaskModalOpen(true);
   };
@@ -2815,6 +2899,7 @@ function App() {
               onOpenNewTask={openNewTaskModal}
               onOpenStatusModal={(proj) => openProjectStatusModal(proj)}
               onDeleteTask={(task) => handleDeleteTask(task.id)}
+              onUpdateProject={handleSaveEditProject}
             />
           )}
 
@@ -2825,6 +2910,7 @@ function App() {
             <DirectoryView
               teamDirectory={teamDirectory}
               workItems={workItems}
+              isAdmin={session?.role === 'owner' || session?.role === 'admin'}
               onOpenNewDirectoryMember={() => setIsNewDirectoryModalOpen(true)}
               onEditDirectoryMember={(m) => {
                 setEditingDirectoryMember(m);
@@ -2837,6 +2923,9 @@ function App() {
                 });
               }}
               onDeleteDirectoryMember={(m) => requestDeleteDirectoryMember(m)}
+              onGenerateAccount={handleOpenGenerateAccount}
+              onResetPassword={handleOpenResetPassword}
+              onRevokeAccess={handleRevokeAccess}
             />
           )}
         </div>
@@ -4085,27 +4174,47 @@ function App() {
                         El usuario podrá ingresar a Nexus con el <strong>correo electrónico</strong> indicado arriba y esta contraseña:
                       </p>
                       <div className="form-field">
-                        <label style={{ fontSize: '0.8rem' }}>Contraseña de acceso *</label>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Contraseña de acceso *</label>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <input
                             type="text"
                             value={newDirectoryForm.password}
                             onChange={(e) => setNewDirectoryForm({ ...newDirectoryForm, password: e.target.value })}
-                            placeholder="Mínimo 6 caracteres"
+                            placeholder="Mínimo 8 caracteres"
                             required={newDirectoryForm.createAccount}
+                            style={{ flex: 1, fontFamily: 'var(--font-mono, monospace)', fontWeight: 600 }}
                           />
                           <button
                             type="button"
                             className="ui-btn ui-btn--secondary ui-btn--small"
                             onClick={() => {
-                              const randomPass = 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!';
+                              const randomPass = generateSecurePassword();
                               setNewDirectoryForm({ ...newDirectoryForm, password: randomPass });
                             }}
                             title="Generar contraseña sugerida"
                           >
-                            Generar
+                            ⚡ Generar
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-btn ui-btn--secondary ui-btn--small"
+                            onClick={async () => {
+                              if (!newDirectoryForm.password) return;
+                              try {
+                                await navigator.clipboard.writeText(newDirectoryForm.password);
+                                setSuccess('Contraseña copiada al portapapeles');
+                              } catch {
+                                // fallback
+                              }
+                            }}
+                            title="Copiar contraseña"
+                          >
+                            📋 Copiar
                           </button>
                         </div>
+                        <small className="muted" style={{ fontSize: '0.75rem', marginTop: '4px', color: 'var(--ink-500, #64748B)' }}>
+                          Se guardará cifrada con bcrypt (12 rondas). Entrega esta contraseña de forma segura al usuario.
+                        </small>
                       </div>
                     </div>
                   )}
@@ -4320,27 +4429,52 @@ function App() {
       {/* MODAL: GENERAR O CAMBIAR CREDENCIALES DE ACCESO */}
       {accountModalMember && (
         <div className="modal-overlay" style={{ zIndex: 1250 }} onClick={() => setAccountModalMember(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Icons.ShieldAdmin />
-                <span>{accountModalMember.hasUserAccount ? 'Restablecer Credenciales de Acceso' : 'Generar Credenciales de Acceso'}</span>
+                <span>
+                  {accountModalMember.hasUserAccount || accountModalMember.isReset
+                    ? 'Restablecer Contraseña (Manual)'
+                    : 'Generar Credenciales de Acceso'}
+                </span>
               </h3>
               <button className="close-btn modal-close-btn" onClick={() => setAccountModalMember(null)} title="Cerrar">
                 <Icons.Close />
               </button>
             </div>
 
-            <form onSubmit={handleGenerateAccountForMember} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div style={{ background: 'var(--surface-elevated)', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--line-200)' }}>
-                <div style={{ fontWeight: 700, color: 'var(--ink-900)', fontSize: '0.95rem' }}>{accountModalMember.name}</div>
-                <div style={{ fontSize: '0.82rem', color: 'var(--ink-500)', marginTop: '2px' }}>
-                  {accountModalMember.organization || 'Equipo Nexus'} · Tipo: {accountModalMember.role === 'admin' ? 'Administrador' : 'Colaborador'}
+            <form onSubmit={handleGenerateAccountForMember} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ background: 'var(--surface-elevated, #F8FAFC)', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line-200, #E2E8F0)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'var(--ink-900, #0F172A)', fontSize: '0.98rem' }}>{accountModalMember.name}</div>
+                    <div style={{ fontSize: '0.82rem', color: 'var(--ink-500, #64748B)', marginTop: '2px' }}>
+                      {accountModalMember.organization || 'Equipo Nexus'}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      background: accountModalMember.hasUserAccount ? 'rgba(42, 111, 98, 0.12)' : '#EDF0F0',
+                      color: accountModalMember.hasUserAccount ? '#2A6F62' : '#5F6B76'
+                    }}
+                  >
+                    {accountModalMember.hasUserAccount ? '🔑 Cuenta activa' : 'Sin credenciales'}
+                  </span>
                 </div>
               </div>
 
               <div className="form-field">
-                <label>Correo Electrónico (Usuario de acceso) *</label>
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink-900, #0F172A)' }}>
+                  Correo Electrónico (Usuario de acceso) *
+                </label>
                 <input
                   type="email"
                   value={accountPasswordForm.email !== undefined ? accountPasswordForm.email : (accountModalMember.email || '')}
@@ -4351,44 +4485,100 @@ function App() {
               </div>
 
               <div className="form-field">
-                <label>Rol de Acceso en Nexus *</label>
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink-900, #0F172A)' }}>
+                  Rol de Acceso en Nexus *
+                </label>
                 <select
                   value={accountPasswordForm.role}
                   onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, role: e.target.value })}
+                  style={{ width: '100%' }}
                 >
-                  <option value="admin">Administrador (Control total de proyectos y equipos)</option>
-                  <option value="member">Colaborador (Acceso y reporte de tareas)</option>
+                  <option value="admin">Administrador (Control total de usuarios, proyectos y tareas)</option>
+                  <option value="member">Colaborador (Acceso a proyectos asignados y reporte de tareas)</option>
                 </select>
               </div>
 
               <div className="form-field">
-                <label>Contraseña Asignada *</label>
+                <label style={{ fontWeight: 600, fontSize: '0.88rem', color: 'var(--ink-900, #0F172A)' }}>
+                  {accountModalMember.hasUserAccount || accountModalMember.isReset
+                    ? 'Nueva Contraseña *'
+                    : 'Contraseña Asignada *'}
+                </label>
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <input
-                    type="text"
+                    type={accountPasswordForm.showPassword ? 'text' : 'password'}
                     value={accountPasswordForm.password}
-                    onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, password: e.target.value })}
-                    placeholder="Mínimo 6 caracteres"
+                    onChange={(e) => setAccountPasswordForm({ ...accountPasswordForm, password: e.target.value, copied: false })}
+                    placeholder="Mínimo 8 caracteres"
                     required
+                    style={{ flex: 1, fontFamily: accountPasswordForm.showPassword ? 'var(--font-mono, monospace)' : 'inherit', fontWeight: 600 }}
                   />
                   <button
                     type="button"
                     className="ui-btn ui-btn--secondary ui-btn--small"
-                    onClick={() => {
-                      const randomPass = 'Nexus' + Math.floor(1000 + Math.random() * 9000) + '!';
-                      setAccountPasswordForm({ ...accountPasswordForm, password: randomPass });
-                    }}
-                    title="Generar contraseña sugerida"
+                    onClick={() => setAccountPasswordForm({ ...accountPasswordForm, showPassword: !accountPasswordForm.showPassword })}
+                    title={accountPasswordForm.showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                    style={{ minWidth: '40px', padding: '0 8px' }}
                   >
-                    Generar
+                    {accountPasswordForm.showPassword ? '🙈' : '👁️'}
+                  </button>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary ui-btn--small"
+                    onClick={() => {
+                      const newPass = generateSecurePassword();
+                      setAccountPasswordForm({ ...accountPasswordForm, password: newPass, copied: false });
+                    }}
+                    title="Generar nueva clave aleatoria segura"
+                  >
+                    <span>⚡ Generar</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary ui-btn--small"
+                    onClick={async () => {
+                      if (!accountPasswordForm.password) return;
+                      try {
+                        await navigator.clipboard.writeText(accountPasswordForm.password);
+                        setAccountPasswordForm((prev) => ({ ...prev, copied: true }));
+                        setTimeout(() => {
+                          setAccountPasswordForm((prev) => ({ ...prev, copied: false }));
+                        }, 2500);
+                      } catch {
+                        // clipboard fallback
+                      }
+                    }}
+                    title="Copiar contraseña al portapapeles"
+                    style={{ minWidth: '70px', color: accountPasswordForm.copied ? '#2A6F62' : 'inherit', fontWeight: 600 }}
+                  >
+                    {accountPasswordForm.copied ? '✓ ¡Copiada!' : '📋 Copiar'}
                   </button>
                 </div>
-                <small className="muted" style={{ fontSize: '0.75rem', marginTop: '4px' }}>
-                  Entrega esta contraseña al usuario para que pueda iniciar sesión.
+                <small className="muted" style={{ fontSize: '0.78rem', marginTop: '6px', display: 'block', color: 'var(--ink-500, #64748B)' }}>
+                  Mínimo 8 caracteres. Como principio de seguridad, la contraseña se almacena cifrada mediante bcrypt (12 rondas) en el servidor.
                 </small>
               </div>
 
-              <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <div
+                style={{
+                  background: 'rgba(15, 52, 70, 0.05)',
+                  border: '1px solid rgba(15, 52, 70, 0.15)',
+                  borderRadius: '6px',
+                  padding: '10px 12px',
+                  fontSize: '0.80rem',
+                  color: '#0F3446',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px'
+                }}
+              >
+                <span style={{ fontSize: '1rem', lineHeight: 1 }}>🛡️</span>
+                <span>
+                  <strong>Aviso de seguridad:</strong> Solo los administradores pueden generar o regenerar credenciales en el sistema. Asegúrate de entregar esta contraseña directamente al colaborador por un canal seguro.
+                </span>
+              </div>
+
+              <div className="modal-actions" style={{ justifyContent: 'flex-end', gap: '10px', marginTop: '6px' }}>
                 <button
                   type="button"
                   className="ui-btn ui-btn--secondary"
@@ -4396,8 +4586,13 @@ function App() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="ui-btn ui-btn--primary">
-                  <Icons.Check /> <span>Guardar Credenciales</span>
+                <button type="submit" className="ui-btn ui-btn--primary" disabled={loading}>
+                  <Icons.Check />{' '}
+                  <span>
+                    {accountModalMember.hasUserAccount || accountModalMember.isReset
+                      ? 'Restablecer Contraseña'
+                      : 'Guardar Credenciales'}
+                  </span>
                 </button>
               </div>
             </form>

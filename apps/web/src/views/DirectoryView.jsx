@@ -4,14 +4,18 @@ import { useBreakpoint } from '../hooks/useBreakpoint';
 export function DirectoryView({
   teamDirectory = [],
   workItems = [],
+  isAdmin = false,
   onOpenNewDirectoryMember,
   onEditDirectoryMember,
-  onDeleteDirectoryMember
+  onDeleteDirectoryMember,
+  onGenerateAccount,
+  onResetPassword,
+  onRevokeAccess
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
 
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'admin' | 'collaborator' | 'vendor'
+  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'has_account' | 'collaborator' | 'vendor' | 'admin'
   const [searchTerm, setSearchTerm] = useState('');
   const [menuMemberId, setMenuMemberId] = useState(null);
 
@@ -50,10 +54,26 @@ export function DirectoryView({
     return counts;
   }, [workItems]);
 
+  // Tab stats
+  const countsByTab = useMemo(() => {
+    const stats = {
+      all: teamDirectory.length,
+      has_account: teamDirectory.filter((m) => Boolean(m.hasUserAccount)).length,
+      collaborator: teamDirectory.filter((m) => (m.role || 'collaborator') === 'collaborator').length,
+      vendor: teamDirectory.filter((m) => m.role === 'vendor').length,
+      admin: teamDirectory.filter((m) => m.role === 'admin' || m.userRole === 'admin').length
+    };
+    return stats;
+  }, [teamDirectory]);
+
   // Filter directory members
   const filteredMembers = useMemo(() => {
     return teamDirectory.filter((m) => {
-      if (activeTab !== 'all') {
+      if (activeTab === 'has_account') {
+        if (!m.hasUserAccount) return false;
+      } else if (activeTab === 'admin') {
+        if (m.role !== 'admin' && m.userRole !== 'admin') return false;
+      } else if (activeTab !== 'all') {
         const role = m.role || 'collaborator';
         if (role !== activeTab) return false;
       }
@@ -75,11 +95,12 @@ export function DirectoryView({
     return (
       <div style={{ flex: 1, padding: '12px 16px 88px 16px', display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box' }}>
         {/* Selector de Tabs */}
-        <div style={{ display: 'flex', background: '#EDF0F0', borderRadius: '8px', padding: '3px', marginBottom: '6px' }}>
+        <div style={{ display: 'flex', background: '#EDF0F0', borderRadius: '8px', padding: '3px', marginBottom: '6px', overflowX: 'auto', gap: '2px' }}>
           {[
-            { id: 'all', label: 'Todos' },
-            { id: 'collaborator', label: 'Colaboradores' },
-            { id: 'vendor', label: 'Proveedores' }
+            { id: 'all', label: `Todos (${countsByTab.all})` },
+            { id: 'has_account', label: `Con Acceso (${countsByTab.has_account})` },
+            { id: 'collaborator', label: `Colab. (${countsByTab.collaborator})` },
+            { id: 'vendor', label: `Prov. (${countsByTab.vendor})` }
           ].map((t) => {
             const on = activeTab === t.id;
             return (
@@ -88,7 +109,8 @@ export function DirectoryView({
                 type="button"
                 onClick={() => setActiveTab(t.id)}
                 style={{
-                  flex: 1,
+                  flex: 'none',
+                  padding: '0 10px',
                   height: '34px',
                   border: 0,
                   borderRadius: '6px',
@@ -98,7 +120,8 @@ export function DirectoryView({
                   cursor: 'pointer',
                   background: on ? '#FFFFFF' : 'transparent',
                   color: on ? '#1D2A33' : '#5F6B76',
-                  boxShadow: on ? '0 1px 2px rgba(15,52,70,0.15)' : 'none'
+                  boxShadow: on ? '0 1px 2px rgba(15,52,70,0.15)' : 'none',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {t.label}
@@ -112,7 +135,8 @@ export function DirectoryView({
           const role = p.role || 'collaborator';
           const meta = rolesMeta[role] || rolesMeta.collaborator;
           const taskCount = openTasksCount[p.name] || 0;
-          const hasAccess = Boolean(p.hasAccess || p.email);
+          const hasAccount = Boolean(p.hasUserAccount);
+          const userRoleLabel = p.userRole === 'admin' ? 'Admin' : 'Colaborador';
 
           return (
             <div
@@ -124,7 +148,8 @@ export function DirectoryView({
                 background: '#FFFFFF',
                 border: '1px solid #DDE2E4',
                 borderRadius: '8px',
-                padding: '10px 8px 10px 12px'
+                padding: '10px 8px 10px 12px',
+                position: 'relative'
               }}
             >
               <span
@@ -152,36 +177,187 @@ export function DirectoryView({
                   {meta.label} {p.organization ? `· ${p.organization}` : ''}
                 </span>
                 <span style={{ fontSize: '12px', color: '#5F6B76' }}>
-                  {taskCount ? `${taskCount} tareas abiertas` : 'Sin tareas'} ·{' '}
-                  <span style={{ color: hasAccess ? '#2A6F62' : '#5F6B76', fontWeight: hasAccess ? 600 : 400 }}>
-                    {hasAccess ? 'Acceso activo' : 'Sin acceso'}
-                  </span>
+                  {taskCount ? `${taskCount} tareas` : 'Sin tareas'} ·{' '}
+                  {hasAccount ? (
+                    <span style={{ color: p.userRole === 'admin' ? '#0F3446' : '#2A6F62', fontWeight: 600 }}>
+                      🔑 {userRoleLabel}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#8C959E' }}>Sin cuenta</span>
+                  )}
                 </span>
               </div>
 
-              {onEditDirectoryMember && (
-                <button
-                  type="button"
-                  onClick={() => onEditDirectoryMember(p)}
-                  aria-label={`Acciones para ${p.name}`}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuMemberId(menuMemberId === (p.id || p.name) ? null : (p.id || p.name));
+                }}
+                aria-label={`Acciones para ${p.name}`}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  border: '1px solid #DDE2E4',
+                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  color: '#5F6B76',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flex: 'none'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="12" cy="5" r="1" />
+                  <circle cx="12" cy="12" r="1" />
+                  <circle cx="12" cy="19" r="1" />
+                </svg>
+              </button>
+
+              {menuMemberId === (p.id || p.name) && (
+                <div
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    border: 0,
-                    background: 'transparent',
-                    color: '#5F6B76',
-                    cursor: 'pointer',
+                    position: 'absolute',
+                    right: '12px',
+                    top: '52px',
+                    background: '#FFFFFF',
+                    border: '1px solid #DDE2E4',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 16px rgba(15, 52, 70, 0.15)',
+                    padding: '6px',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
+                    flexDirection: 'column',
+                    minWidth: '180px',
+                    zIndex: 20
                   }}
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <circle cx="12" cy="5" r="1" />
-                    <circle cx="12" cy="12" r="1" />
-                    <circle cx="12" cy="19" r="1" />
-                  </svg>
-                </button>
+                  {isAdmin && (
+                    <>
+                      {!hasAccount ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setMenuMemberId(null);
+                            onGenerateAccount?.(p);
+                          }}
+                          style={{
+                            border: 0,
+                            background: 'transparent',
+                            padding: '8px 10px',
+                            textAlign: 'left',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: '#2A6F62',
+                            cursor: 'pointer',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <span>🔑</span>
+                          <span>Generar credenciales</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuMemberId(null);
+                              onResetPassword?.(p);
+                            }}
+                            style={{
+                              border: 0,
+                              background: 'transparent',
+                              padding: '8px 10px',
+                              textAlign: 'left',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              color: '#0F3446',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <span>🔄</span>
+                            <span>Restablecer clave</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMenuMemberId(null);
+                              onRevokeAccess?.(p);
+                            }}
+                            style={{
+                              border: 0,
+                              background: 'transparent',
+                              padding: '8px 10px',
+                              textAlign: 'left',
+                              fontSize: '12px',
+                              color: '#B91C1C',
+                              cursor: 'pointer',
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <span>🚫</span>
+                            <span>Revocar acceso</span>
+                          </button>
+                        </>
+                      )}
+                      <div style={{ height: '1px', background: '#EDEFF0', margin: '4px 0' }} />
+                    </>
+                  )}
+                  {onEditDirectoryMember && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuMemberId(null);
+                        onEditDirectoryMember(p);
+                      }}
+                      style={{
+                        border: 0,
+                        background: 'transparent',
+                        padding: '8px 10px',
+                        textAlign: 'left',
+                        fontSize: '12px',
+                        color: '#1D2A33',
+                        cursor: 'pointer',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      Editar persona
+                    </button>
+                  )}
+                  {onDeleteDirectoryMember && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuMemberId(null);
+                        onDeleteDirectoryMember(p);
+                      }}
+                      style={{
+                        border: 0,
+                        background: 'transparent',
+                        padding: '8px 10px',
+                        textAlign: 'left',
+                        fontSize: '12px',
+                        color: '#9B3B32',
+                        cursor: 'pointer',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      Eliminar
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           );
@@ -247,12 +423,13 @@ export function DirectoryView({
 
       {/* Toolbar con Tabs */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-        <div role="tablist" aria-label="Tipo" style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #DDE2E4', flex: 1 }}>
+        <div role="tablist" aria-label="Tipo" style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #DDE2E4', flex: 1, overflowX: 'auto' }}>
           {[
-            { id: 'all', label: 'Todos' },
-            { id: 'collaborator', label: 'Colaboradores' },
-            { id: 'vendor', label: 'Proveedores' },
-            { id: 'admin', label: 'Administradores' }
+            { id: 'all', label: `Todos (${countsByTab.all})` },
+            { id: 'has_account', label: `Con Acceso (${countsByTab.has_account})` },
+            { id: 'collaborator', label: `Colaboradores (${countsByTab.collaborator})` },
+            { id: 'vendor', label: `Proveedores (${countsByTab.vendor})` },
+            { id: 'admin', label: `Administradores (${countsByTab.admin})` }
           ].map((t) => {
             const on = activeTab === t.id;
             return (
@@ -273,7 +450,8 @@ export function DirectoryView({
                   fontSize: '13px',
                   fontWeight: on ? 600 : 500,
                   color: on ? '#1D2A33' : '#5F6B76',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 {t.label}
@@ -296,7 +474,7 @@ export function DirectoryView({
               <th style={{ padding: '12px 14px', fontWeight: 500 }}>Organización / Área</th>
               <th style={{ padding: '12px 14px', fontWeight: 500 }}>Rol</th>
               <th style={{ padding: '12px 14px', fontWeight: 500 }}>Tareas abiertas</th>
-              <th style={{ padding: '12px 14px', fontWeight: 500 }}>Acceso</th>
+              <th style={{ padding: '12px 14px', fontWeight: 500 }}>Acceso al Sistema</th>
               <th style={{ padding: '12px 20px', fontWeight: 500, textAlign: 'right' }}>Acciones</th>
             </tr>
           </thead>
@@ -305,7 +483,8 @@ export function DirectoryView({
               const role = m.role || 'collaborator';
               const meta = rolesMeta[role] || rolesMeta.collaborator;
               const taskCount = openTasksCount[m.name] || 0;
-              const hasAccess = Boolean(m.hasAccess || m.email);
+              const hasAccount = Boolean(m.hasUserAccount);
+              const userRoleLabel = m.userRole === 'admin' ? 'Administrador' : 'Colaborador';
 
               return (
                 <tr key={m.id || m.name} style={{ borderBottom: '1px solid #EDEFF0' }}>
@@ -355,41 +534,116 @@ export function DirectoryView({
 
                   {/* Acceso */}
                   <td style={{ padding: '12px 14px' }}>
-                    <span
-                      style={{
-                        display: 'inline-block',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        background: hasAccess ? 'rgba(42, 111, 98, 0.12)' : '#EDF0F0',
-                        color: hasAccess ? '#2A6F62' : '#5F6B76'
-                      }}
-                    >
-                      {hasAccess ? 'Acceso activo' : 'Sin acceso'}
-                    </span>
+                    {hasAccount ? (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '3px 9px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          background: m.userRole === 'admin' ? 'rgba(15, 52, 70, 0.10)' : 'rgba(42, 111, 98, 0.12)',
+                          color: m.userRole === 'admin' ? '#0F3446' : '#2A6F62',
+                          border: m.userRole === 'admin' ? '1px solid rgba(15, 52, 70, 0.25)' : '1px solid rgba(42, 111, 98, 0.25)'
+                        }}
+                        title={`Cuenta de acceso activa. Rol en sistema: ${userRoleLabel}`}
+                      >
+                        <span style={{ fontSize: '11px' }}>🔑</span>
+                        <span>{userRoleLabel}</span>
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 500,
+                          background: '#EDF0F0',
+                          color: '#5F6B76'
+                        }}
+                      >
+                        Sin cuenta
+                      </span>
+                    )}
                   </td>
 
                   {/* Acciones */}
                   <td style={{ padding: '12px 20px', textAlign: 'right', position: 'relative' }}>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuMemberId(menuMemberId === (m.id || m.name) ? null : (m.id || m.name));
-                      }}
-                      style={{
-                        width: '32px',
-                        height: '32px',
-                        border: '1px solid #DDE2E4',
-                        borderRadius: '6px',
-                        background: '#FFFFFF',
-                        color: '#5F6B76',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      ⋯
-                    </button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      {isAdmin && !hasAccount && (
+                        <button
+                          type="button"
+                          onClick={() => onGenerateAccount?.(m)}
+                          title="Generar credenciales de usuario para este integrante"
+                          style={{
+                            height: '30px',
+                            padding: '0 10px',
+                            border: '1px solid #2A6F62',
+                            borderRadius: '6px',
+                            background: 'rgba(42, 111, 98, 0.08)',
+                            color: '#2A6F62',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <span>🔑</span>
+                          <span>Generar acceso</span>
+                        </button>
+                      )}
+
+                      {isAdmin && hasAccount && (
+                        <button
+                          type="button"
+                          onClick={() => onResetPassword?.(m)}
+                          title="Restablecer manualmente la contraseña de este usuario"
+                          style={{
+                            height: '30px',
+                            padding: '0 10px',
+                            border: '1px solid #DDE2E4',
+                            borderRadius: '6px',
+                            background: '#FFFFFF',
+                            color: '#0F3446',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <span>🔄</span>
+                          <span>Cambiar clave</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMenuMemberId(menuMemberId === (m.id || m.name) ? null : (m.id || m.name));
+                        }}
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          border: '1px solid #DDE2E4',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          color: '#5F6B76',
+                          cursor: 'pointer'
+                        }}
+                        title="Más opciones"
+                      >
+                        ⋯
+                      </button>
+                    </div>
 
                     {menuMemberId === (m.id || m.name) && (
                       <div
@@ -399,15 +653,97 @@ export function DirectoryView({
                           top: '44px',
                           background: '#FFFFFF',
                           border: '1px solid #DDE2E4',
-                          borderRadius: '6px',
-                          boxShadow: '0 4px 16px rgba(15, 52, 70, 0.12)',
-                          padding: '4px',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 16px rgba(15, 52, 70, 0.15)',
+                          padding: '6px',
                           display: 'flex',
                           flexDirection: 'column',
-                          minWidth: '130px',
-                          zIndex: 10
+                          minWidth: '180px',
+                          zIndex: 20
                         }}
+                        onClick={(e) => e.stopPropagation()}
                       >
+                        {isAdmin && (
+                          <>
+                            {!hasAccount ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMenuMemberId(null);
+                                  onGenerateAccount?.(m);
+                                }}
+                                style={{
+                                  border: 0,
+                                  background: 'transparent',
+                                  padding: '8px 10px',
+                                  textAlign: 'left',
+                                  fontSize: '12px',
+                                  fontWeight: 600,
+                                  color: '#2A6F62',
+                                  cursor: 'pointer',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px'
+                                }}
+                              >
+                                <span>🔑</span>
+                                <span>Generar credenciales</span>
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMenuMemberId(null);
+                                    onResetPassword?.(m);
+                                  }}
+                                  style={{
+                                    border: 0,
+                                    background: 'transparent',
+                                    padding: '8px 10px',
+                                    textAlign: 'left',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: '#0F3446',
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                >
+                                  <span>🔄</span>
+                                  <span>Restablecer clave</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setMenuMemberId(null);
+                                    onRevokeAccess?.(m);
+                                  }}
+                                  style={{
+                                    border: 0,
+                                    background: 'transparent',
+                                    padding: '8px 10px',
+                                    textAlign: 'left',
+                                    fontSize: '12px',
+                                    color: '#B91C1C',
+                                    cursor: 'pointer',
+                                    borderRadius: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                >
+                                  <span>🚫</span>
+                                  <span>Revocar acceso</span>
+                                </button>
+                              </>
+                            )}
+                            <div style={{ height: '1px', background: '#EDEFF0', margin: '4px 0' }} />
+                          </>
+                        )}
                         {onEditDirectoryMember && (
                           <button
                             type="button"
@@ -447,7 +783,7 @@ export function DirectoryView({
                               borderRadius: '4px'
                             }}
                           >
-                            Eliminar
+                            Eliminar del directorio
                           </button>
                         )}
                       </div>

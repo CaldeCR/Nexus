@@ -13,7 +13,8 @@ export function KanbanView({
   onEditTask,
   onOpenNewTask,
   onOpenStatusModal,
-  onDeleteTask
+  onDeleteTask,
+  onUpdateProject
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -23,6 +24,13 @@ export function KanbanView({
   const [onlyLate, setOnlyLate] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [movingTaskId, setMovingTaskId] = useState(null);
+
+  // Estados para proyectos gestionados por fases (Alt 1 + Alt 3)
+  const [expandedPhaseIds, setExpandedPhaseIds] = useState(() => new Set());
+  const [highlightedPhaseId, setHighlightedPhaseId] = useState(null);
+  const [highlightedTaskId, setHighlightedTaskId] = useState(null);
+  const [isPhasesDrawerOpen, setIsPhasesDrawerOpen] = useState(false);
+  const [editingPhases, setEditingPhases] = useState([]);
 
   // Status column metadata matching Figma master
   const columnsMeta = {
@@ -70,6 +78,14 @@ export function KanbanView({
 
   // Selected project object
   const currentProject = selectedProjectId ? projectMap[selectedProjectId] : null;
+
+  // Determinar si el proyecto actual está configurado para gestión por fases
+  const isPhasedProject = Boolean(
+    currentProject &&
+    currentProject.hasPhases &&
+    Array.isArray(currentProject.phases) &&
+    currentProject.phases.length > 0
+  );
 
   // Filter tasks based on selected project, search, assignee, overdue
   const processedTasks = useMemo(() => {
@@ -197,6 +213,286 @@ export function KanbanView({
       onUpdateWorkItem(task.id, { status: newStatus });
     }
     setMovingTaskId(null);
+  };
+
+  // Métodos de interacción con fases (Alt 1 + Alt 3)
+  const togglePhaseAccordion = (phaseId) => {
+    setExpandedPhaseIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(phaseId)) {
+        next.delete(phaseId);
+      } else {
+        next.add(phaseId);
+      }
+      return next;
+    });
+  };
+
+  const expandAllPhases = (expand) => {
+    if (!currentProject?.phases) return;
+    if (expand) {
+      setExpandedPhaseIds(new Set(currentProject.phases.map((p) => p.id)));
+    } else {
+      setExpandedPhaseIds(new Set());
+    }
+  };
+
+  const scrollToAndOpenPhase = (phaseId, taskId = null) => {
+    setExpandedPhaseIds((prev) => new Set([...prev, phaseId]));
+    setHighlightedPhaseId(phaseId);
+
+    setTimeout(() => {
+      const el = document.getElementById(`phase-card-${phaseId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
+
+    setTimeout(() => {
+      setHighlightedPhaseId(null);
+    }, 2400);
+
+    if (taskId) {
+      setHighlightedTaskId(taskId);
+      setTimeout(() => {
+        const tEl = document.getElementById(`task-card-${taskId}`);
+        if (tEl) {
+          tEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 350);
+
+      setTimeout(() => {
+        setHighlightedTaskId(null);
+      }, 2600);
+    }
+  };
+
+  const openPhasesManager = () => {
+    if (!currentProject?.phases) return;
+    setEditingPhases(
+      currentProject.phases.map((p) => ({
+        id: p.id,
+        name: p.name,
+        targetDate: p.targetDate || '',
+        status: p.status || 'pending'
+      }))
+    );
+    setIsPhasesDrawerOpen(true);
+  };
+
+  const handleAddPhaseInManager = () => {
+    const nextNum = editingPhases.length + 1;
+    setEditingPhases((prev) => [
+      ...prev,
+      {
+        id: `phase-${Date.now()}`,
+        name: `Fase ${nextNum}: Nueva etapa`,
+        targetDate: todayStr || '',
+        status: 'pending'
+      }
+    ]);
+  };
+
+  const handleUpdatePhaseInManager = (idx, field, value) => {
+    setEditingPhases((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const handleRemovePhaseInManager = (idx) => {
+    if (editingPhases.length <= 1) {
+      alert('El proyecto debe mantener al menos una fase.');
+      return;
+    }
+    setEditingPhases((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSavePhasesManager = () => {
+    const cleaned = editingPhases.map((p, idx) => ({
+      ...p,
+      name: p.name.trim() || `Fase ${idx + 1}`
+    }));
+    if (onUpdateProject) {
+      onUpdateProject(currentProject.id, {
+        ...currentProject,
+        phases: cleaned
+      });
+    }
+    setIsPhasesDrawerOpen(false);
+  };
+
+  // Cálculo de los 4 meses para el Cronograma Gantt (Alt 3)
+  const ganttMonths = useMemo(() => {
+    const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const parts = (todayStr || '2026-10-26').split('-');
+    const curYear = parseInt(parts[0], 10) || 2026;
+    const curMonth = (parseInt(parts[1], 10) || 10) - 1; // 0-indexed (9 for Oct)
+    const curDay = parseInt(parts[2], 10) || 26;
+
+    const cols = [];
+    for (let offset = -2; offset <= 1; offset++) {
+      const d = new Date(curYear, curMonth + offset, 1);
+      const isCur = offset === 0;
+      cols.push({
+        label: `${monthsShort[d.getMonth()]} ${d.getFullYear()}`,
+        isCurrent: isCur,
+        todayLabel: `Hoy ${curDay} ${monthsShort[curMonth]}`
+      });
+    }
+    return cols;
+  }, [todayStr]);
+
+  const getPhasePosition = (phase, idx, totalPhases) => {
+    const step = 85 / Math.max(1, totalPhases);
+    const left = 6 + idx * step;
+    const width = Math.min(34, step * 0.95);
+    return { left: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` };
+  };
+
+  const getTaskPosition = (phasePos, tIdx, totalTasks, isShared) => {
+    const pLeft = parseFloat(phasePos.left);
+    const pWidth = parseFloat(phasePos.width);
+    const offset = totalTasks > 1 ? (pWidth * 0.65 * (tIdx / totalTasks)) : 0;
+    const left = pLeft + offset;
+    const width = isShared ? Math.min(30, pWidth * 0.85) : Math.min(18, pWidth * 0.55);
+    return { left: `${left.toFixed(1)}%`, width: `${Math.max(14, width).toFixed(1)}%` };
+  };
+
+  const renderTaskCardItem = (c, phaseId = null) => {
+    const isDone = c.status === 'done';
+    const isHigh = c.priority === 'high' && !isDone;
+    const isShared = (c.phaseIds || []).length > 1;
+    const isHighlighted = highlightedTaskId === c.id;
+
+    const otherPhasesText = isShared && phaseId && currentProject?.phases
+      ? (c.phaseIds || [])
+          .filter((id) => id !== phaseId)
+          .map((id) => {
+            const ph = currentProject.phases.find((p) => p.id === id);
+            return ph ? ph.name.split(':')[0] : 'Fase';
+          })
+          .join(', ')
+      : '';
+
+    return (
+      <article
+        key={`${c.id}-${phaseId || 'global'}`}
+        id={`task-card-${c.id}`}
+        onClick={() => onEditTask && onEditTask(c)}
+        className={`kanban-task-card ${isShared ? 'is-shared-task' : ''} ${isHighlighted ? 'task-highlight-pulse' : ''}`}
+        style={{
+          background: '#FFFFFF',
+          border: '1px solid #E1E5E6',
+          borderRadius: '6px',
+          padding: '12px 14px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+          boxShadow: 'none',
+          cursor: onEditTask ? 'pointer' : 'default',
+          transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+          position: 'relative'
+        }}
+      >
+        {/* Proyecto / Fases & Tag + Botón Editar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', fontSize: '12px', color: '#5F6B76' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flexWrap: 'wrap' }}>
+            <span style={{ width: '8px', height: '8px', borderRadius: '2px', flex: 'none', background: c.projTone }} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>{c.projName}</span>
+            {isShared && (
+              <span
+                className="shared-pill-tag"
+                title={otherPhasesText ? `Compartida con: ${otherPhasesText}` : 'Compartida entre fases'}
+              >
+                🔗 {otherPhasesText ? `+ ${otherPhasesText}` : 'Compartida'}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTask && onEditTask(c);
+            }}
+            title="Editar tarea"
+            style={{
+              background: 'transparent',
+              border: 0,
+              padding: '2px 4px',
+              color: '#5F6B76',
+              cursor: 'pointer',
+              borderRadius: '4px',
+              display: 'inline-flex',
+              alignItems: 'center'
+            }}
+          >
+            <NavIcons.Edit size={13} />
+          </button>
+        </div>
+
+        {/* Título */}
+        <div
+          style={{
+            fontSize: '14px',
+            lineHeight: '20px',
+            fontWeight: 500,
+            color: isDone ? '#5F6B76' : '#1D2A33',
+            textDecoration: isDone ? 'line-through' : 'none',
+            textDecorationColor: '#9AA4AC'
+          }}
+        >
+          {c.title}
+        </div>
+
+        {/* Fila Inferior */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+          <span style={{ color: '#5F6B76', fontWeight: 500 }}>{c.code || `T-${c.id}`}</span>
+
+          {isHigh && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#7A4A12', fontWeight: 600 }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+              Alta
+            </span>
+          )}
+
+          <span style={{ whiteSpace: 'nowrap', color: c.isLate ? '#9B3B32' : '#5F6B76', fontWeight: c.isLate ? 600 : 400 }}>
+            {c.displayDate}
+          </span>
+
+          <span style={{ flex: 1 }} />
+
+          {/* Avatares */}
+          <div style={{ display: 'flex' }}>
+            {c.assigneesList.map((n, i) => (
+              <span
+                key={n + i}
+                title={n}
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  border: '2px solid #FFFFFF',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '9px',
+                  fontWeight: 600,
+                  color: '#FFFFFF',
+                  background: avatarTones[n] || '#5C6670',
+                  marginLeft: i ? '-6px' : '0'
+                }}
+              >
+                {getInitials(n)}
+              </span>
+            ))}
+          </div>
+        </div>
+      </article>
+    );
   };
 
   /* ========================================================================= */
@@ -472,23 +768,47 @@ export function KanbanView({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {currentProject && (
-            <button
-              type="button"
-              onClick={() => onOpenStatusModal(currentProject)}
-              style={{
-                height: '40px',
-                padding: '0 16px',
-                border: '1px solid #DDE2E4',
-                borderRadius: '6px',
-                background: '#FFFFFF',
-                color: '#1D2A33',
-                font: 'inherit',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              Estatus del proyecto
-            </button>
+            <>
+              {isPhasedProject && (
+                <button
+                  type="button"
+                  onClick={openPhasesManager}
+                  style={{
+                    height: '40px',
+                    padding: '0 14px',
+                    border: '1px solid #2A6F62',
+                    borderRadius: '6px',
+                    background: 'rgba(42, 111, 98, 0.08)',
+                    color: '#2A6F62',
+                    font: 'inherit',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>⚙️</span> Fases ({currentProject.phases.length})
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onOpenStatusModal(currentProject)}
+                style={{
+                  height: '40px',
+                  padding: '0 16px',
+                  border: '1px solid #DDE2E4',
+                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  color: '#1D2A33',
+                  font: 'inherit',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                Estatus del proyecto
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -614,177 +934,551 @@ export function KanbanView({
         )}
       </div>
 
-      {/* Grid de 4 Columnas */}
-      <div style={{ overflowX: 'auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(250px, 1fr))', gap: '16px', alignItems: 'start' }}>
-          {Object.keys(columnsMeta).map((colKey) => {
-            const col = columnsMeta[colKey];
-            const cards = tasksByColumn[colKey] || [];
+      {/* Renderizado Condicional: Proyecto por Fases (Alt 1 + Alt 3) vs. Tablero Continuo Tradicional */}
+      {isPhasedProject ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* 1. SECCIÓN SUPERIOR: CRONOGRAMA GANTT (Alt 3 - Imagen 2) */}
+          <section aria-label="Cronograma de Fases y Tareas" className="phased-gantt-container">
+            <div className="phased-gantt-header">
+              <div className="phased-gantt-title-row">
+                <span style={{ fontSize: '16px' }}>📊</span>
+                <span>Cronograma de Fases y Tareas (Gantt)</span>
+                <span style={{ fontSize: '12px', fontWeight: 500, color: '#5F6B76', marginLeft: '6px' }}>
+                  Haz clic en cualquier fase o tarea para abrirla en el tablero abajo
+                </span>
+              </div>
+              <div className="phased-gantt-legend">
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: '#19463c' }} />
+                  Etapa Maestra
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: '#2563EB' }} />
+                  Tarea de Fase
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: 'linear-gradient(90deg, #7C3AED 0%, #2563EB 100%)' }} />
+                  Tarea Compartida (🔗)
+                </span>
+              </div>
+            </div>
 
-            return (
-              <section
-                key={colKey}
-                aria-label={col.title}
+            {/* Encabezado de Meses con Marcador de Hoy */}
+            <div className="phased-gantt-table-head">
+              <div className="phased-gantt-th first">Etapas y Tareas del Proyecto</div>
+              {ganttMonths.map((m, mIdx) => (
+                <div key={mIdx} className={`phased-gantt-th ${m.isCurrent ? 'is-current' : ''}`}>
+                  <span>{m.label} {m.isCurrent ? '(Actual)' : ''}</span>
+                  {m.isCurrent && (
+                    <div className="phased-today-pin">
+                      <span className="phased-today-tag">{m.todayLabel}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Filas de Gantt */}
+            <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+              {currentProject.phases.map((phase, pIdx) => {
+                const phaseTasks = filteredTasks.filter((t) => (t.phaseIds || []).includes(phase.id));
+                const phasePos = getPhasePosition(phase, pIdx, currentProject.phases.length);
+
+                return (
+                  <React.Fragment key={phase.id}>
+                    {/* Fila Maestra de Fase */}
+                    <div
+                      className="phased-gantt-row is-phase-head"
+                      title="Haz clic para ver esta fase en el Tablero Kanban abajo"
+                      onClick={() => scrollToAndOpenPhase(phase.id)}
+                    >
+                      <div className="phased-gantt-row-title">
+                        <span style={{ fontSize: '13px' }}>📌</span>
+                        <span style={{ fontWeight: 700, color: '#2A6F62' }}>{phase.name}</span>
+                        <span className="phased-goto-badge">Ver en tablero ⬇</span>
+                      </div>
+                      <div className="phased-gantt-track">
+                        <div
+                          className="phased-master-bar"
+                          style={{ left: phasePos.left, width: phasePos.width }}
+                        >
+                          <span>{phase.name.split(':')[0]} • Meta: {phase.targetDate || 'Sin fecha'}</span>
+                          <span>{phase.status === 'completed' ? '✓' : ''}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tareas de la Fase en Gantt */}
+                    {phaseTasks.map((task, tIdx) => {
+                      const isShared = (task.phaseIds || []).length > 1;
+                      const taskPos = getTaskPosition(phasePos, tIdx, phaseTasks.length, isShared);
+
+                      return (
+                        <div
+                          key={`${phase.id}-${task.id}`}
+                          className="phased-gantt-row"
+                          style={{ cursor: 'pointer' }}
+                          title={`Haz clic para ver la tarea ${task.code || ''} en el Tablero`}
+                          onClick={() => scrollToAndOpenPhase(phase.id, task.id)}
+                        >
+                          <div className="phased-gantt-row-title" style={{ paddingLeft: '34px', fontSize: '12px', color: '#3A4650' }}>
+                            {isShared ? <span style={{ color: '#7C3AED', fontSize: '13px' }}>🔗</span> : '•'}
+                            <strong style={{ color: '#1D2A33' }}>{task.code || `T-${task.id}`}:</strong>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
+                          </div>
+                          <div className="phased-gantt-track">
+                            <div
+                              className={`phased-task-bar ${isShared ? 'is-shared' : ''}`}
+                              style={{ left: taskPos.left, width: taskPos.width }}
+                            >
+                              <span>{task.code || ''} ({task.assigneesList?.[0] || 'Jorge'}) {isShared ? '★ Compartida' : ''}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* 2. BARRA DE HERRAMIENTAS DE FASES */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1D2A33' }}>
+                Fases del Proyecto ({currentProject.phases.length})
+              </h2>
+              <span style={{ fontSize: '12px', color: '#5F6B76' }}>
+                Contraídas por defecto. Haz clic en una fase para desplegar sus 4 columnas Kanban.
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => expandAllPhases(false)}
                 style={{
-                  background: '#EDF0F0',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  minHeight: '560px'
+                  height: '32px',
+                  padding: '0 12px',
+                  border: '1px solid #DDE2E4',
+                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  color: '#5F6B76',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
                 }}
               >
-                {/* Cabecera de Columna */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 4px 6px 4px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.dot }} />
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#1D2A33' }}>{col.title}</span>
-                  <span style={{ fontSize: '13px', color: '#5F6B76' }}>{cards.length}</span>
-                </div>
+                Contraer todas
+              </button>
+              <button
+                type="button"
+                onClick={() => expandAllPhases(true)}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  border: '1px solid #DDE2E4',
+                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  color: '#2A6F62',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Expandir todas
+              </button>
+              <button
+                type="button"
+                onClick={openPhasesManager}
+                style={{
+                  height: '32px',
+                  padding: '0 12px',
+                  border: '1px solid #2A6F62',
+                  borderRadius: '6px',
+                  background: 'rgba(42, 111, 98, 0.08)',
+                  color: '#2A6F62',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <span>⚙️</span>
+                Gestionar Fases
+              </button>
+            </div>
+          </div>
 
-                {/* Lista de Tarjetas */}
-                {cards.map((c) => {
-                  const isDone = colKey === 'done';
-                  const isHigh = c.priority === 'high' && !isDone;
+          {/* 3. SECCIÓN INFERIOR: FASES CONTRAÍDAS EN KANBAN (Alt 1 - Imagen 1) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {currentProject.phases.map((phase, idx) => {
+              const phaseTasks = filteredTasks.filter((t) => (t.phaseIds || []).includes(phase.id));
+              const doneTasks = phaseTasks.filter((t) => t.status === 'done');
+              const pct = phaseTasks.length > 0 ? Math.round((doneTasks.length / phaseTasks.length) * 100) : 0;
+              const isExpanded = expandedPhaseIds.has(phase.id);
 
-                  return (
-                    <article
-                      key={c.id}
-                      onClick={() => onEditTask && onEditTask(c)}
-                      style={{
-                        background: '#FFFFFF',
-                        border: '1px solid #E1E5E6',
-                        borderRadius: '6px',
-                        padding: '12px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '10px',
-                        boxShadow: 'none',
-                        cursor: onEditTask ? 'pointer' : 'default',
-                        transition: 'box-shadow 0.15s ease, border-color 0.15s ease'
-                      }}
-                    >
-                      {/* Proyecto & Tag + Botón Editar */}
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', fontSize: '12px', color: '#5F6B76' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
-                          <span style={{ width: '8px', height: '8px', borderRadius: '2px', flex: 'none', background: c.projTone }} />
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.projName}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEditTask && onEditTask(c);
-                          }}
-                          title="Editar tarea"
-                          style={{
-                            background: 'transparent',
-                            border: 0,
-                            padding: '2px 4px',
-                            color: '#5F6B76',
-                            cursor: 'pointer',
-                            borderRadius: '4px',
-                            display: 'inline-flex',
-                            alignItems: 'center'
-                          }}
-                        >
-                          <NavIcons.Edit size={13} />
-                        </button>
+              return (
+                <div
+                  key={phase.id}
+                  id={`phase-card-${phase.id}`}
+                  className={`phase-accordion-card ${isExpanded ? 'is-expanded' : ''} ${highlightedPhaseId === phase.id ? 'focus-highlight' : ''}`}
+                >
+                  {/* Barra de cabecera contraída */}
+                  <div
+                    className="phase-header-bar"
+                    onClick={() => togglePhaseAccordion(phase.id)}
+                    title="Haz clic para contraer o desplegar el tablero de esta fase"
+                  >
+                    <div className="phase-header-left">
+                      <span className="phase-pill-badge">Fase {idx + 1}</span>
+                      <span className="phase-header-title">{phase.name}</span>
+                    </div>
+                    <div className="phase-header-right">
+                      <div className="phase-meta-item">
+                        <span>🗓️ Meta Estimada:</span>
+                        <strong>{phase.targetDate || 'Sin fecha'}</strong>
                       </div>
-
-                      {/* Título */}
-                      <div
-                        style={{
-                          fontSize: '14px',
-                          lineHeight: '20px',
-                          fontWeight: 500,
-                          color: isDone ? '#5F6B76' : '#1D2A33',
-                          textDecoration: isDone ? 'line-through' : 'none',
-                          textDecorationColor: '#9AA4AC'
-                        }}
-                      >
-                        {c.title}
+                      <div className="phase-meta-item">
+                        <span>Progreso:</span>
+                        <strong>{doneTasks.length}/{phaseTasks.length} tareas ({pct}%)</strong>
                       </div>
+                      <span className="phase-chevron-icon">▼</span>
+                    </div>
+                  </div>
 
-                      {/* Fila Inferior */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '12px' }}>
-                        <span style={{ color: '#5F6B76', fontWeight: 500 }}>{c.code || `T-${c.id}`}</span>
+                  {/* Columnas Kanban al expandir */}
+                  <div className="phase-body-content">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(230px, 1fr))', gap: '14px', alignItems: 'start', overflowX: 'auto' }}>
+                      {Object.keys(columnsMeta).map((colKey) => {
+                        const col = columnsMeta[colKey];
+                        const colTasks = phaseTasks.filter((t) => (t.status || 'backlog') === colKey);
 
-                        {isHigh && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#7A4A12', fontWeight: 600 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 19V5M5 12l7-7 7 7" />
-                            </svg>
-                            Alta
-                          </span>
-                        )}
+                        return (
+                          <section
+                            key={colKey}
+                            aria-label={`${phase.name} - ${col.title}`}
+                            style={{
+                              background: '#FFFFFF',
+                              border: '1px solid #DDE2E4',
+                              borderRadius: '8px',
+                              padding: '10px',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              minHeight: '260px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px 6px 4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.dot }} />
+                                <span style={{ fontSize: '13px', fontWeight: 600, color: '#1D2A33' }}>{col.title}</span>
+                              </div>
+                              <span style={{ fontSize: '12px', fontWeight: 600, color: '#5F6B76' }}>{colTasks.length}</span>
+                            </div>
 
-                        <span style={{ whiteSpace: 'nowrap', color: c.isLate ? '#9B3B32' : '#5F6B76', fontWeight: c.isLate ? 600 : 400 }}>
-                          {c.displayDate}
-                        </span>
+                            {colTasks.map((t) => renderTaskCardItem(t, phase.id))}
 
-                        <span style={{ flex: 1 }} />
+                            {colTasks.length === 0 && (
+                              <div style={{ padding: '24px 8px', textAlign: 'center', color: '#8FA0AC', fontSize: '12px' }}>
+                                Sin tareas
+                              </div>
+                            )}
 
-                        {/* Avatares */}
-                        <div style={{ display: 'flex' }}>
-                          {c.assigneesList.map((n, i) => (
-                            <span
-                              key={n + i}
-                              title={n}
+                            <button
+                              type="button"
+                              onClick={() => onOpenNewTask && onOpenNewTask({ projectId: currentProject.id, phaseIds: [phase.id], status: colKey })}
                               style={{
-                                width: '22px',
-                                height: '22px',
-                                borderRadius: '50%',
-                                border: '2px solid #FFFFFF',
-                                display: 'inline-flex',
+                                display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: '9px',
-                                fontWeight: 600,
-                                color: '#FFFFFF',
-                                background: avatarTones[n] || '#5C6670',
-                                marginLeft: i ? '-6px' : '0'
+                                gap: '8px',
+                                height: '32px',
+                                padding: '0 6px',
+                                border: 0,
+                                borderRadius: '6px',
+                                background: 'transparent',
+                                color: '#5F6B76',
+                                font: 'inherit',
+                                fontSize: '12px',
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                marginTop: 'auto'
                               }}
                             >
-                              {getInitials(n)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                                <path d="M12 5v14M5 12h14" />
+                              </svg>
+                              Añadir tarea
+                            </button>
+                          </section>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        /* VISTA KANBAN TRADICIONAL UNIFICADA (Para proyectos continuos / existentes) */
+        <div style={{ overflowX: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(250px, 1fr))', gap: '16px', alignItems: 'start' }}>
+            {Object.keys(columnsMeta).map((colKey) => {
+              const col = columnsMeta[colKey];
+              const cards = tasksByColumn[colKey] || [];
 
-                {/* Botón Añadir Tarea */}
-                <button
-                  type="button"
-                  onClick={onOpenNewTask}
+              return (
+                <section
+                  key={colKey}
+                  aria-label={col.title}
                   style={{
+                    background: '#EDF0F0',
+                    borderRadius: '8px',
+                    padding: '10px',
                     display: 'flex',
-                    alignItems: 'center',
+                    flexDirection: 'column',
                     gap: '8px',
-                    height: '36px',
-                    padding: '0 6px',
-                    border: 0,
-                    borderRadius: '6px',
-                    background: 'transparent',
-                    color: '#5F6B76',
-                    font: 'inherit',
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                    textAlign: 'left'
+                    minHeight: '560px'
                   }}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                  Añadir tarea
-                </button>
-              </section>
-            );
-          })}
+                  {/* Cabecera de Columna */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 4px 6px 4px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: col.dot }} />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#1D2A33' }}>{col.title}</span>
+                    <span style={{ fontSize: '13px', color: '#5F6B76' }}>{cards.length}</span>
+                  </div>
+
+                  {/* Lista de Tarjetas */}
+                  {cards.map((c) => renderTaskCardItem(c, null))}
+
+                  {/* Botón Añadir Tarea */}
+                  <button
+                    type="button"
+                    onClick={onOpenNewTask}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      height: '36px',
+                      padding: '0 6px',
+                      border: 0,
+                      borderRadius: '6px',
+                      background: 'transparent',
+                      color: '#5F6B76',
+                      font: 'inherit',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                    Añadir tarea
+                  </button>
+                </section>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* MODAL: GESTIÓN DE FASES DEL PROYECTO */}
+      {isPhasesDrawerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 52, 70, 0.45)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1200,
+            padding: '20px'
+          }}
+          onClick={() => setIsPhasesDrawerOpen(false)}
+        >
+          <div
+            style={{
+              background: '#FFFFFF',
+              borderRadius: '12px',
+              width: '100%',
+              maxWidth: '560px',
+              maxHeight: '85vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 12px 32px rgba(15, 52, 70, 0.25)',
+              border: '1px solid #DDE2E4'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabecera */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #DDE2E4', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FAFBFC' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#1D2A33' }}>
+                  Gestionar Fases del Proyecto
+                </h3>
+                <span style={{ fontSize: '12px', color: '#5F6B76' }}>
+                  {currentProject?.name}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhasesDrawerOpen(false)}
+                style={{ background: 'transparent', border: 0, fontSize: '18px', cursor: 'pointer', color: '#5F6B76', padding: '4px' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Lista de Fases en Edición */}
+            <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: '0 0 6px 0', fontSize: '12.5px', color: '#5F6B76' }}>
+                Configura los nombres y metas estimadas para cada fase de este proyecto:
+              </p>
+
+              {editingPhases.map((phase, idx) => (
+                <div
+                  key={phase.id || idx}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 140px 36px',
+                    gap: '10px',
+                    alignItems: 'center',
+                    background: '#F8FAFC',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #E6EBED'
+                  }}
+                >
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
+                      Fase {idx + 1}
+                    </label>
+                    <input
+                      type="text"
+                      value={phase.name}
+                      onChange={(e) => handleUpdatePhaseInManager(idx, 'name', e.target.value)}
+                      placeholder="Nombre de la fase"
+                      style={{
+                        width: '100%',
+                        height: '34px',
+                        border: '1px solid #DDE2E4',
+                        borderRadius: '6px',
+                        padding: '0 10px',
+                        fontSize: '13px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
+                      Fecha Meta
+                    </label>
+                    <input
+                      type="date"
+                      value={phase.targetDate || ''}
+                      onChange={(e) => handleUpdatePhaseInManager(idx, 'targetDate', e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: '34px',
+                        border: '1px solid #DDE2E4',
+                        borderRadius: '6px',
+                        padding: '0 8px',
+                        fontSize: '12px',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                  <div style={{ paddingTop: '18px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhaseInManager(idx)}
+                      title="Eliminar fase"
+                      style={{
+                        width: '32px',
+                        height: '34px',
+                        border: '1px solid #E1E5E6',
+                        borderRadius: '6px',
+                        background: '#FFFFFF',
+                        color: '#9B3B32',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <button
+                type="button"
+                onClick={handleAddPhaseInManager}
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: '4px',
+                  background: 'transparent',
+                  border: '1px dashed #2A6F62',
+                  color: '#2A6F62',
+                  borderRadius: '6px',
+                  padding: '8px 14px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                + Agregar otra fase
+              </button>
+            </div>
+
+            {/* Pie del Modal */}
+            <div style={{ padding: '14px 20px', borderTop: '1px solid #DDE2E4', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#FAFBFC' }}>
+              <button
+                type="button"
+                onClick={() => setIsPhasesDrawerOpen(false)}
+                style={{
+                  height: '36px',
+                  padding: '0 16px',
+                  border: '1px solid #DDE2E4',
+                  borderRadius: '6px',
+                  background: '#FFFFFF',
+                  color: '#5F6B76',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePhasesManager}
+                style={{
+                  height: '36px',
+                  padding: '0 18px',
+                  border: 0,
+                  borderRadius: '6px',
+                  background: '#2A6F62',
+                  color: '#FFFFFF',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Guardar Cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

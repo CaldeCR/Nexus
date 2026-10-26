@@ -25,7 +25,7 @@ const loginSchema = z.object({
 const registerSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   email: z.string().email('Formato de correo electrónico inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres'),
   role: z.enum(['owner', 'admin', 'member']).default('member'),
   organization: z.string().optional()
 });
@@ -46,7 +46,7 @@ const createGlobalMemberSchema = z.object({
   phone: z.string().optional(),
   organization: z.string().optional(),
   createAccount: z.boolean().optional(),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional(),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
   userRole: z.enum(['admin', 'member']).optional()
 });
 
@@ -77,6 +77,15 @@ const updateMemberSchema = z.object({
   email: z.string().optional()
 });
 
+const projectPhaseSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  targetDate: z.string().min(1),
+  startDate: z.string().optional(),
+  status: z.enum(['pending', 'in_progress', 'completed']).default('pending'),
+  order: z.number().optional()
+});
+
 const projectSchema = z.object({
   code: z.string().optional(),
   name: z.string().min(2),
@@ -91,7 +100,9 @@ const projectSchema = z.object({
   teamMembers: z.array(projectMemberSchema).optional(),
   startDate: z.string().optional(),
   targetDate: z.string().optional(),
-  originalTargetDate: z.string().optional()
+  originalTargetDate: z.string().optional(),
+  hasPhases: z.boolean().optional(),
+  phases: z.array(projectPhaseSchema).optional()
 });
 
 const projectStatusSchema = z.object({
@@ -125,7 +136,8 @@ const workItemSchema = z.object({
   completedAt: z.string().optional(),
   closedAt: z.string().optional(),
   closedBy: z.string().optional(),
-  progressLogs: z.array(taskProgressEntrySchema).optional()
+  progressLogs: z.array(taskProgressEntrySchema).optional(),
+  phaseIds: z.array(z.string()).optional()
 });
 
 const workItemUpdateSchema = z.object({
@@ -148,7 +160,8 @@ const workItemUpdateSchema = z.object({
   completedAt: z.string().optional(),
   closedAt: z.string().optional(),
   closedBy: z.string().optional(),
-  progressLogs: z.array(taskProgressEntrySchema).optional()
+  progressLogs: z.array(taskProgressEntrySchema).optional(),
+  phaseIds: z.array(z.string()).optional()
 });
 
 const workItemStatusSchema = z.object({
@@ -341,25 +354,26 @@ app.post('/api/users', async (req, res) => {
   });
 });
 
-app.put('/api/users/:id/password', (req, res) => {
+app.put('/api/users/:id/password', async (req, res) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;
 
   const { password } = req.body;
-  if (!password || typeof password !== 'string' || password.length < 6) {
-    return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres' });
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
   }
 
   const db = readDb();
   const targetUser = db.users.find((u) => u.id === req.params.id);
   if (!targetUser) {
-    return res.status(404).json({ message: 'Usuario no encontrado' });
+    return res.status(404).json({ message: 'Usuario no encontrado.' });
   }
 
-  targetUser.password = password;
+  targetUser.passwordHash = await bcrypt.hash(password, 12);
+  delete targetUser.password;
   writeDb(db);
 
-  return res.json({ message: `Contraseña de "${targetUser.name}" actualizada correctamente.` });
+  return res.json({ message: `Contraseña de "${targetUser.name}" restablecida correctamente.` });
 });
 
 app.delete('/api/users/:id', (req, res) => {
@@ -443,7 +457,9 @@ app.post('/api/projects', (req, res) => {
     startDate: parsed.data.startDate || new Date().toISOString().split('T')[0],
     targetDate: parsed.data.targetDate,
     originalTargetDate: parsed.data.originalTargetDate || parsed.data.targetDate,
-    dateExtensions: []
+    dateExtensions: [],
+    hasPhases: Boolean(parsed.data.hasPhases),
+    phases: Array.isArray(parsed.data.phases) ? parsed.data.phases : undefined
   };
 
   newProject = syncProjectMembers(newProject);
@@ -487,13 +503,37 @@ app.put('/api/projects/:id', (req, res) => {
     ...(req.body.startDate !== undefined && { startDate: req.body.startDate }),
     ...(req.body.targetDate !== undefined && { targetDate: req.body.targetDate }),
     ...(req.body.originalTargetDate !== undefined && { originalTargetDate: req.body.originalTargetDate }),
-    ...(Array.isArray(req.body.dateExtensions) && { dateExtensions: req.body.dateExtensions })
+    ...(Array.isArray(req.body.dateExtensions) && { dateExtensions: req.body.dateExtensions }),
+    ...(req.body.hasPhases !== undefined && { hasPhases: Boolean(req.body.hasPhases) }),
+    ...(Array.isArray(req.body.phases) && { phases: req.body.phases })
   };
 
   updated = syncProjectMembers(updated);
   db.projects[projectIndex] = updated;
   writeDb(db);
   return res.json(db.projects[projectIndex]);
+});
+
+app.put('/api/projects/:id/phases', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  const db = readDb();
+  const project = db.projects.find((p) => p.id === req.params.id);
+  if (!project) {
+    return res.status(404).json({ message: 'Proyecto no encontrado' });
+  }
+
+  if (!Array.isArray(req.body.phases)) {
+    return res.status(400).json({ message: 'Se esperaba un arreglo de fases.' });
+  }
+
+  project.phases = req.body.phases;
+  project.hasPhases = true;
+  writeDb(db);
+  return res.json({ phases: project.phases, project });
 });
 
 app.post('/api/projects/:id/extensions', (req, res) => {
@@ -699,7 +739,7 @@ app.get('/api/directory', (req, res) => {
   return res.json({ items });
 });
 
-app.post('/api/directory', (req, res) => {
+app.post('/api/directory', async (req, res) => {
   const user = getCurrentUser(req);
   if (!user) return res.status(401).json({ message: 'No autorizado' });
 
@@ -727,17 +767,21 @@ app.post('/api/directory', (req, res) => {
     if (!parsed.data.email || !parsed.data.password) {
       return res.status(400).json({ message: 'Correo y contraseña son requeridos para crear la cuenta de acceso.' });
     }
+    if (parsed.data.password.length < 8) {
+      return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
+    }
     const userEmail = parsed.data.email.trim().toLowerCase();
     const existingUser = db.users.find((u) => u.email.toLowerCase() === userEmail);
     if (existingUser) {
       return res.status(409).json({ message: 'Ya existe una cuenta con este correo electrónico.' });
     }
 
+    const passwordHash = await bcrypt.hash(parsed.data.password, 12);
     db.users.push({
       id: `u-${Date.now()}`,
       name: trimmedName,
       email: userEmail,
-      password: parsed.data.password,
+      passwordHash,
       role: parsed.data.userRole || (parsed.data.role === 'admin' ? 'admin' : 'member')
     });
   }
@@ -758,13 +802,13 @@ app.post('/api/directory', (req, res) => {
 });
 
 // Endpoint para que un Administrador genere credenciales a un integrante existente
-app.post('/api/directory/:id/create-account', (req, res) => {
+app.post('/api/directory/:id/create-account', async (req, res) => {
   const admin = requireAdmin(req, res);
   if (!admin) return;
 
   const { email, password, role } = req.body;
-  if (!password || typeof password !== 'string' || password.length < 6) {
-    return res.status(400).json({ message: 'La contraseña debe tener al menos 6 caracteres.' });
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
   }
 
   const db = readDb();
@@ -783,11 +827,12 @@ app.post('/api/directory/:id/create-account', (req, res) => {
     return res.status(409).json({ message: 'Ya existe una cuenta con este correo electrónico.' });
   }
 
+  const passwordHash = await bcrypt.hash(password, 12);
   const newUser: User = {
     id: `u-${Date.now()}`,
     name: member.name,
     email: targetEmail,
-    password,
+    passwordHash,
     role: role || (member.role === 'admin' ? 'admin' : 'member')
   };
 
@@ -798,9 +843,77 @@ app.post('/api/directory/:id/create-account', (req, res) => {
   writeDb(db);
 
   return res.status(201).json({
-    message: `Cuenta de acceso generada para "${member.name}".`,
+    message: `Cuenta de acceso generada exitosamente para "${member.name}".`,
     user: { id: newUser.id, name: newUser.name, email: newUser.email, role: newUser.role }
   });
+});
+
+// Endpoint para que un Administrador restablezca/regenere manualmente la contraseña de un integrante
+app.post('/api/directory/:id/reset-password', async (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const { password, role } = req.body;
+  if (!password || typeof password !== 'string' || password.length < 8) {
+    return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres.' });
+  }
+
+  const db = readDb();
+  const member = db.teamDirectory.find((m) => m.id === req.params.id);
+  if (!member) {
+    return res.status(404).json({ message: 'Integrante del directorio no encontrado.' });
+  }
+
+  const targetUser = db.users.find(
+    (u) => (member.email && u.email.toLowerCase() === member.email.toLowerCase()) ||
+           u.name.toLowerCase() === member.name.toLowerCase()
+  );
+
+  if (!targetUser) {
+    return res.status(404).json({ message: 'Este integrante no cuenta con un usuario de acceso registrado.' });
+  }
+
+  targetUser.passwordHash = await bcrypt.hash(password, 12);
+  delete targetUser.password;
+  if (role && (role === 'admin' || role === 'member')) {
+    targetUser.role = role;
+  }
+  writeDb(db);
+
+  return res.json({
+    message: `Contraseña de "${targetUser.name}" restablecida correctamente.`,
+    user: { id: targetUser.id, name: targetUser.name, email: targetUser.email, role: targetUser.role }
+  });
+});
+
+// Endpoint para que un Administrador revoque el acceso al sistema sin eliminar al integrante del directorio
+app.delete('/api/directory/:id/revoke-access', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const db = readDb();
+  const member = db.teamDirectory.find((m) => m.id === req.params.id);
+  if (!member) {
+    return res.status(404).json({ message: 'Integrante del directorio no encontrado.' });
+  }
+
+  const targetUser = db.users.find(
+    (u) => (member.email && u.email.toLowerCase() === member.email.toLowerCase()) ||
+           u.name.toLowerCase() === member.name.toLowerCase()
+  );
+
+  if (!targetUser) {
+    return res.status(404).json({ message: 'Este integrante no tiene una cuenta de usuario activa.' });
+  }
+
+  if (targetUser.id === admin.id || targetUser.role === 'owner') {
+    return res.status(400).json({ message: 'No se puede revocar el acceso del usuario propietario principal o tu propia cuenta.' });
+  }
+
+  db.users = db.users.filter((u) => u.id !== targetUser.id);
+  writeDb(db);
+
+  return res.json({ message: `Acceso al sistema revocado para "${member.name}". El integrante permanece en el directorio.` });
 });
 
 app.put('/api/directory/:id', (req, res) => {
@@ -1038,7 +1151,8 @@ app.post('/api/work-items', (req, res) => {
     completionReport: parsed.data.completionReport || '',
     continuationTaskId: parsed.data.continuationTaskId,
     completedAt: parsed.data.completedAt || (parsed.data.status === 'done' ? new Date().toISOString() : undefined),
-    progressLogs: parsed.data.progressLogs || []
+    progressLogs: parsed.data.progressLogs || [],
+    phaseIds: Array.isArray(parsed.data.phaseIds) ? parsed.data.phaseIds : []
   };
 
   workItems.unshift(newItem);

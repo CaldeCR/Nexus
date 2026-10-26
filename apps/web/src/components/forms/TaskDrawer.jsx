@@ -21,7 +21,8 @@ export function TaskDrawer({
     dueDate: '',
     type: 'task',
     priority: 'medium',
-    description: ''
+    description: '',
+    phaseIds: []
   });
 
   const firstInputRef = useRef(null);
@@ -38,7 +39,8 @@ export function TaskDrawer({
         dueDate: initialData.dueDate || '',
         type: initialData.type || 'task',
         priority: initialData.priority || 'medium',
-        description: initialData.description || ''
+        description: initialData.description || '',
+        phaseIds: Array.isArray(initialData.phaseIds) ? initialData.phaseIds : []
       });
     } else {
       setFormData({
@@ -49,7 +51,8 @@ export function TaskDrawer({
         dueDate: '',
         type: 'task',
         priority: 'medium',
-        description: ''
+        description: '',
+        phaseIds: []
       });
     }
   }, [initialData, isOpen, selectedProjectId, projects, currentUser]);
@@ -79,6 +82,8 @@ export function TaskDrawer({
   const completedCount = [validTitle, validProject, validAssignee, validDueDate].filter(Boolean).length;
   const isValid = completedCount === 4;
 
+  const selectedProjectObj = projects.find((p) => p.id === formData.projectId);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isValid) return;
@@ -91,7 +96,10 @@ export function TaskDrawer({
       ...formData,
       title: formData.title.trim(),
       assignees: assigneesList,
-      assignee: assigneesList.join(', ')
+      assignee: assigneesList.join(', '),
+      phaseIds: (selectedProjectObj?.hasPhases && Array.isArray(selectedProjectObj.phases) && selectedProjectObj.phases.length > 0)
+        ? (formData.phaseIds && formData.phaseIds.length > 0 ? formData.phaseIds : [selectedProjectObj.phases[0].id])
+        : []
     };
 
     onSubmit(payload);
@@ -159,6 +167,43 @@ export function TaskDrawer({
               ))}
             </select>
           </div>
+
+          {/* ASIGNACIÓN A FASES (Solo si el proyecto seleccionado tiene fases) */}
+          {selectedProjectObj?.hasPhases && Array.isArray(selectedProjectObj.phases) && selectedProjectObj.phases.length > 0 && (
+            <div className="ui-drawer-field" style={{ background: '#F8FAFB', padding: '12px 14px', borderRadius: '8px', border: '1px solid #DDE2E4' }}>
+              <label className="ui-drawer-label" style={{ color: '#2A6F62', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 6px 0' }}>
+                <span>Fases asignadas a esta tarea</span>
+                <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#5F6B76' }}>(Selecciona 1 o más)</span>
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {selectedProjectObj.phases.map((ph) => {
+                  const isChecked = (formData.phaseIds || []).includes(ph.id);
+                  return (
+                    <label key={ph.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer', color: '#1D2A33' }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = formData.phaseIds || [];
+                          const updated = e.target.checked
+                            ? [...current, ph.id]
+                            : current.filter((id) => id !== ph.id);
+                          setFormData({ ...formData, phaseIds: updated });
+                        }}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      <span>{ph.name} <small style={{ color: '#5F6B76' }}>(Meta: {ph.targetDate})</small></span>
+                    </label>
+                  );
+                })}
+              </div>
+              {(formData.phaseIds || []).length > 1 && (
+                <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#7C3AED', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <span>🔗 Tarea compartida entre {(formData.phaseIds || []).length} fases. Aparecerá enlazada en cada carril.</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 3. Responsable */}
           <div className="ui-drawer-field">

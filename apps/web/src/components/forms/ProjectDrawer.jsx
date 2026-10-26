@@ -21,7 +21,9 @@ export function ProjectDrawer({
     role: 'lead',
     status: 'execution',
     admins: currentUser?.name || 'Jorge',
-    members: ''
+    members: '',
+    hasPhases: false,
+    phases: []
   });
 
   const firstInputRef = useRef(null);
@@ -38,7 +40,9 @@ export function ProjectDrawer({
         role: initialData.role || 'lead',
         status: initialData.status || 'execution',
         admins: Array.isArray(initialData.admins) ? initialData.admins.join(', ') : (initialData.admins || currentUser?.name || 'Jorge'),
-        members: Array.isArray(initialData.members) ? initialData.members.join(', ') : (initialData.members || '')
+        members: Array.isArray(initialData.members) ? initialData.members.join(', ') : (initialData.members || ''),
+        hasPhases: Boolean(initialData.hasPhases),
+        phases: Array.isArray(initialData.phases) ? initialData.phases : []
       });
     } else {
       setFormData({
@@ -51,7 +55,9 @@ export function ProjectDrawer({
         role: 'lead',
         status: 'execution',
         admins: currentUser?.name || 'Jorge',
-        members: ''
+        members: '',
+        hasPhases: false,
+        phases: []
       });
     }
   }, [initialData, isOpen, currentUser]);
@@ -86,7 +92,18 @@ export function ProjectDrawer({
       ...formData,
       name: formData.name.trim(),
       admins: formData.admins ? formData.admins.split(',').map((s) => s.trim()).filter(Boolean) : [currentUser?.name || 'Jorge'],
-      members: formData.members ? formData.members.split(',').map((s) => s.trim()).filter(Boolean) : []
+      members: formData.members ? formData.members.split(',').map((s) => s.trim()).filter(Boolean) : [],
+      hasPhases: Boolean(formData.hasPhases),
+      phases: formData.hasPhases && Array.isArray(formData.phases) && formData.phases.length > 0
+        ? formData.phases.map((p, idx) => ({
+            id: p.id || `phase-${Date.now()}-${idx}`,
+            name: (p.name || '').trim() || `Fase ${idx + 1}`,
+            targetDate: p.targetDate || formData.targetDate,
+            startDate: p.startDate || formData.startDate,
+            status: p.status || (idx === 0 ? 'in_progress' : 'pending'),
+            order: idx + 1
+          }))
+        : undefined
     };
 
     onSubmit(payload);
@@ -195,6 +212,118 @@ export function ProjectDrawer({
               onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
               required
             />
+          </div>
+
+          {/* 5. Estructura por Fases (Opcional - Para proyectos por etapas) */}
+          <div className="ui-drawer-field" style={{ background: '#F8FAFB', padding: '14px', borderRadius: '8px', border: '1px solid #DDE2E4' }}>
+            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', margin: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '18px' }}>📌</span>
+                <div>
+                  <strong style={{ fontSize: '13.5px', color: '#1D2A33' }}>¿Gestionar este proyecto por Fases / Etapas?</strong>
+                  <div style={{ fontSize: '12px', color: '#5F6B76', marginTop: '2px' }}>
+                    Actívalo para definir metas estimadas por fase, diagrama Gantt y tareas compartidas.
+                  </div>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={Boolean(formData.hasPhases)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  let updatedPhases = formData.phases || [];
+                  if (checked && updatedPhases.length === 0) {
+                    updatedPhases = [
+                      { id: `phase-${Date.now()}-1`, name: 'Fase 1: Diagnóstico e Inicio', targetDate: formData.targetDate || '', status: 'in_progress' },
+                      { id: `phase-${Date.now()}-2`, name: 'Fase 2: Implementación y Cierre', targetDate: formData.targetDate || '', status: 'pending' }
+                    ];
+                  }
+                  setFormData({ ...formData, hasPhases: checked, phases: updatedPhases });
+                }}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', flex: 'none' }}
+              />
+            </label>
+
+            {Boolean(formData.hasPhases) && (
+              <div style={{ marginTop: '14px', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #E1E5E6', paddingTop: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '12.5px', color: '#2A6F62', fontWeight: 600 }}>
+                  <span>Fases del proyecto:</span>
+                  <span style={{ fontWeight: 'normal', color: '#5F6B76', fontSize: '11.5px' }}>(Podrás añadir o modificar fechas después)</span>
+                </div>
+
+                {formData.phases?.map((p, idx) => (
+                  <div key={p.id || idx} style={{ display: 'grid', gridTemplateColumns: '1fr 140px 32px', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      className="ui-drawer-input"
+                      style={{ fontSize: '12px', height: '34px' }}
+                      placeholder={`Nombre de Fase #${idx + 1}`}
+                      value={p.name}
+                      onChange={(e) => {
+                        const newPhases = [...formData.phases];
+                        newPhases[idx].name = e.target.value;
+                        setFormData({ ...formData, phases: newPhases });
+                      }}
+                      required
+                    />
+                    <input
+                      type="date"
+                      className="ui-drawer-input"
+                      style={{ fontSize: '12px', height: '34px' }}
+                      value={p.targetDate || ''}
+                      onChange={(e) => {
+                        const newPhases = [...formData.phases];
+                        newPhases[idx].targetDate = e.target.value;
+                        setFormData({ ...formData, phases: newPhases });
+                      }}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (formData.phases.length <= 1) {
+                          alert('Debe haber al menos 1 fase si se activa este modo.');
+                          return;
+                        }
+                        const newPhases = formData.phases.filter((_, i) => i !== idx);
+                        setFormData({ ...formData, phases: newPhases });
+                      }}
+                      style={{ background: 'transparent', border: 0, color: '#9B3B32', cursor: 'pointer', fontSize: '15px' }}
+                      title="Eliminar fase"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = (formData.phases?.length || 0) + 1;
+                    const newPhases = [...(formData.phases || []), {
+                      id: `phase-${Date.now()}-${idx}`,
+                      name: `Fase ${idx}: Nueva Etapa`,
+                      targetDate: formData.targetDate || '',
+                      status: 'pending'
+                    }];
+                    setFormData({ ...formData, phases: newPhases });
+                  }}
+                  style={{
+                    background: '#FFFFFF',
+                    border: '1px dashed #2A6F62',
+                    color: '#2A6F62',
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    marginTop: '4px'
+                  }}
+                >
+                  + Agregar otra fase
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="ui-drawer-divider" />

@@ -11,18 +11,69 @@
       "id": "u-1792019074625",
       "name": "Ana Rodriguez",
       "email": "ana@nexus.local",
-      "password": "secret123",
+      "passwordHash": "$2b$12$Js7EsK/ZOmNIAjLxQ7EVEO2Tj6EIlOOFzu1Y//qIQ6Ij3lwe/1SkO",
       "role": "member"
     },
     {
       "id": "u-1792020629821",
       "name": "Esteban Montoya",
       "email": "esteban@nexus.local",
-      "password": "NexusPass123!",
+      "passwordHash": "$2b$12$lZ/dLDSA9uTyB.i3pGiYI.cF2nkTlgWJ/TWKIUQQjW1GpbKvdn/qu",
       "role": "member"
     }
   ],
   "projects": [
+    {
+      "id": "p-1793048127432",
+      "code": "P5",
+      "name": "Proyecto ERP Hacienda & Softland",
+      "template": "kanban",
+      "status": "execution",
+      "role": "lead",
+      "space": "work",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1793048127432",
+          "name": "Jorge",
+          "role": "admin"
+        }
+      ],
+      "startDate": "2026-10-26",
+      "targetDate": "2026-11-30",
+      "originalTargetDate": "2026-11-30",
+      "dateExtensions": [],
+      "hasPhases": true,
+      "phases": [
+        {
+          "id": "phase-1",
+          "name": "Fase 1: Diagnóstico y Requerimientos",
+          "targetDate": "2026-10-15",
+          "status": "completed"
+        },
+        {
+          "id": "phase-2",
+          "name": "Fase 2: Configuración e Integraciones",
+          "targetDate": "2026-11-05",
+          "status": "in_progress"
+        },
+        {
+          "id": "phase-3",
+          "name": "Fase 3: Pruebas UAT y Salida en Vivo",
+          "targetDate": "2026-11-30",
+          "status": "pending"
+        },
+        {
+          "id": "phase-4",
+          "name": "Fase 4: Soporte Post Salida",
+          "targetDate": "2026-12-15",
+          "status": "pending"
+        }
+      ]
+    },
     {
       "id": "p-1791231911086",
       "code": "P7",
@@ -267,6 +318,29 @@
     }
   ],
   "workItems": [
+    {
+      "id": "wi-1793048127439",
+      "code": "P5-T3",
+      "projectId": "p-1793048127432",
+      "title": "Validación de balances y simulación XML Hacienda",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge, Jerry Contabilidad",
+      "assignees": [
+        "Jorge",
+        "Jerry Contabilidad"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-10-26T20:55:27.439Z",
+      "completionReport": "",
+      "progressLogs": [],
+      "phaseIds": [
+        "phase-2",
+        "phase-3"
+      ]
+    },
     {
       "id": "wi-1791499339625",
       "code": "P2-T5",

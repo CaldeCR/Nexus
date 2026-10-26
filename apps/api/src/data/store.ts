@@ -30,6 +30,15 @@ export type DateExtension = {
   createdAt: string;
 };
 
+export type ProjectPhase = {
+  id: string;
+  name: string;
+  targetDate: string;
+  startDate?: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  order?: number;
+};
+
 export type Project = {
   id: string;
   code?: string;
@@ -47,6 +56,8 @@ export type Project = {
   dateExtensions?: DateExtension[];
   space?: 'work' | 'personal';
   organization?: string;
+  hasPhases?: boolean;
+  phases?: ProjectPhase[];
 };
 
 export type TaskProgressEntry = {
@@ -79,6 +90,7 @@ export type WorkItem = {
   continuationTaskId?: string;
   completedAt?: string;
   progressLogs?: TaskProgressEntry[];
+  phaseIds?: string[];
 };
 
 export type GlobalMemberRole = 'admin' | 'collaborator' | 'vendor' | 'viewer';
