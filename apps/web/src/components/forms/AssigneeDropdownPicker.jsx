@@ -148,10 +148,10 @@ export function AssigneeDropdownPicker({
   // Icono según tipo de usuario
   const getCandidateIcon = (name) => {
     const found = candidates.find((c) => c.name.toLowerCase() === name.toLowerCase());
-    if (found?.isMe) return <Icons.User />;
-    if (found?.role === 'admin') return <Icons.ShieldAdmin />;
-    if (found?.role === 'vendor') return <Icons.Vendor />;
-    return <Icons.Team />;
+    if (found?.isMe) return Icons?.User ? <Icons.User size={13} /> : null;
+    if (found?.role === 'admin') return Icons?.ShieldAdmin ? <Icons.ShieldAdmin size={13} /> : null;
+    if (found?.role === 'vendor') return Icons?.Vendor ? <Icons.Vendor size={13} /> : null;
+    return Icons?.Team ? <Icons.Team size={13} /> : null;
   };
 
   const getCandidateClass = (name) => {

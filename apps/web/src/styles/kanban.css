@@ -849,7 +849,7 @@
 
 .phased-today-pin {
   position: absolute;
-  right: 18%;
+  left: 50%;
   top: 0;
   bottom: 0;
   width: 2px;
@@ -936,7 +936,7 @@
   min-height: 38px;
   display: flex;
   align-items: center;
-  padding: 0 10px;
+  padding: 0;
 }
 
 .phased-master-bar {
@@ -968,7 +968,7 @@
   position: absolute;
   height: 18px;
   border-radius: 3px;
-  background: #2563EB;
+  background: #2A6F62;
   color: #FFFFFF;
   font-size: 10px;
   font-weight: 600;
@@ -976,19 +976,19 @@
   align-items: center;
   padding: 0 7px;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.12s ease;
 }
 
 .phased-task-bar:hover {
   transform: translateY(-1px);
-  filter: brightness(1.15);
+  filter: brightness(1.1);
 }
 
 .phased-task-bar.is-shared {
-  background: linear-gradient(90deg, #7C3AED 0%, #2563EB 100%);
-  border: 1px solid #c084fc;
+  background: #47626D;
+  border: 1px solid #364C55;
 }
 
 /* 2. SECCIÓN INFERIOR: FASES CONTRAÍDAS EN KANBAN */
@@ -1114,9 +1114,9 @@
 }
 
 .shared-pill-tag {
-  background: rgba(139, 92, 246, 0.15);
-  color: #7c3aed;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: #EEF2F5;
+  color: #37474F;
+  border: 1px solid #CFD8DC;
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 10.5px;
@@ -1127,13 +1127,13 @@
 }
 
 .kanban-task-card.is-shared-task {
-  border-left: 3.5px solid #8b5cf6 !important;
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.06) 0%, #FFFFFF 35%) !important;
+  border-left: 3.5px solid #47626D !important;
+  background: #FFFFFF !important;
 }
 
 .kanban-task-card.task-highlight-pulse {
-  border-color: #8b5cf6 !important;
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.4) !important;
+  border-color: #2A6F62 !important;
+  box-shadow: 0 0 0 3px rgba(42, 111, 98, 0.3) !important;
 }
 
 

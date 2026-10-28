@@ -154,7 +154,7 @@
 
 .task-item-card--stale {
   border-left: 4px solid var(--warning-600);
-  background: linear-gradient(90deg, rgba(251, 191, 36, 0.03) 0%, var(--surface-card) 100%);
+  background: var(--surface-card);
 }
 
 .task-item-card:hover {

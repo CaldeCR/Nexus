@@ -186,7 +186,38 @@
           "createdAt": "2026-10-05T17:55:37.037Z"
         }
       ],
-      "code": "P2"
+      "code": "P2",
+      "hasPhases": true,
+      "phases": [
+        {
+          "id": "phase-0",
+          "name": "Fase 0: Salida al público",
+          "startDate": "2026-10-26",
+          "targetDate": "2026-11-04",
+          "status": "in_progress"
+        },
+        {
+          "id": "phase-1",
+          "name": "Fase 1:",
+          "startDate": "2026-11-04",
+          "targetDate": "2026-12-01",
+          "status": "pending"
+        },
+        {
+          "id": "phase-2",
+          "name": "Fase 2:",
+          "startDate": "2026-12-01",
+          "targetDate": "2026-12-31",
+          "status": "pending"
+        },
+        {
+          "id": "phase-3",
+          "name": "Fase 3:",
+          "startDate": "2026-12-31",
+          "targetDate": "2027-01-29",
+          "status": "pending"
+        }
+      ]
     },
     {
       "id": "p-1790894640083",
@@ -318,6 +349,51 @@
     }
   ],
   "workItems": [
+    {
+      "id": "wi-p2-t11",
+      "code": "P2-T11",
+      "projectId": "p-1790895374161",
+      "title": "Configurar WhatsApp Business y números de agentes",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-10-26T10:00:00.000Z",
+      "completionReport": "",
+      "progressLogs": [],
+      "phaseIds": [
+        "phase-0",
+        "phase-1"
+      ]
+    },
+    {
+      "id": "wi-p2-t10",
+      "code": "P2-T10",
+      "projectId": "p-1790895374161",
+      "title": "Habilitar landing page con botón de contacto",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-03",
+      "createdAt": "2026-10-26T10:00:00.000Z",
+      "completionReport": "",
+      "progressLogs": [],
+      "phaseIds": [
+        "phase-0"
+      ]
+    },
     {
       "id": "wi-1793048127439",
       "code": "P5-T3",

@@ -270,24 +270,44 @@ export function KanbanView({
   const openPhasesManager = () => {
     if (!currentProject?.phases) return;
     setEditingPhases(
-      currentProject.phases.map((p) => ({
-        id: p.id,
-        name: p.name,
-        targetDate: p.targetDate || '',
-        status: p.status || 'pending'
-      }))
+      currentProject.phases.map((p, idx) => {
+        let defaultStart = p.startDate;
+        if (!defaultStart) {
+          if (idx === 0) {
+            defaultStart = currentProject.startDate || todayStr || '';
+          } else {
+            defaultStart = currentProject.phases[idx - 1]?.targetDate || todayStr || '';
+          }
+        }
+        return {
+          id: p.id,
+          name: p.name,
+          startDate: defaultStart || '',
+          targetDate: p.targetDate || '',
+          status: p.status || 'pending'
+        };
+      })
     );
     setIsPhasesDrawerOpen(true);
   };
 
   const handleAddPhaseInManager = () => {
     const nextNum = editingPhases.length + 1;
+    const lastPhase = editingPhases[editingPhases.length - 1];
+    const defaultStart = lastPhase?.targetDate || todayStr || '';
+    let defaultTarget = '';
+    if (defaultStart) {
+      const d = new Date(defaultStart + 'T12:00:00');
+      d.setDate(d.getDate() + 21);
+      defaultTarget = d.toISOString().split('T')[0];
+    }
     setEditingPhases((prev) => [
       ...prev,
       {
-        id: `phase-${Date.now()}`,
-        name: `Fase ${nextNum}: Nueva etapa`,
-        targetDate: todayStr || '',
+        id: `phase-${Date.now()}-${nextNum}`,
+        name: `Fase ${nextNum}: `,
+        startDate: defaultStart,
+        targetDate: defaultTarget,
         status: 'pending'
       }
     ]);
@@ -312,52 +332,224 @@ export function KanbanView({
   const handleSavePhasesManager = () => {
     const cleaned = editingPhases.map((p, idx) => ({
       ...p,
-      name: p.name.trim() || `Fase ${idx + 1}`
+      name: p.name.trim() || `Fase ${idx + 1}`,
+      startDate: p.startDate || '',
+      targetDate: p.targetDate || ''
     }));
     if (onUpdateProject) {
       onUpdateProject(currentProject.id, {
         ...currentProject,
+        hasPhases: true,
         phases: cleaned
       });
     }
     setIsPhasesDrawerOpen(false);
   };
 
-  // Cálculo de los 4 meses para el Cronograma Gantt (Alt 3)
-  const ganttMonths = useMemo(() => {
-    const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const parts = (todayStr || '2026-10-26').split('-');
-    const curYear = parseInt(parts[0], 10) || 2026;
-    const curMonth = (parseInt(parts[1], 10) || 10) - 1; // 0-indexed (9 for Oct)
-    const curDay = parseInt(parts[2], 10) || 26;
-
-    const cols = [];
-    for (let offset = -2; offset <= 1; offset++) {
-      const d = new Date(curYear, curMonth + offset, 1);
-      const isCur = offset === 0;
-      cols.push({
-        label: `${monthsShort[d.getMonth()]} ${d.getFullYear()}`,
-        isCurrent: isCur,
-        todayLabel: `Hoy ${curDay} ${monthsShort[curMonth]}`
-      });
-    }
-    return cols;
-  }, [todayStr]);
-
-  const getPhasePosition = (phase, idx, totalPhases) => {
-    const step = 85 / Math.max(1, totalPhases);
-    const left = 6 + idx * step;
-    const width = Math.min(34, step * 0.95);
-    return { left: `${left.toFixed(1)}%`, width: `${width.toFixed(1)}%` };
+  // Helper de duración en días / semanas
+  const formatDurationDays = (startStr, endStr) => {
+    if (!startStr || !endStr) return '';
+    const d1 = new Date(startStr + 'T12:00:00').getTime();
+    const d2 = new Date(endStr + 'T12:00:00').getTime();
+    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+    if (diff < 0) return 'Invertida';
+    if (diff === 0) return '1 día';
+    if (diff < 7) return `${diff}d`;
+    const w = Math.round(diff / 7);
+    return `${diff}d (~${w}s)`;
   };
 
-  const getTaskPosition = (phasePos, tIdx, totalTasks, isShared) => {
-    const pLeft = parseFloat(phasePos.left);
-    const pWidth = parseFloat(phasePos.width);
-    const offset = totalTasks > 1 ? (pWidth * 0.65 * (tIdx / totalTasks)) : 0;
-    const left = pLeft + offset;
-    const width = isShared ? Math.min(30, pWidth * 0.85) : Math.min(18, pWidth * 0.55);
-    return { left: `${left.toFixed(1)}%`, width: `${Math.max(14, width).toFixed(1)}%` };
+  // Cálculo Dinámico de la Línea de Tiempo Gantt según fechas reales del proyecto, fases y tareas
+  const timelineConfig = useMemo(() => {
+    const monthsShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const curToday = todayStr || new Date().toISOString().split('T')[0];
+
+    // Recolectar todas las fechas existentes para determinar el rango real
+    const allDates = [curToday];
+    if (currentProject?.startDate) allDates.push(currentProject.startDate);
+    if (currentProject?.targetDate) allDates.push(currentProject.targetDate);
+
+    (currentProject?.phases || []).forEach((ph) => {
+      if (ph.startDate) allDates.push(ph.startDate);
+      if (ph.targetDate) allDates.push(ph.targetDate);
+    });
+
+    (filteredTasks || []).forEach((t) => {
+      if (t.startDate) allDates.push(t.startDate);
+      if (t.dueDate) allDates.push(t.dueDate);
+      if (t.createdAt) allDates.push(t.createdAt.split('T')[0]);
+    });
+
+    const timestamps = allDates
+      .map((dStr) => {
+        if (!dStr || typeof dStr !== 'string') return null;
+        const parts = dStr.split('-').map(Number);
+        if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]).getTime();
+      })
+      .filter((ts) => ts !== null && !isNaN(ts));
+
+    const minTs = timestamps.length > 0 ? Math.min(...timestamps) : new Date().getTime();
+    const maxTs = timestamps.length > 0 ? Math.max(...timestamps) : new Date().getTime();
+
+    const minD = new Date(minTs);
+    const maxD = new Date(maxTs);
+
+    let startYear = minD.getFullYear();
+    let startMonth = minD.getMonth();
+    let endYear = maxD.getFullYear();
+    let endMonth = maxD.getMonth();
+
+    // Garantizar al menos 4 meses para balance visual
+    let monthCount = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
+    if (monthCount < 4) {
+      const needed = 4 - monthCount;
+      const addBefore = Math.floor(needed / 2);
+      const addAfter = needed - addBefore;
+
+      startMonth -= addBefore;
+      while (startMonth < 0) {
+        startMonth += 12;
+        startYear -= 1;
+      }
+      endMonth += addAfter;
+      while (endMonth > 11) {
+        endMonth -= 12;
+        endYear += 1;
+      }
+    }
+
+    const todayParts = curToday.split('-').map(Number);
+    const todayYear = todayParts[0];
+    const todayMonth = todayParts[1] - 1;
+    const todayDay = todayParts[2];
+
+    const cols = [];
+    let curY = startYear;
+    let curM = startMonth;
+
+    while (curY < endYear || (curY === endYear && curM <= endMonth)) {
+      const isCur = curY === todayYear && curM === todayMonth;
+      const daysInMonth = new Date(curY, curM + 1, 0).getDate();
+      const todayDayPct = isCur ? Math.max(2, Math.min(98, (todayDay / daysInMonth) * 100)) : 50;
+
+      cols.push({
+        year: curY,
+        month: curM,
+        label: `${monthsShort[curM]} ${curY}`,
+        isCurrent: isCur,
+        todayLabel: `Hoy ${todayDay} ${monthsShort[todayMonth]}`,
+        todayDayPct,
+        daysInMonth
+      });
+
+      curM++;
+      if (curM > 11) {
+        curM = 0;
+        curY++;
+      }
+    }
+
+    const timelineStartMs = new Date(startYear, startMonth, 1, 0, 0, 0).getTime();
+    const timelineEndMs = new Date(endYear, endMonth + 1, 0, 23, 59, 59).getTime();
+    const totalDurationMs = Math.max(1, timelineEndMs - timelineStartMs);
+
+    const todayMs = new Date(todayYear, todayMonth, todayDay, 12, 0, 0).getTime();
+    let todayTimelinePct = null;
+    if (todayMs >= timelineStartMs && todayMs <= timelineEndMs) {
+      todayTimelinePct = Math.max(0.5, Math.min(99.5, ((todayMs - timelineStartMs) / totalDurationMs) * 100));
+    }
+
+    return {
+      months: cols,
+      timelineStartMs,
+      timelineEndMs,
+      totalDurationMs,
+      todayTimelinePct
+    };
+  }, [todayStr, currentProject, filteredTasks]);
+
+  // Posicionamiento de Fases en Gantt con Fechas Reales
+  const getPhasePosition = (phase, idx, totalPhases) => {
+    const { timelineStartMs, totalDurationMs } = timelineConfig;
+
+    let startStr = phase.startDate;
+    if (!startStr) {
+      if (idx === 0) {
+        if (currentProject?.startDate && currentProject.startDate <= (phase.targetDate || todayStr)) {
+          const pStart = new Date(currentProject.startDate + 'T12:00:00').getTime();
+          const pTarget = phase.targetDate ? new Date(phase.targetDate + 'T12:00:00').getTime() : pStart;
+          if ((pTarget - pStart) / (1000 * 60 * 60 * 24) > 40) {
+            const d = new Date(pTarget);
+            d.setDate(d.getDate() - 14);
+            startStr = d.toISOString().split('T')[0];
+          } else {
+            startStr = currentProject.startDate;
+          }
+        } else {
+          startStr = todayStr || '2026-10-27';
+        }
+      } else {
+        const prevPhase = currentProject?.phases?.[idx - 1];
+        startStr = prevPhase?.targetDate || todayStr;
+      }
+    }
+
+    let endStr = phase.targetDate || startStr;
+    if (endStr < startStr) {
+      endStr = startStr;
+    }
+
+    const startParts = (startStr || '2026-10-27').split('-').map(Number);
+    const endParts = (endStr || '2026-11-04').split('-').map(Number);
+
+    const startMs = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0).getTime();
+    const endMs = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59).getTime();
+
+    const leftPct = Math.max(0, Math.min(95, ((startMs - timelineStartMs) / totalDurationMs) * 100));
+    const rightPct = Math.max(leftPct + 4, Math.min(100, ((endMs - timelineStartMs) / totalDurationMs) * 100));
+    const widthPct = Math.max(5, rightPct - leftPct);
+    const diffDays = Math.max(1, Math.round((endMs - startMs) / (1000 * 60 * 60 * 24)));
+
+    return {
+      left: `${leftPct.toFixed(2)}%`,
+      width: `${widthPct.toFixed(2)}%`,
+      startDate: startStr,
+      targetDate: endStr,
+      durationDays: diffDays
+    };
+  };
+
+  // Posicionamiento de Tareas en Gantt con Fechas Reales
+  const getTaskPosition = (task, phasePos, tIdx, totalTasks, isShared) => {
+    const { timelineStartMs, totalDurationMs } = timelineConfig;
+
+    let startStr = task.startDate || (task.createdAt ? task.createdAt.split('T')[0] : '') || phasePos.startDate;
+    let endStr = task.dueDate || phasePos.targetDate || startStr;
+
+    if (endStr < startStr) {
+      endStr = startStr;
+    }
+
+    const startParts = (startStr || '2026-10-27').split('-').map(Number);
+    const endParts = (endStr || '2026-11-04').split('-').map(Number);
+
+    const startMs = new Date(startParts[0], startParts[1] - 1, startParts[2], 0, 0, 0).getTime();
+    const endMs = new Date(endParts[0], endParts[1] - 1, endParts[2], 23, 59, 59).getTime();
+
+    let leftPct = ((startMs - timelineStartMs) / totalDurationMs) * 100;
+    let rightPct = ((endMs - timelineStartMs) / totalDurationMs) * 100;
+
+    leftPct = Math.max(0, Math.min(96, leftPct));
+    rightPct = Math.max(leftPct + 3, Math.min(100, rightPct));
+    const widthPct = Math.max(3.5, rightPct - leftPct);
+
+    return {
+      left: `${leftPct.toFixed(2)}%`,
+      width: `${widthPct.toFixed(2)}%`,
+      startDate: startStr,
+      dueDate: endStr
+    };
   };
 
   const renderTaskCardItem = (c, phaseId = null) => {
@@ -953,93 +1145,190 @@ export function KanbanView({
                   Etapa Maestra
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: '#2563EB' }} />
+                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: '#2A6F62' }} />
                   Tarea de Fase
                 </span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: 'linear-gradient(90deg, #7C3AED 0%, #2563EB 100%)' }} />
+                  <span style={{ width: '12px', height: '8px', borderRadius: '2px', background: '#47626D' }} />
                   Tarea Compartida (🔗)
                 </span>
               </div>
             </div>
 
-            {/* Encabezado de Meses con Marcador de Hoy */}
-            <div className="phased-gantt-table-head">
-              <div className="phased-gantt-th first">Etapas y Tareas del Proyecto</div>
-              {ganttMonths.map((m, mIdx) => (
-                <div key={mIdx} className={`phased-gantt-th ${m.isCurrent ? 'is-current' : ''}`}>
-                  <span>{m.label} {m.isCurrent ? '(Actual)' : ''}</span>
-                  {m.isCurrent && (
-                    <div className="phased-today-pin">
-                      <span className="phased-today-tag">{m.todayLabel}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Filas de Gantt */}
-            <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
-              {currentProject.phases.map((phase, pIdx) => {
-                const phaseTasks = filteredTasks.filter((t) => (t.phaseIds || []).includes(phase.id));
-                const phasePos = getPhasePosition(phase, pIdx, currentProject.phases.length);
-
-                return (
-                  <React.Fragment key={phase.id}>
-                    {/* Fila Maestra de Fase */}
-                    <div
-                      className="phased-gantt-row is-phase-head"
-                      title="Haz clic para ver esta fase en el Tablero Kanban abajo"
-                      onClick={() => scrollToAndOpenPhase(phase.id)}
-                    >
-                      <div className="phased-gantt-row-title">
-                        <span style={{ fontSize: '13px' }}>📌</span>
-                        <span style={{ fontWeight: 700, color: '#2A6F62' }}>{phase.name}</span>
-                        <span className="phased-goto-badge">Ver en tablero ⬇</span>
+            {/* Encabezado de Meses con Marcador de Hoy y Filas Dinámicas */}
+            <div style={{ overflowX: 'auto', border: '1px solid #E6EBED', borderRadius: '8px', background: '#FFFFFF' }}>
+              <div
+                className="phased-gantt-table-head"
+                style={{
+                  minWidth: `${320 + timelineConfig.months.length * 115}px`,
+                  gridTemplateColumns: `320px repeat(${timelineConfig.months.length}, 1fr)`
+                }}
+              >
+                <div className="phased-gantt-th first">Etapas y Tareas del Proyecto</div>
+                {timelineConfig.months.map((m, mIdx) => (
+                  <div key={mIdx} className={`phased-gantt-th ${m.isCurrent ? 'is-current' : ''}`}>
+                    <span>{m.label} {m.isCurrent ? '(Actual)' : ''}</span>
+                    {m.isCurrent && (
+                      <div className="phased-today-pin" style={{ left: `${m.todayDayPct}%`, right: 'auto' }}>
+                        <span className="phased-today-tag">{m.todayLabel}</span>
                       </div>
-                      <div className="phased-gantt-track">
-                        <div
-                          className="phased-master-bar"
-                          style={{ left: phasePos.left, width: phasePos.width }}
-                        >
-                          <span>{phase.name.split(':')[0]} • Meta: {phase.targetDate || 'Sin fecha'}</span>
-                          <span>{phase.status === 'completed' ? '✓' : ''}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Filas de Gantt */}
+              <div style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                {currentProject.phases.map((phase, pIdx) => {
+                  const phaseTasks = filteredTasks.filter((t) => (t.phaseIds || []).includes(phase.id));
+                  const phasePos = getPhasePosition(phase, pIdx, currentProject.phases.length);
+
+                  return (
+                    <React.Fragment key={phase.id}>
+                      {/* Fila Maestra de Fase */}
+                      <div
+                        className="phased-gantt-row is-phase-head"
+                        style={{
+                          minWidth: `${320 + timelineConfig.months.length * 115}px`,
+                          gridTemplateColumns: '320px 1fr'
+                        }}
+                        title={`Haz clic para ver ${phase.name} en el Tablero abajo`}
+                        onClick={() => scrollToAndOpenPhase(phase.id)}
+                      >
+                        <div className="phased-gantt-row-title">
+                          <span style={{ fontSize: '13px' }}>📌</span>
+                          <span style={{ fontWeight: 700, color: '#2A6F62' }}>{phase.name}</span>
+                          <span className="phased-goto-badge">Ver en tablero ⬇</span>
+                        </div>
+                        <div className="phased-gantt-track" style={{ position: 'relative', width: '100%' }}>
+                          {/* Cuadrícula de Meses de Fondo */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              inset: 0,
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${timelineConfig.months.length}, 1fr)`,
+                              pointerEvents: 'none'
+                            }}
+                          >
+                            {timelineConfig.months.map((m, mIdx) => (
+                              <div
+                                key={mIdx}
+                                style={{
+                                  borderRight: '1px solid #EEF1F3',
+                                  background: m.isCurrent ? 'rgba(42, 111, 98, 0.035)' : 'transparent',
+                                  height: '100%'
+                                }}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Línea vertical de Hoy en el carril */}
+                          {timelineConfig.todayTimelinePct !== null && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                left: `${timelineConfig.todayTimelinePct}%`,
+                                top: 0,
+                                bottom: 0,
+                                width: '2px',
+                                background: '#EF4444',
+                                opacity: 0.35,
+                                pointerEvents: 'none',
+                                zIndex: 1
+                              }}
+                            />
+                          )}
+
+                          <div
+                            className="phased-master-bar"
+                            style={{ left: phasePos.left, width: phasePos.width, zIndex: 2 }}
+                            title={`${phase.name} | Inicio: ${phasePos.startDate} → Meta: ${phasePos.targetDate} (${phasePos.durationDays} días)`}
+                          >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {phase.name.split(':')[0]} • Meta: {phase.targetDate || 'Sin fecha'} ({phasePos.durationDays}d)
+                            </span>
+                            <span>{phase.status === 'completed' ? '✓' : ''}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Tareas de la Fase en Gantt */}
-                    {phaseTasks.map((task, tIdx) => {
-                      const isShared = (task.phaseIds || []).length > 1;
-                      const taskPos = getTaskPosition(phasePos, tIdx, phaseTasks.length, isShared);
+                      {/* Tareas de la Fase en Gantt */}
+                      {phaseTasks.map((task, tIdx) => {
+                        const isShared = (task.phaseIds || []).length > 1;
+                        const taskPos = getTaskPosition(task, phasePos, tIdx, phaseTasks.length, isShared);
 
-                      return (
-                        <div
-                          key={`${phase.id}-${task.id}`}
-                          className="phased-gantt-row"
-                          style={{ cursor: 'pointer' }}
-                          title={`Haz clic para ver la tarea ${task.code || ''} en el Tablero`}
-                          onClick={() => scrollToAndOpenPhase(phase.id, task.id)}
-                        >
-                          <div className="phased-gantt-row-title" style={{ paddingLeft: '34px', fontSize: '12px', color: '#3A4650' }}>
-                            {isShared ? <span style={{ color: '#7C3AED', fontSize: '13px' }}>🔗</span> : '•'}
-                            <strong style={{ color: '#1D2A33' }}>{task.code || `T-${task.id}`}:</strong>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
-                          </div>
-                          <div className="phased-gantt-track">
-                            <div
-                              className={`phased-task-bar ${isShared ? 'is-shared' : ''}`}
-                              style={{ left: taskPos.left, width: taskPos.width }}
-                            >
-                              <span>{task.code || ''} ({task.assigneesList?.[0] || 'Jorge'}) {isShared ? '★ Compartida' : ''}</span>
+                        return (
+                          <div
+                            key={`${phase.id}-${task.id}`}
+                            className="phased-gantt-row"
+                            style={{
+                              cursor: 'pointer',
+                              minWidth: `${320 + timelineConfig.months.length * 115}px`,
+                              gridTemplateColumns: '320px 1fr'
+                            }}
+                            title={`Haz clic para ver la tarea ${task.code || ''} en el Tablero | Inicio: ${taskPos.startDate} → Límite: ${taskPos.dueDate}`}
+                            onClick={() => scrollToAndOpenPhase(phase.id, task.id)}
+                          >
+                            <div className="phased-gantt-row-title" style={{ paddingLeft: '34px', fontSize: '12px', color: '#3A4650' }}>
+                              {isShared ? <span style={{ color: '#47626D', fontSize: '13px' }}>🔗</span> : '•'}
+                              <strong style={{ color: '#1D2A33' }}>{task.code || `T-${task.id}`}:</strong>
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{task.title}</span>
+                            </div>
+                            <div className="phased-gantt-track" style={{ position: 'relative', width: '100%' }}>
+                              {/* Cuadrícula de Fondo */}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  display: 'grid',
+                                  gridTemplateColumns: `repeat(${timelineConfig.months.length}, 1fr)`,
+                                  pointerEvents: 'none'
+                                }}
+                              >
+                                {timelineConfig.months.map((m, mIdx) => (
+                                  <div
+                                    key={mIdx}
+                                    style={{
+                                      borderRight: '1px solid #EEF1F3',
+                                      background: m.isCurrent ? 'rgba(42, 111, 98, 0.035)' : 'transparent',
+                                      height: '100%'
+                                    }}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Línea vertical de Hoy */}
+                              {timelineConfig.todayTimelinePct !== null && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    left: `${timelineConfig.todayTimelinePct}%`,
+                                    top: 0,
+                                    bottom: 0,
+                                    width: '2px',
+                                    background: '#EF4444',
+                                    opacity: 0.35,
+                                    pointerEvents: 'none',
+                                    zIndex: 1
+                                  }}
+                                />
+                              )}
+
+                              <div
+                                className={`phased-task-bar ${isShared ? 'is-shared' : ''}`}
+                                style={{ left: taskPos.left, width: taskPos.width, zIndex: 2 }}
+                              >
+                                <span>{task.code || ''} ({task.assigneesList?.[0] || 'Jorge'}) {isShared ? '★ Compartida' : ''}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </React.Fragment>
-                );
-              })}
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
             </div>
           </section>
 
@@ -1308,7 +1597,7 @@ export function KanbanView({
               background: '#FFFFFF',
               borderRadius: '12px',
               width: '100%',
-              maxWidth: '560px',
+              maxWidth: '740px',
               maxHeight: '85vh',
               overflow: 'hidden',
               display: 'flex',
@@ -1340,86 +1629,126 @@ export function KanbanView({
             {/* Lista de Fases en Edición */}
             <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <p style={{ margin: '0 0 6px 0', fontSize: '12.5px', color: '#5F6B76' }}>
-                Configura los nombres y metas estimadas para cada fase de este proyecto:
+                Configura los nombres, fechas de inicio y metas estimadas para cada fase. El cronograma Gantt calculará los plazos y la distribución exacta de las barras según estas fechas:
               </p>
 
-              {editingPhases.map((phase, idx) => (
-                <div
-                  key={phase.id || idx}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 140px 36px',
-                    gap: '10px',
-                    alignItems: 'center',
-                    background: '#F8FAFC',
-                    padding: '10px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #E6EBED'
-                  }}
-                >
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
-                      Fase {idx + 1}
-                    </label>
-                    <input
-                      type="text"
-                      value={phase.name}
-                      onChange={(e) => handleUpdatePhaseInManager(idx, 'name', e.target.value)}
-                      placeholder="Nombre de la fase"
-                      style={{
-                        width: '100%',
-                        height: '34px',
-                        border: '1px solid #DDE2E4',
-                        borderRadius: '6px',
-                        padding: '0 10px',
-                        fontSize: '13px',
-                        boxSizing: 'border-box'
-                      }}
-                    />
+              {editingPhases.map((phase, idx) => {
+                const durText = formatDurationDays(phase.startDate, phase.targetDate);
+                const isOverturned = phase.startDate && phase.targetDate && phase.targetDate < phase.startDate;
+
+                return (
+                  <div
+                    key={phase.id || idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(160px, 1.4fr) 130px 130px 95px 36px',
+                      gap: '10px',
+                      alignItems: 'center',
+                      background: '#F8FAFC',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid #E6EBED'
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
+                        Fase {idx + 1}
+                      </label>
+                      <input
+                        type="text"
+                        value={phase.name}
+                        onChange={(e) => handleUpdatePhaseInManager(idx, 'name', e.target.value)}
+                        placeholder="Nombre de la fase"
+                        style={{
+                          width: '100%',
+                          height: '34px',
+                          border: '1px solid #DDE2E4',
+                          borderRadius: '6px',
+                          padding: '0 10px',
+                          fontSize: '13px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
+                        Fecha de Inicio
+                      </label>
+                      <input
+                        type="date"
+                        value={phase.startDate || ''}
+                        onChange={(e) => handleUpdatePhaseInManager(idx, 'startDate', e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '34px',
+                          border: '1px solid #DDE2E4',
+                          borderRadius: '6px',
+                          padding: '0 8px',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
+                        Fecha Meta / Fin
+                      </label>
+                      <input
+                        type="date"
+                        value={phase.targetDate || ''}
+                        onChange={(e) => handleUpdatePhaseInManager(idx, 'targetDate', e.target.value)}
+                        style={{
+                          width: '100%',
+                          height: '34px',
+                          border: '1px solid #DDE2E4',
+                          borderRadius: '6px',
+                          padding: '0 8px',
+                          fontSize: '12px',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                    <div style={{ textAlign: 'center', paddingTop: '16px' }}>
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          background: isOverturned ? '#FEE2E2' : '#E6F4F1',
+                          color: isOverturned ? '#DC2626' : '#2A6F62'
+                        }}
+                        title={isOverturned ? 'La fecha meta es anterior a la fecha de inicio' : `Duración calculada: ${durText}`}
+                      >
+                        {isOverturned ? '⚠️ Inválida' : (durText || '—')}
+                      </span>
+                    </div>
+                    <div style={{ paddingTop: '16px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhaseInManager(idx)}
+                        title="Eliminar fase"
+                        style={{
+                          width: '32px',
+                          height: '34px',
+                          border: '1px solid #E1E5E6',
+                          borderRadius: '6px',
+                          background: '#FFFFFF',
+                          color: '#9B3B32',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '14px'
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '11px', fontWeight: 600, color: '#5F6B76', display: 'block', marginBottom: '4px' }}>
-                      Fecha Meta
-                    </label>
-                    <input
-                      type="date"
-                      value={phase.targetDate || ''}
-                      onChange={(e) => handleUpdatePhaseInManager(idx, 'targetDate', e.target.value)}
-                      style={{
-                        width: '100%',
-                        height: '34px',
-                        border: '1px solid #DDE2E4',
-                        borderRadius: '6px',
-                        padding: '0 8px',
-                        fontSize: '12px',
-                        boxSizing: 'border-box'
-                      }}
-                    />
-                  </div>
-                  <div style={{ paddingTop: '18px' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhaseInManager(idx)}
-                      title="Eliminar fase"
-                      style={{
-                        width: '32px',
-                        height: '34px',
-                        border: '1px solid #E1E5E6',
-                        borderRadius: '6px',
-                        background: '#FFFFFF',
-                        color: '#9B3B32',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '14px'
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               <button
                 type="button"

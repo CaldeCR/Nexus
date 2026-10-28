@@ -439,37 +439,56 @@ export function HomeView({
     const centerY = 215;
     const radius = 65;
 
-    ctx.lineWidth = 13;
+    ctx.lineWidth = 10;
     ctx.lineCap = 'round';
-    ctx.strokeStyle = '#ef4444';
+
+    // Base track
+    ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, Math.PI, Math.PI * 1.38);
+    ctx.arc(centerX, centerY, radius, Math.PI, Math.PI * 2.0);
     ctx.stroke();
 
-    ctx.strokeStyle = '#f59e0b';
+    // Zona Crítica (<40%)
+    ctx.strokeStyle = '#C44536';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, Math.PI * 1.42, Math.PI * 1.73);
+    ctx.arc(centerX, centerY, radius, Math.PI, Math.PI * 1.37);
     ctx.stroke();
 
-    ctx.strokeStyle = '#22c55e';
+    // Zona Observación (40-75%)
+    ctx.strokeStyle = '#D97706';
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, Math.PI * 1.77, Math.PI * 2.0);
+    ctx.arc(centerX, centerY, radius, Math.PI * 1.43, Math.PI * 1.72);
+    ctx.stroke();
+
+    // Zona Saludable (>75%)
+    ctx.strokeStyle = '#2A6F62';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, Math.PI * 1.78, Math.PI * 2.0);
     ctx.stroke();
 
     // Aguja
     const progressVal = portfolioHealth.globalProgress;
     const needleAngle = Math.PI + Math.max(0, Math.min(1, progressVal / 100)) * Math.PI;
     const needleLen = 54;
-    ctx.strokeStyle = isDark ? '#FFFFFF' : '#0F172A';
-    ctx.lineWidth = 3;
+    ctx.strokeStyle = isDark ? '#F8FAFC' : '#1D2A33';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
+    ctx.moveTo(centerX - Math.cos(needleAngle) * 6, centerY - Math.sin(needleAngle) * 6);
     ctx.lineTo(centerX + Math.cos(needleAngle) * needleLen, centerY + Math.sin(needleAngle) * needleLen);
     ctx.stroke();
 
-    ctx.fillStyle = '#38bdf8';
+    // Pivote
+    ctx.fillStyle = '#2A6F62';
     ctx.beginPath();
     ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isDark ? '#141E25' : '#FFFFFF';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Cifra separada debajo del pivote
@@ -513,10 +532,10 @@ export function HomeView({
 
     // 4 Mini KPIs
     const kpis = [
-      { num: `${portfolioHealth.totalTasks}`, lbl: 'TOTAL', color: '#38bdf8' },
+      { num: `${portfolioHealth.totalTasks}`, lbl: 'TOTAL', color: isDark ? '#A8C3CF' : '#3A4650' },
       { num: `${portfolioHealth.inProgressTasks}`, lbl: 'EN CURSO', color: '#2A6F62' },
-      { num: `${portfolioHealth.doneTasks}`, lbl: 'CERRADAS', color: '#22c55e' },
-      { num: `${taskRisks.overdueCount}`, lbl: 'VENCIDAS', color: '#ef4444' }
+      { num: `${portfolioHealth.doneTasks}`, lbl: 'CERRADAS', color: '#4C8A45' },
+      { num: `${taskRisks.overdueCount}`, lbl: 'VENCIDAS', color: '#C44536' }
     ];
 
     kpis.forEach((k, idx) => {
@@ -553,7 +572,9 @@ export function HomeView({
     let rowY = 152;
     projectsListWithHealth.slice(0, 8).forEach((p) => {
       const isOverdue = p.statusType === 'overdue';
-      const barColor = p.progressPct === 100 ? '#22c55e' : isOverdue ? '#ef4444' : '#38bdf8';
+      const isExt = p.statusType === 'extension';
+      const isComp = p.statusType === 'completed';
+      const barColor = isOverdue ? '#9B3B32' : '#2A6F62';
 
       ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.02)' : '#FFFFFF';
       ctx.beginPath();
@@ -592,11 +613,13 @@ export function HomeView({
       ctx.fillText(`${p.progressPct}%`, 920, rowY + 23);
 
       const badgeBg = isOverdue
-        ? 'rgba(239, 68, 68, 0.2)'
-        : p.statusType === 'completed'
-        ? 'rgba(56, 189, 248, 0.2)'
-        : 'rgba(34, 197, 94, 0.2)';
-      const badgeText = isOverdue ? '#ef4444' : p.statusType === 'completed' ? '#38bdf8' : '#22c55e';
+        ? (isDark ? 'rgba(155, 59, 50, 0.25)' : '#FDF2F2')
+        : isComp
+        ? (isDark ? 'rgba(71, 98, 109, 0.25)' : '#EEF2F5')
+        : isExt
+        ? (isDark ? 'rgba(180, 83, 9, 0.25)' : '#FEF7EA')
+        : (isDark ? 'rgba(42, 111, 98, 0.25)' : '#EBF4F2');
+      const badgeText = isOverdue ? '#9B3B32' : isComp ? '#37474F' : isExt ? '#8C4E05' : '#1E564C';
 
       ctx.fillStyle = badgeBg;
       ctx.beginPath();
@@ -949,22 +972,21 @@ export function HomeView({
 
               <div className="home-gauge-svg-wrap">
                 <svg className="home-gauge-svg" viewBox="0 0 200 146" id="speedometerSvg">
-                  {/* Zona Crítica (0-40%) */}
-                  <path d="M 36 80 A 64 64 0 0 1 48 42" fill="none" stroke="#ef4444" strokeWidth="13" strokeLinecap="round" opacity="0.9" />
-                  {/* Zona Observación (40-75%) */}
-                  <path d="M 53 38 A 64 64 0 0 1 145 35" fill="none" stroke="#f59e0b" strokeWidth="13" strokeLinecap="round" opacity="0.9" />
-                  {/* Zona Saludable (75-100%) */}
-                  <path d="M 150 39 A 64 64 0 0 1 164 80" fill="none" stroke="#22c55e" strokeWidth="13" strokeLinecap="round" opacity="0.9" />
+                  {/* Track base */}
+                  <path d="M 36 80 A 64 64 0 0 1 164 80" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.08" />
 
-                  {/* Ticks graduados */}
-                  <line x1="36" y1="80" x2="44" y2="80" stroke="var(--ink-500)" strokeWidth="2" />
-                  <line x1="100" y1="16" x2="100" y2="24" stroke="var(--ink-500)" strokeWidth="2" />
-                  <line x1="164" y1="80" x2="156" y2="80" stroke="var(--ink-500)" strokeWidth="2" />
+                  {/* Zona Crítica (<40%) */}
+                  <path d="M 36 80 A 64 64 0 0 1 75 21.1" fill="none" stroke="#C44536" strokeWidth="10" strokeLinecap="round" />
+                  {/* Zona Observación (40-75%) */}
+                  <path d="M 85.6 17.6 A 64 64 0 0 1 141.1 31.0" fill="none" stroke="#D97706" strokeWidth="10" strokeLinecap="round" />
+                  {/* Zona Saludable (>75%) */}
+                  <path d="M 149.0 38.9 A 64 64 0 0 1 164 80" fill="none" stroke="#2A6F62" strokeWidth="10" strokeLinecap="round" />
 
                   {/* Aguja del Tacómetro orientada dinámicamente con pivote en 100, 80 */}
                   <g style={{ transformOrigin: '100px 80px', transform: `rotate(${needleRotationDeg}deg)`, transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)' }}>
-                    <line x1="100" y1="80" x2="100" y2="22" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
-                    <circle cx="100" cy="80" r="5" fill="#38bdf8" stroke="#FFFFFF" strokeWidth="1.5" />
+                    <line x1="100" y1="86" x2="100" y2="22" className="home-gauge-needle" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="100" cy="80" r="5" fill="#2A6F62" stroke="var(--surface-card, #FFFFFF)" strokeWidth="1.5" />
+                    <circle cx="100" cy="80" r="1.8" fill="#FFFFFF" />
                   </g>
 
                   {/* Cifra y rótulo ubicados estrictamente debajo del pivote (sin colisión) */}
@@ -978,9 +1000,9 @@ export function HomeView({
               </div>
 
               <div className="home-gauge-zones-legend">
-                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#ef4444' }} /> &lt;40% Vencido</div>
-                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#f59e0b' }} /> 40-75% Riesgo</div>
-                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#22c55e' }} /> &gt;75% En Fecha</div>
+                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#C44536' }} /> &lt;40% Vencido</div>
+                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#D97706' }} /> 40-75% Riesgo</div>
+                <div className="home-gauge-zone-item"><span className="home-gauge-zone-dot" style={{ background: '#2A6F62' }} /> &gt;75% En Fecha</div>
               </div>
             </div>
 
@@ -1111,7 +1133,7 @@ export function HomeView({
                 displayedProjects.map((p) => {
                   const isOverdue = p.statusType === 'overdue';
                   const isGood = p.statusType === 'completed' || p.progressPct >= 50;
-                  const barColor = p.progressPct === 100 ? '#22c55e' : isOverdue ? '#ef4444' : '#38bdf8';
+                  const barColor = isOverdue ? '#9B3B32' : '#2A6F62';
 
                   return (
                     <div
@@ -1139,7 +1161,7 @@ export function HomeView({
                           <div className="home-project-mini-track">
                             <div className="home-project-mini-fill" style={{ width: `${p.progressPct || 0}%`, background: barColor }} />
                           </div>
-                          <span className="home-project-pct-num" style={{ color: barColor }}>
+                          <span className="home-project-pct-num" style={{ color: 'var(--ink-700)' }}>
                             {p.progressPct || 0}%
                           </span>
                         </div>
@@ -1309,20 +1331,29 @@ export function HomeView({
                   <div className="exec-panel">
                     <div className="exec-panel-title">
                       <span>Rendimiento Global</span>
-                      <span style={{ color: portfolioHealth.healthStatus === 'critical' ? '#ef4444' : '#4ade80' }}>
+                      <span className={`home-gauge-status-badge ${portfolioHealth.healthStatus}`}>
                         {portfolioHealth.healthLabel}
                       </span>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '10px 0' }}>
                       <svg width="200" height="135" viewBox="0 0 200 146">
-                        <path d="M 36 80 A 64 64 0 0 1 48 42" fill="none" stroke="#ef4444" strokeWidth="12" strokeLinecap="round" />
-                        <path d="M 53 38 A 64 64 0 0 1 145 35" fill="none" stroke="#f59e0b" strokeWidth="12" strokeLinecap="round" />
-                        <path d="M 150 39 A 64 64 0 0 1 164 80" fill="none" stroke="#22c55e" strokeWidth="12" strokeLinecap="round" />
+                        {/* Track base */}
+                        <path d="M 36 80 A 64 64 0 0 1 164 80" fill="none" stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity="0.08" />
+
+                        {/* Zona Crítica (<40%) */}
+                        <path d="M 36 80 A 64 64 0 0 1 75 21.1" fill="none" stroke="#C44536" strokeWidth="10" strokeLinecap="round" />
+                        {/* Zona Observación (40-75%) */}
+                        <path d="M 85.6 17.6 A 64 64 0 0 1 141.1 31.0" fill="none" stroke="#D97706" strokeWidth="10" strokeLinecap="round" />
+                        {/* Zona Saludable (>75%) */}
+                        <path d="M 149.0 38.9 A 64 64 0 0 1 164 80" fill="none" stroke="#2A6F62" strokeWidth="10" strokeLinecap="round" />
+
                         <g style={{ transformOrigin: '100px 80px', transform: `rotate(${needleRotationDeg}deg)` }}>
-                          <line x1="100" y1="80" x2="100" y2="24" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" />
-                          <circle cx="100" cy="80" r="5" fill="#38bdf8" />
+                          <line x1="100" y1="86" x2="100" y2="22" className="home-gauge-needle" strokeWidth="2.5" strokeLinecap="round" />
+                          <circle cx="100" cy="80" r="5" fill="#2A6F62" stroke="var(--surface-card, #FFFFFF)" strokeWidth="1.5" />
+                          <circle cx="100" cy="80" r="1.8" fill="#FFFFFF" />
                         </g>
+
                         <text x="100" y="115" textAnchor="middle" fontFamily="'JetBrains Mono', monospace" fontSize="28" fontWeight="800" fill="currentColor">
                           {portfolioHealth.globalProgress}%
                         </text>
@@ -1360,7 +1391,7 @@ export function HomeView({
 
                     <div className="exec-kpis-strip">
                       <div className="exec-kpi-pill">
-                        <span className="exec-kpi-num" style={{ color: '#38bdf8' }}>{portfolioHealth.totalTasks}</span>
+                        <span className="exec-kpi-num" style={{ color: 'var(--ink-700)' }}>{portfolioHealth.totalTasks}</span>
                         <span className="exec-kpi-lbl">Total</span>
                       </div>
                       <div className="exec-kpi-pill">
@@ -1368,11 +1399,11 @@ export function HomeView({
                         <span className="exec-kpi-lbl">En Curso</span>
                       </div>
                       <div className="exec-kpi-pill">
-                        <span className="exec-kpi-num" style={{ color: '#22c55e' }}>{portfolioHealth.doneTasks}</span>
+                        <span className="exec-kpi-num" style={{ color: '#4C8A45' }}>{portfolioHealth.doneTasks}</span>
                         <span className="exec-kpi-lbl">Cerradas</span>
                       </div>
                       <div className="exec-kpi-pill">
-                        <span className="exec-kpi-num" style={{ color: '#ef4444' }}>{taskRisks.overdueCount}</span>
+                        <span className="exec-kpi-num" style={{ color: '#C44536' }}>{taskRisks.overdueCount}</span>
                         <span className="exec-kpi-lbl">Vencidas</span>
                       </div>
                     </div>
@@ -1388,7 +1419,7 @@ export function HomeView({
                     <div className="exec-projects-table">
                       {projectsListWithHealth.slice(0, 8).map((p) => {
                         const isOverdue = p.statusType === 'overdue';
-                        const barColor = p.progressPct === 100 ? '#22c55e' : isOverdue ? '#ef4444' : '#38bdf8';
+                        const barColor = isOverdue ? '#9B3B32' : '#2A6F62';
                         return (
                           <div key={p.id} className="exec-proj-row">
                             <span className="exec-proj-code" style={{ background: p.tone }}>

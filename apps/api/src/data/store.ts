@@ -79,6 +79,7 @@ export type WorkItem = {
   assignee?: string;
   assignees?: string[];
   assigneeType?: 'me' | 'team' | 'vendor';
+  startDate?: string;
   dueDate?: string;
   createdAt: string;
   completionType?: 'full' | 'partial';

@@ -263,7 +263,7 @@ export function TimelineView({
                     top: '2px',
                     bottom: '2px',
                     borderRadius: '0 3px 3px 0',
-                    background: 'repeating-linear-gradient(-45deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.25) 4px, rgba(217, 119, 6, 0.45) 4px, rgba(217, 119, 6, 0.45) 8px)',
+                    background: '#FEF3C7',
                     border: '1px dashed #D97706',
                     borderLeft: 'none',
                     left: `${r.origEndPos}%`,
@@ -971,7 +971,7 @@ export function TimelineView({
         </span>
 
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-          <span style={{ width: '28px', height: '10px', borderRadius: '4px', background: 'repeating-linear-gradient(-45deg, rgba(245, 158, 11, 0.25), rgba(245, 158, 11, 0.25) 4px, rgba(217, 119, 6, 0.45) 4px, rgba(217, 119, 6, 0.45) 8px)', border: '1px dashed #D97706' }} />
+          <span style={{ width: '28px', height: '10px', borderRadius: '4px', background: '#FEF3C7', border: '1px dashed #D97706' }} />
           Prórroga / Tiempo extendido
         </span>
 

@@ -1981,9 +1981,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.12) 0%, rgba(59, 130, 246, 0.16) 100%);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #e0f2fe;
+  background: #2A6F62;
+  border: 1px solid #19463c;
+  color: #ffffff;
   font-size: 0.8rem;
   font-weight: 700;
   padding: 5px 11px;
@@ -1993,10 +1993,10 @@
 }
 
 .ui-btn--status-report:hover {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(59, 130, 246, 0.28) 100%);
-  border-color: #38bdf8;
+  background: #357F71;
+  border-color: #2A6F62;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 2px 6px rgba(42, 111, 98, 0.25);
   transform: translateY(-1px);
 }
 

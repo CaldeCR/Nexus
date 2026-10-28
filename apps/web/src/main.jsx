@@ -1350,14 +1350,21 @@ function App() {
     });
   };
 
-  const handleSaveEditProject = async (payloadOrEvent) => {
-    if (payloadOrEvent?.preventDefault) payloadOrEvent.preventDefault();
-    if (!editingProject) return;
+  const handleSaveEditProject = async (projectIdOrEvent, maybePayload) => {
+    if (projectIdOrEvent?.preventDefault) projectIdOrEvent.preventDefault();
 
-    const dataToSave = (payloadOrEvent && !payloadOrEvent.preventDefault)
-      ? payloadOrEvent
-      : editProjectForm;
+    let targetProjectId = editingProject?.id;
+    let dataToSave = editProjectForm;
 
+    if (typeof projectIdOrEvent === 'string' && maybePayload) {
+      targetProjectId = projectIdOrEvent;
+      dataToSave = maybePayload;
+    } else if (projectIdOrEvent && !projectIdOrEvent.preventDefault && typeof projectIdOrEvent === 'object') {
+      dataToSave = projectIdOrEvent;
+      targetProjectId = projectIdOrEvent.id || editingProject?.id;
+    }
+
+    if (!targetProjectId) return;
     if (!dataToSave.name || !dataToSave.name.trim()) return;
 
     try {
@@ -1368,24 +1375,20 @@ function App() {
         ? dataToSave.members
         : (dataToSave.members ? String(dataToSave.members).split(',').map((s) => s.trim()).filter(Boolean) : undefined);
 
-      const res = await fetch(`${API_BASE}/projects/${editingProject.id}`, {
+      const res = await fetch(`${API_BASE}/projects/${targetProjectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
         body: JSON.stringify({
+          ...dataToSave,
           name: dataToSave.name.trim(),
-          description: dataToSave.description,
-          template: dataToSave.template,
-          status: dataToSave.status,
-          role: dataToSave.role,
-          space: dataToSave.space,
           admins: adminsArray,
           members: membersArray,
           startDate: dataToSave.startDate,
           targetDate: dataToSave.targetDate,
-          hasPhases: dataToSave.hasPhases !== undefined ? Boolean(dataToSave.hasPhases) : undefined,
+          hasPhases: dataToSave.phases && dataToSave.phases.length > 0 ? true : (dataToSave.hasPhases !== undefined ? Boolean(dataToSave.hasPhases) : undefined),
           phases: dataToSave.phases
         })
       });
@@ -1395,7 +1398,9 @@ function App() {
 
       setProjects((prev) => prev.map((p) => (p.id === data.id ? { ...p, ...data } : p)));
       setSuccess(`Proyecto "${data.name}" actualizado con éxito`);
-      setEditingProject(null);
+      if (editingProject && editingProject.id === targetProjectId) {
+        setEditingProject(null);
+      }
     } catch (err) {
       setError(err.message || 'Error de conexión al actualizar proyecto');
     }
@@ -1783,6 +1788,7 @@ function App() {
   };
 
   const openEditTaskModal = (task) => {
+    if (!task) return;
     const list = getTaskAssignees(task);
     setEditingTask(task);
     setNewProgressText('');
@@ -1797,12 +1803,13 @@ function App() {
       assignees: list,
       assignee: list.join(', '),
       assigneeType: task.assigneeType || (list.some(isAssigneeMine) ? 'me' : 'team'),
-      dueDate: task.dueDate || '',
+      startDate: task.startDate || (task.createdAt && typeof task.createdAt === 'string' ? task.createdAt.split('T')[0] : ''),
+      dueDate: task.dueDate || task.targetDate || '',
       code: task.code || '',
       completionType: task.completionType || 'full',
       completionReport: task.completionReport || '',
       continuationTaskId: task.continuationTaskId || '',
-      completedAt: task.completedAt || '',
+      completedAt: task.completedAt && typeof task.completedAt === 'string' ? task.completedAt.split('T')[0] : (task.completedAt || ''),
       progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : [],
       phaseIds: Array.isArray(task.phaseIds) ? task.phaseIds : []
     });
@@ -3039,28 +3046,92 @@ function App() {
                 currentUser={session}
               />
 
+              {/* ASIGNACIÓN A FASES (Si el proyecto tiene fases) */}
+              {(() => {
+                const currentProjObj = projects.find((p) => p.id === (editTaskForm.projectId || selectedProjectId));
+                if (currentProjObj?.hasPhases && Array.isArray(currentProjObj.phases) && currentProjObj.phases.length > 0) {
+                  return (
+                    <div className="form-field" style={{ background: '#F8FAFB', padding: '10px 12px', borderRadius: '6px', border: '1px solid #DDE2E4' }}>
+                      <label style={{ color: '#2A6F62', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span>Fases asignadas a esta tarea</span>
+                        <span style={{ fontSize: '11px', fontWeight: 'normal', color: '#5F6B76' }}>(Selecciona 1 o más)</span>
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {currentProjObj.phases.map((ph) => {
+                          if (!ph || !ph.id) return null;
+                          const isChecked = (editTaskForm.phaseIds || []).includes(ph.id);
+                          return (
+                            <label key={ph.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', cursor: 'pointer', color: '#1D2A33' }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const current = editTaskForm.phaseIds || [];
+                                  const updated = e.target.checked
+                                    ? [...current, ph.id]
+                                    : current.filter((id) => id !== ph.id);
+                                  setEditTaskForm({ ...editTaskForm, phaseIds: updated });
+                                }}
+                                style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                              />
+                              <span>{ph.name || `Fase ${ph.id}`} <small style={{ color: '#5F6B76' }}>(Meta: {ph.targetDate || 'S/F'})</small></span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
               <div className="form-grid-2">
                 <div className="form-field">
-                  <label>Fecha de entrega / límite</label>
+                  <label>Fecha de inicio</label>
                   <input
                     type="date"
-                    value={editTaskForm.dueDate}
-                    onChange={(e) => setEditTaskForm({ ...editTaskForm, dueDate: e.target.value })}
+                    value={editTaskForm.startDate || ''}
+                    onChange={(e) => setEditTaskForm({ ...editTaskForm, startDate: e.target.value })}
                   />
                 </div>
 
                 <div className="form-field">
-                  <label>Estado</label>
-                  <select
-                    value={editTaskForm.status}
-                    onChange={(e) => setEditTaskForm({ ...editTaskForm, status: e.target.value })}
-                  >
-                    <option value="backlog">Por Iniciar (Backlog)</option>
-                    <option value="in_progress">En Progreso</option>
-                    <option value="review">En Revisión</option>
-                    <option value="done">Completado</option>
-                  </select>
+                  <label>Fecha de entrega / límite</label>
+                  <input
+                    type="date"
+                    value={editTaskForm.dueDate || ''}
+                    onChange={(e) => setEditTaskForm({ ...editTaskForm, dueDate: e.target.value })}
+                  />
                 </div>
+              </div>
+
+              {editTaskForm.startDate && editTaskForm.dueDate && (
+                <div style={{ fontSize: '11.5px', color: '#2A6F62', fontWeight: 600, marginTop: '-6px', marginBottom: '8px', background: '#F0F9F6', padding: '6px 10px', borderRadius: '4px', border: '1px solid #D5EBE3' }}>
+                  ⏱️ Duración estimada: {(() => {
+                    const d1 = new Date(editTaskForm.startDate + 'T12:00:00').getTime();
+                    const d2 = new Date(editTaskForm.dueDate + 'T12:00:00').getTime();
+                    const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+                    if (diff < 0) return '⚠️ La fecha de entrega es anterior a la fecha de inicio';
+                    if (diff === 0) return 'Mismo día';
+                    if (diff === 1) return '1 día';
+                    if (diff < 7) return `${diff} días`;
+                    const w = Math.round(diff / 7);
+                    return `${diff} días (~${w} sem)`;
+                  })()}
+                </div>
+              )}
+
+              <div className="form-field">
+                <label>Estado</label>
+                <select
+                  value={editTaskForm.status}
+                  onChange={(e) => setEditTaskForm({ ...editTaskForm, status: e.target.value })}
+                >
+                  <option value="backlog">Por Iniciar (Backlog)</option>
+                  <option value="in_progress">En Progreso</option>
+                  <option value="review">En Revisión</option>
+                  <option value="done">Completado</option>
+                </select>
               </div>
 
               <div className="form-grid-2">
@@ -4607,8 +4678,8 @@ function App() {
             <div
               className="modal-header"
               style={{
-                background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.15), rgba(15, 23, 42, 0.6))',
-                borderBottom: '1px solid rgba(245, 158, 11, 0.35)'
+                background: '#1D2A33',
+                borderBottom: '1px solid #DDE2E4'
               }}
             >
               <div>
@@ -5252,8 +5323,8 @@ function App() {
                     className="ui-btn ui-btn--primary"
                     onClick={() => copyProjectStatusReport(proj, doneTasks, activeTasks, pendingTasks)}
                     style={{
-                      background: copiedStatusReport ? 'linear-gradient(135deg, #059669 0%, #10b981 100%)' : undefined,
-                      borderColor: copiedStatusReport ? '#10b981' : undefined
+                      background: copiedStatusReport ? '#2A6F62' : undefined,
+                      borderColor: copiedStatusReport ? '#19463c' : undefined
                     }}
                   >
                     {copiedStatusReport ? '✓ ¡Reporte Copiado!' : '📋 Copiar para WhatsApp / Correo'}

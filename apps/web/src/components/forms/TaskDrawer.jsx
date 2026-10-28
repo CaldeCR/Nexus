@@ -18,6 +18,7 @@ export function TaskDrawer({
     projectId: selectedProjectId || (projects[0]?.id || ''),
     assignee: currentUser?.name || 'Jorge',
     assignees: [currentUser?.name || 'Jorge'],
+    startDate: '',
     dueDate: '',
     type: 'task',
     priority: 'medium',
@@ -36,6 +37,7 @@ export function TaskDrawer({
         assignees: Array.isArray(initialData.assignees) && initialData.assignees.length > 0
           ? initialData.assignees
           : (initialData.assignee ? [initialData.assignee] : [currentUser?.name || 'Jorge']),
+        startDate: initialData.startDate || (initialData.createdAt ? initialData.createdAt.split('T')[0] : ''),
         dueDate: initialData.dueDate || '',
         type: initialData.type || 'task',
         priority: initialData.priority || 'medium',
@@ -48,6 +50,7 @@ export function TaskDrawer({
         projectId: selectedProjectId || (projects[0]?.id || ''),
         assignee: currentUser?.name || 'Jorge',
         assignees: [currentUser?.name || 'Jorge'],
+        startDate: '',
         dueDate: '',
         type: 'task',
         priority: 'medium',
@@ -198,7 +201,7 @@ export function TaskDrawer({
                 })}
               </div>
               {(formData.phaseIds || []).length > 1 && (
-                <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#7C3AED', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ marginTop: '8px', fontSize: '11.5px', color: '#47626D', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <span>🔗 Tarea compartida entre {(formData.phaseIds || []).length} fases. Aparecerá enlazada en cada carril.</span>
                 </div>
               )}
@@ -225,20 +228,51 @@ export function TaskDrawer({
             />
           </div>
 
-          {/* 4. Fecha límite */}
-          <div className="ui-drawer-field">
-            <label className="ui-drawer-label" htmlFor="task-due-date">
-              4. Fecha de entrega / límite <span className="ui-drawer-req">*</span>
-            </label>
-            <input
-              id="task-due-date"
-              type="date"
-              className="ui-drawer-input"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              required
-            />
+          {/* 4. Fechas y Plazos */}
+          <div className="ui-drawer-grid-2">
+            <div className="ui-drawer-field">
+              <label className="ui-drawer-label" htmlFor="task-start-date">
+                Fecha de inicio
+              </label>
+              <input
+                id="task-start-date"
+                type="date"
+                className="ui-drawer-input"
+                value={formData.startDate || ''}
+                onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              />
+            </div>
+
+            <div className="ui-drawer-field">
+              <label className="ui-drawer-label" htmlFor="task-due-date">
+                4. Fecha límite / entrega <span className="ui-drawer-req">*</span>
+              </label>
+              <input
+                id="task-due-date"
+                type="date"
+                className="ui-drawer-input"
+                value={formData.dueDate}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                required
+              />
+            </div>
           </div>
+
+          {formData.startDate && formData.dueDate && (
+            <div style={{ fontSize: '11.5px', color: '#2A6F62', fontWeight: 600, marginTop: '-6px', marginBottom: '10px', background: '#F0F9F6', padding: '6px 12px', borderRadius: '6px', border: '1px solid #D5EBE3' }}>
+              ⏱️ Duración estimada: {(() => {
+                const d1 = new Date(formData.startDate + 'T12:00:00').getTime();
+                const d2 = new Date(formData.dueDate + 'T12:00:00').getTime();
+                const diff = Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+                if (diff < 0) return '⚠️ La fecha límite es anterior a la fecha de inicio';
+                if (diff === 0) return 'Mismo día';
+                if (diff === 1) return '1 día';
+                if (diff < 7) return `${diff} días`;
+                const w = Math.round(diff / 7);
+                return `${diff} días (~${w} sem)`;
+              })()}
+            </div>
+          )}
 
           <div className="ui-drawer-divider" />
           <span className="ui-drawer-section-heading">Detalles Adicionales (Opcionales)</span>
