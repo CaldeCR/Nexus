@@ -742,6 +742,9 @@ function App() {
   const [directoryRoleFilter, setDirectoryRoleFilter] = useState('all');
   const [directorySearch, setDirectorySearch] = useState('');
   const [isNewDirectoryModalOpen, setIsNewDirectoryModalOpen] = useState(false);
+  const [directoryModalError, setDirectoryModalError] = useState(null);
+  const [editDirectoryModalError, setEditDirectoryModalError] = useState(null);
+  const [accountModalError, setAccountModalError] = useState(null);
   const [newDirectoryForm, setNewDirectoryForm] = useState({
     name: '',
     role: 'collaborator',
@@ -932,18 +935,33 @@ function App() {
   // HANDLERS DEL DIRECTORIO GLOBAL
   const handleCreateDirectoryMember = async (e) => {
     e.preventDefault();
-    if (!newDirectoryForm.name.trim()) return;
+    setDirectoryModalError(null);
+    if (!newDirectoryForm.name.trim()) {
+      setDirectoryModalError('El Nombre Completo o Razón Social es obligatorio.');
+      return;
+    }
 
     if (newDirectoryForm.createAccount) {
       if (!newDirectoryForm.email || !newDirectoryForm.email.trim()) {
-        setError('Debes ingresar un correo electrónico para generar la cuenta de acceso.');
+        setDirectoryModalError('Debes ingresar un correo electrónico para generar la cuenta de acceso.');
         return;
       }
       if (!newDirectoryForm.password || newDirectoryForm.password.length < 8) {
-        setError('La contraseña de acceso debe tener al menos 8 caracteres.');
+        setDirectoryModalError('La contraseña de acceso debe tener al menos 8 caracteres.');
         return;
       }
     }
+
+    const payload = {
+      name: newDirectoryForm.name.trim(),
+      role: newDirectoryForm.role || 'collaborator',
+      organization: newDirectoryForm.organization?.trim() || undefined,
+      email: newDirectoryForm.email?.trim() || undefined,
+      phone: newDirectoryForm.phone?.trim() || undefined,
+      createAccount: Boolean(newDirectoryForm.createAccount),
+      password: newDirectoryForm.createAccount ? newDirectoryForm.password : undefined,
+      userRole: newDirectoryForm.createAccount ? newDirectoryForm.userRole : undefined
+    };
 
     try {
       const res = await fetch(`${API_BASE}/directory`, {
@@ -952,15 +970,16 @@ function App() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(newDirectoryForm)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || 'Error al registrar integrante en el directorio');
+        setDirectoryModalError(data.message || 'Error al registrar integrante en el directorio');
         return;
       }
       setSuccess(`"${data.name}" se registró exitosamente ${newDirectoryForm.createAccount ? 'con credenciales de acceso creadas' : 'en el directorio'}.`);
       setIsNewDirectoryModalOpen(false);
+      setDirectoryModalError(null);
       setNewDirectoryForm({
         name: '',
         role: 'collaborator',
@@ -1005,23 +1024,35 @@ function App() {
 
   const handleUpdateDirectoryMember = async (e) => {
     e.preventDefault();
-    if (!editingDirectoryMember || !editDirectoryForm.name.trim()) return;
+    setEditDirectoryModalError(null);
+    if (!editingDirectoryMember || !editDirectoryForm.name.trim()) {
+      setEditDirectoryModalError('El Nombre Completo o Razón Social no puede estar vacío.');
+      return;
+    }
     try {
+      const payload = {
+        name: editDirectoryForm.name.trim(),
+        role: editDirectoryForm.role,
+        organization: editDirectoryForm.organization?.trim() || undefined,
+        email: editDirectoryForm.email?.trim() || undefined,
+        phone: editDirectoryForm.phone?.trim() || undefined
+      };
       const res = await fetch(`${API_BASE}/directory/${editingDirectoryMember.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(editDirectoryForm)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.message || 'Error al actualizar integrante');
+        setEditDirectoryModalError(data.message || 'Error al actualizar integrante');
         return;
       }
       setSuccess(`Datos de "${data.name}" actualizados correctamente.`);
       setEditingDirectoryMember(null);
+      setEditDirectoryModalError(null);
       fetchDirectory();
       fetchProjects();
       fetchWorkItems();
@@ -1125,6 +1156,7 @@ function App() {
 
   const handleOpenGenerateAccount = (member) => {
     const pass = generateSecurePassword();
+    setAccountModalError(null);
     setAccountModalMember({ ...member, isReset: false });
     setAccountPasswordForm({
       email: member.email || member.userEmail || '',
@@ -1137,6 +1169,7 @@ function App() {
 
   const handleOpenResetPassword = (member) => {
     const pass = generateSecurePassword();
+    setAccountModalError(null);
     setAccountModalMember({ ...member, isReset: true });
     setAccountPasswordForm({
       email: member.email || member.userEmail || '',
@@ -1178,18 +1211,17 @@ function App() {
   const handleGenerateAccountForMember = async (e) => {
     e.preventDefault();
     if (!accountModalMember) return;
-    setError('');
-    setSuccess('');
+    setAccountModalError(null);
 
     const pass = (accountPasswordForm.password || '').trim();
     if (!pass || pass.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+      setAccountModalError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
 
     const targetEmail = (accountPasswordForm.email || accountModalMember.email || '').trim().toLowerCase();
     if (!targetEmail) {
-      setError('Debes ingresar un correo electrónico para el usuario de acceso.');
+      setAccountModalError('Debes ingresar un correo electrónico para el usuario de acceso.');
       return;
     }
 
@@ -1213,7 +1245,10 @@ function App() {
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Error al procesar credenciales');
+      if (!res.ok) {
+        setAccountModalError(data.message || 'Error al procesar credenciales');
+        return;
+      }
 
       setSuccess(
         isReset
@@ -1221,9 +1256,10 @@ function App() {
           : `Credenciales de acceso generadas exitosamente para "${accountModalMember.name}".`
       );
       setAccountModalMember(null);
+      setAccountModalError(null);
       fetchDirectory();
     } catch (err) {
-      setError(err.message || 'No se pudo generar el acceso.');
+      setAccountModalError(err.message || 'No se pudo generar el acceso.');
     } finally {
       setLoading(false);
     }
@@ -2959,7 +2995,7 @@ function App() {
 
       {/* MODAL: EDITAR TAREA */}
       {isEditTaskModalOpen && editingTask && (
-        <div className="modal-overlay" onClick={() => setIsEditTaskModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3383,7 +3419,7 @@ function App() {
 
       {/* MODAL: DAILY CHECK-IN DE TAREAS (SEGUIMIENTO Y CADENCIA) */}
       {isDailyCheckinModalOpen && dailyCheckinTasks.length > 0 && (
-        <div className="modal-overlay" onClick={() => setIsDailyCheckinModalOpen(false)}>
+        <div className="modal-overlay">
           <div
             className="modal-card modal-card--daily-checkin"
             onClick={(e) => e.stopPropagation()}
@@ -3503,7 +3539,7 @@ function App() {
 
       {/* MODAL: REPORTE DE TAREAS HECHAS Y CUMPLIMIENTO */}
       {isDoneReportModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsDoneReportModalOpen(false)}>
+        <div className="modal-overlay">
           <div
             className="modal-card modal-card--report"
             style={{ maxWidth: '980px', width: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
@@ -3759,7 +3795,7 @@ function App() {
 
       {/* MODAL: CONFIRMAR ELIMINACIÓN DE TAREA */}
       {taskToDelete && (
-        <div className="modal-overlay" onClick={() => setTaskToDelete(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 style={{ color: 'var(--danger-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3800,7 +3836,7 @@ function App() {
 
       {/* MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE PROYECTO */}
       {projectToDelete && (
-        <div className="modal-overlay" onClick={() => setProjectToDelete(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 style={{ color: 'var(--danger-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3852,7 +3888,7 @@ function App() {
 
       {/* MODAL: GESTIÓN DE EQUIPO, ADMINISTRADORES, COLABORADORES Y TERCEROS */}
       {isTeamModalOpen && managingProject && (
-        <div className="modal-overlay" onClick={() => setIsTeamModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '640px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -4150,7 +4186,7 @@ function App() {
 
       {/* MODAL: REGISTRAR NUEVO INTEGRANTE / PROVEEDOR EN DIRECTORIO */}
       {isNewDirectoryModalOpen && (
-        <div className="modal-overlay" style={{ zIndex: 1200 }} onClick={() => setIsNewDirectoryModalOpen(false)}>
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4163,6 +4199,23 @@ function App() {
             </div>
 
             <form onSubmit={handleCreateDirectoryMember} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {directoryModalError && (
+                <div style={{
+                  background: 'var(--danger-100, #F8EDEC)',
+                  border: '1px solid rgba(248, 113, 113, 0.45)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  padding: '10px 14px',
+                  color: 'var(--danger-600, #9B3B32)',
+                  fontSize: '0.86rem',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Icons.Alert />
+                  <span>{directoryModalError}</span>
+                </div>
+              )}
               <div className="form-field">
                 <label>Nombre Completo / Razón Social *</label>
                 <input
@@ -4188,7 +4241,7 @@ function App() {
                 </div>
 
                 <div className="form-field">
-                  <label>Organización / Departamento</label>
+                  <label>Organización / Departamento <small style={{ color: 'var(--ink-500)', fontWeight: 400 }}>(Opcional)</small></label>
                   <input
                     type="text"
                     value={newDirectoryForm.organization}
@@ -4200,17 +4253,24 @@ function App() {
 
               <div className="form-grid-2">
                 <div className="form-field">
-                  <label>Correo Electrónico</label>
+                  <label>
+                    Correo Electrónico {newDirectoryForm.createAccount ? (
+                      <span style={{ color: 'var(--danger-600, #9B3B32)' }}>*</span>
+                    ) : (
+                      <small style={{ color: 'var(--ink-500)', fontWeight: 400 }}>(Opcional)</small>
+                    )}
+                  </label>
                   <input
                     type="email"
                     value={newDirectoryForm.email}
                     onChange={(e) => setNewDirectoryForm({ ...newDirectoryForm, email: e.target.value })}
-                    placeholder="ejemplo@empresa.com"
+                    placeholder={newDirectoryForm.createAccount ? "ejemplo@empresa.com (Requerido para login)" : "ejemplo@empresa.com (Opcional)"}
+                    required={newDirectoryForm.createAccount}
                   />
                 </div>
 
                 <div className="form-field">
-                  <label>Teléfono / Contacto</label>
+                  <label>Teléfono / Contacto <small style={{ color: 'var(--ink-500)', fontWeight: 400 }}>(Opcional)</small></label>
                   <input
                     type="text"
                     value={newDirectoryForm.phone}
@@ -4222,22 +4282,31 @@ function App() {
 
               {(session?.role === 'owner' || session?.role === 'admin') && (
                 <div style={{
-                  background: 'var(--surface-elevated)',
-                  border: '1px solid var(--line-200)',
-                  borderRadius: 'var(--radius-md)',
+                  background: newDirectoryForm.createAccount ? 'var(--nexus-teal-50, #E6F0EE)' : 'var(--surface-bg, #F6F7F7)',
+                  border: newDirectoryForm.createAccount ? '1px solid var(--nexus-teal, #2A6F62)' : '1px solid var(--line-200, #DDE2E4)',
+                  borderRadius: 'var(--radius-md, 8px)',
                   padding: '14px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px'
+                  gap: '10px',
+                  transition: 'background 0.2s, border-color 0.2s'
                 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600, fontSize: '0.88rem', margin: 0, color: 'var(--ink-900)' }}>
                     <input
                       type="checkbox"
                       checked={newDirectoryForm.createAccount}
-                      onChange={(e) => setNewDirectoryForm({ ...newDirectoryForm, createAccount: e.target.checked })}
+                      onChange={(e) => {
+                        setDirectoryModalError(null);
+                        setNewDirectoryForm({ ...newDirectoryForm, createAccount: e.target.checked });
+                      }}
                     />
                     <span>🔑 Generar credenciales de acceso para este usuario</span>
                   </label>
+                  {!newDirectoryForm.createAccount && (
+                    <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--ink-500)', lineHeight: 1.4 }}>
+                      ℹ️ Se guardará como <strong>integrante de referencia</strong> en el catálogo general. Podrás asignarlo a cualquier tarea o proyecto sin necesidad de que inicie sesión.
+                    </p>
+                  )}
 
                   {newDirectoryForm.createAccount && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: '4px' }}>
@@ -4311,7 +4380,7 @@ function App() {
 
       {/* MODAL: EDITAR INTEGRANTE DEL DIRECTORIO */}
       {editingDirectoryMember && (
-        <div className="modal-overlay" onClick={() => setEditingDirectoryMember(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4324,6 +4393,23 @@ function App() {
             </div>
 
             <form onSubmit={handleUpdateDirectoryMember} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {editDirectoryModalError && (
+                <div style={{
+                  background: 'var(--danger-100, #F8EDEC)',
+                  border: '1px solid rgba(248, 113, 113, 0.45)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  padding: '10px 14px',
+                  color: 'var(--danger-600, #9B3B32)',
+                  fontSize: '0.86rem',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Icons.Alert />
+                  <span>{editDirectoryModalError}</span>
+                </div>
+              )}
               <div className="form-field">
                 <label>Nombre Completo / Razón Social *</label>
                 <input
@@ -4396,7 +4482,7 @@ function App() {
 
       {/* MODAL: CONFIRMAR ELIMINACIÓN (SIN TAREAS) */}
       {directoryMemberToDelete && (
-        <div className="modal-overlay" onClick={() => setDirectoryMemberToDelete(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4438,7 +4524,7 @@ function App() {
 
       {/* MODAL: BLOQUEO DE ELIMINACIÓN POR ASOCIACIÓN A TAREA */}
       {deletionBlockModal && (
-        <div className="modal-overlay" onClick={() => setDeletionBlockModal(null)}>
+        <div className="modal-overlay">
           <div className="modal-card modal-card--warning" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171' }}>
@@ -4499,7 +4585,7 @@ function App() {
 
       {/* MODAL: GENERAR O CAMBIAR CREDENCIALES DE ACCESO */}
       {accountModalMember && (
-        <div className="modal-overlay" style={{ zIndex: 1250 }} onClick={() => setAccountModalMember(null)}>
+        <div className="modal-overlay" style={{ zIndex: 1250 }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4516,6 +4602,23 @@ function App() {
             </div>
 
             <form onSubmit={handleGenerateAccountForMember} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {accountModalError && (
+                <div style={{
+                  background: 'var(--danger-100, #F8EDEC)',
+                  border: '1px solid rgba(248, 113, 113, 0.45)',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  padding: '10px 14px',
+                  color: 'var(--danger-600, #9B3B32)',
+                  fontSize: '0.86rem',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}>
+                  <Icons.Alert />
+                  <span>{accountModalError}</span>
+                </div>
+              )}
               <div style={{ background: 'var(--surface-elevated, #F8FAFC)', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--line-200, #E2E8F0)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
                   <div>
@@ -4673,7 +4776,7 @@ function App() {
 
       {/* MODAL 1: JUSTIFICACIÓN DE CAMBIO DE FECHA / PRÓRROGA */}
       {justificationModalProject && (
-        <div className="modal-overlay" onClick={() => setJustificationModalProject(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
             <div
               className="modal-header"
@@ -4881,7 +4984,7 @@ function App() {
 
       {/* MODAL 2: REGISTRAR PRÓRROGA / CAMBIO DE FECHA */}
       {newExtensionModalProject && (
-        <div className="modal-overlay" onClick={() => setNewExtensionModalProject(null)}>
+        <div className="modal-overlay">
           <div className="modal-card" style={{ maxWidth: '540px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div>
@@ -5003,7 +5106,7 @@ function App() {
         ].filter((v, i, a) => a.indexOf(v) === i);
 
         return (
-          <div className="modal-overlay" onClick={() => setIsProjectStatusModalOpen(false)}>
+          <div className="modal-overlay">
             <div className="modal-sheet modal-sheet--status" onClick={(e) => e.stopPropagation()}>
               
               {/* CABECERA */}
@@ -5119,7 +5222,7 @@ function App() {
                           <div key={t.id} className="status-task-item">
                             <div className="status-task-head">
                               <span className="status-task-title">
-                                <span className="status-task-tag" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#34d399' }}>
+                                <span className="status-task-tag" style={{ background: 'rgba(76, 138, 69, 0.12)', color: 'var(--nexus-green, #4C8A45)', border: '1px solid rgba(76, 138, 69, 0.25)' }}>
                                   {t.code || `T-${t.id}`}
                                 </span>
                                 <span>{t.title}</span>
@@ -5129,7 +5232,7 @@ function App() {
                                   ⚠️ Continuada
                                 </span>
                               ) : (
-                                <span style={{ fontSize: '0.74rem', color: '#34d399', fontWeight: 600 }}>
+                                <span style={{ fontSize: '0.74rem', color: 'var(--nexus-green, #4C8A45)', fontWeight: 600 }}>
                                   ✓ Hecho
                                 </span>
                               )}
@@ -5183,7 +5286,7 @@ function App() {
                           <div key={t.id} className="status-task-item">
                             <div className="status-task-head">
                               <span className="status-task-title">
-                                <span className="status-task-tag" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>
+                                <span className="status-task-tag" style={{ background: 'rgba(42, 111, 98, 0.12)', color: 'var(--nexus-teal, #2A6F62)', border: '1px solid rgba(42, 111, 98, 0.25)' }}>
                                   {t.code || `T-${t.id}`}
                                 </span>
                                 <span>{t.title}</span>
@@ -5192,8 +5295,8 @@ function App() {
                                 fontSize: '0.72rem',
                                 padding: '2px 6px',
                                 borderRadius: '4px',
-                                background: t.status === 'review' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(56, 189, 248, 0.12)',
-                                color: t.status === 'review' ? '#fbbf24' : '#38bdf8',
+                                background: t.status === 'review' ? 'rgba(185, 138, 30, 0.12)' : 'rgba(42, 111, 98, 0.12)',
+                                color: t.status === 'review' ? 'var(--warning-600, #B98A1E)' : 'var(--nexus-teal, #2A6F62)',
                                 fontWeight: 600
                               }}>
                                 {t.status === 'review' ? '🔍 Validación' : '⚡ En Progreso'}
@@ -5208,12 +5311,12 @@ function App() {
                                     ↳ Último avance registrado por {latestLog.author || 'Equipo'} ({latestLog.createdAt ? formatDateTime(latestLog.createdAt) : latestLog.date || 'reciente'}):
                                   </span>
                                 </span>
-                                <span style={{ marginTop: '2px', color: 'var(--ink-800)' }}>
+                                <span style={{ marginTop: '2px', color: 'var(--ink-900)' }}>
                                   "{latestLog.text}"
                                 </span>
                               </div>
                             ) : t.description ? (
-                              <div className="status-quote-box" style={{ borderLeftColor: 'var(--line-300)', color: 'var(--ink-500)' }}>
+                              <div className="status-quote-box" style={{ borderLeftColor: 'var(--line-200)', color: 'var(--ink-700)' }}>
                                 {t.description}
                               </div>
                             ) : null}
@@ -5258,7 +5361,7 @@ function App() {
                           <div key={t.id} className="status-task-item">
                             <div className="status-task-head">
                               <span className="status-task-title">
-                                <span className="status-task-tag" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+                                <span className="status-task-tag" style={{ background: 'rgba(185, 138, 30, 0.12)', color: 'var(--warning-600, #B98A1E)', border: '1px solid rgba(185, 138, 30, 0.25)' }}>
                                   {t.code || `T-${t.id}`}
                                 </span>
                                 <span>{t.title}</span>
@@ -5268,7 +5371,7 @@ function App() {
                               </span>
                             </div>
                             {t.description && (
-                              <div style={{ fontSize: '0.78rem', color: 'var(--ink-500)', lineHeight: 1.4, paddingLeft: '2px' }}>
+                              <div style={{ fontSize: '0.82rem', color: 'var(--ink-700)', lineHeight: 1.45, paddingLeft: '2px' }}>
                                 {t.description}
                               </div>
                             )}

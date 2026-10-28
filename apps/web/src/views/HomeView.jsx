@@ -1240,12 +1240,7 @@ export function HomeView({
       {/* MODAL DE COMPARTIR FOTO / REPORTE DE ESTATUS             */}
       {/* ======================================================== */}
       {isShareModalOpen && (
-        <div
-          className="snapshot-modal-overlay"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setIsShareModalOpen(false);
-          }}
-        >
+        <div className="snapshot-modal-overlay">
           <div className="snapshot-modal-box">
             <div className="snapshot-modal-header">
               <div className="snapshot-modal-title-group">

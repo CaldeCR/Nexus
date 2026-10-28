@@ -110,7 +110,7 @@ export function ProjectDrawer({
   };
 
   return (
-    <div className="ui-drawer-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}>
+    <div className="ui-drawer-overlay" role="dialog" aria-modal="true" aria-label={isEdit ? 'Editar Proyecto' : 'Nuevo Proyecto'}>
       <aside className="ui-drawer-panel" onClick={(e) => e.stopPropagation()}>
         {/* Cabecera */}
         <div className="ui-drawer-header">

@@ -42,20 +42,20 @@ const dateExtensionSchema = z.object({
 const createGlobalMemberSchema = z.object({
   name: z.string().min(1, 'El nombre o entidad es obligatorio'),
   role: memberRoleSchema.default('collaborator'),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  organization: z.string().optional(),
+  email: z.string().optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  organization: z.string().optional().or(z.literal('')),
   createAccount: z.boolean().optional(),
-  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional(),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres').optional().or(z.literal('')),
   userRole: z.enum(['admin', 'member']).optional()
 });
 
 const updateGlobalMemberSchema = z.object({
   name: z.string().min(1, 'El nombre o entidad no puede estar vacío').optional(),
   role: memberRoleSchema.optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  organization: z.string().optional()
+  email: z.string().optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  organization: z.string().optional().or(z.literal(''))
 });
 
 const projectMemberSchema = z.object({
@@ -747,7 +747,8 @@ app.post('/api/directory', async (req, res) => {
 
   const parsed = createGlobalMemberSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ message: 'Datos de integrante inválidos', errors: parsed.error.flatten() });
+    const errorDetails = parsed.error.issues.map((i) => i.message).join('. ');
+    return res.status(400).json({ message: errorDetails || 'Datos de integrante inválidos', errors: parsed.error.flatten() });
   }
 
   const db = readDb();
@@ -924,7 +925,8 @@ app.put('/api/directory/:id', (req, res) => {
 
   const parsed = updateGlobalMemberSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() });
+    const errorDetails = parsed.error.issues.map((i) => i.message).join('. ');
+    return res.status(400).json({ message: errorDetails || 'Datos inválidos', errors: parsed.error.flatten() });
   }
 
   const db = readDb();

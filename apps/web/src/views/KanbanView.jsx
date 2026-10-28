@@ -1590,7 +1590,7 @@ export function KanbanView({
             zIndex: 1200,
             padding: '20px'
           }}
-          onClick={() => setIsPhasesDrawerOpen(false)}
+
         >
           <div
             style={{
@@ -1619,7 +1619,8 @@ export function KanbanView({
               </div>
               <button
                 type="button"
-                onClick={() => setIsPhasesDrawerOpen(false)}
+      
+                title="Cerrar modal"
                 style={{ background: 'transparent', border: 0, fontSize: '18px', cursor: 'pointer', color: '#5F6B76', padding: '4px' }}
               >
                 ✕
@@ -1774,7 +1775,7 @@ export function KanbanView({
             <div style={{ padding: '14px 20px', borderTop: '1px solid #DDE2E4', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#FAFBFC' }}>
               <button
                 type="button"
-                onClick={() => setIsPhasesDrawerOpen(false)}
+      
                 style={{
                   height: '36px',
                   padding: '0 16px',

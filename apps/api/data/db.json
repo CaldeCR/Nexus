@@ -1315,6 +1315,13 @@
   ],
   "teamDirectory": [
     {
+      "id": "dir-1793204116030-zlj8m",
+      "name": "Pruebas1",
+      "role": "collaborator",
+      "organization": "Equipo Interno",
+      "createdAt": "2026-10-28T16:15:16.030Z"
+    },
+    {
       "id": "dir-1791232203609-0oc6b",
       "name": "Esteban Montoya",
       "role": "collaborator",

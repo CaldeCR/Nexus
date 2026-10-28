@@ -398,7 +398,6 @@ export function ProjectMeetingsTab({
       {isModalOpen && (
         <div
           className="modal-overlay"
-          onClick={() => setIsModalOpen(false)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="modal-meeting-title"

@@ -109,7 +109,7 @@ export function TaskDrawer({
   };
 
   return (
-    <div className="ui-drawer-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={isEdit ? 'Editar Tarea' : 'Nueva Tarea'}>
+    <div className="ui-drawer-overlay" role="dialog" aria-modal="true" aria-label={isEdit ? 'Editar Tarea' : 'Nueva Tarea'}>
       <aside className="ui-drawer-panel" onClick={(e) => e.stopPropagation()}>
         {/* Cabecera */}
         <div className="ui-drawer-header">

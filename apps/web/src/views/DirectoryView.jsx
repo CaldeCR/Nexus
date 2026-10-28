@@ -59,6 +59,7 @@ export function DirectoryView({
     const stats = {
       all: teamDirectory.length,
       has_account: teamDirectory.filter((m) => Boolean(m.hasUserAccount)).length,
+      reference: teamDirectory.filter((m) => !m.hasUserAccount).length,
       collaborator: teamDirectory.filter((m) => (m.role || 'collaborator') === 'collaborator').length,
       vendor: teamDirectory.filter((m) => m.role === 'vendor').length,
       admin: teamDirectory.filter((m) => m.role === 'admin' || m.userRole === 'admin').length
@@ -71,6 +72,8 @@ export function DirectoryView({
     return teamDirectory.filter((m) => {
       if (activeTab === 'has_account') {
         if (!m.hasUserAccount) return false;
+      } else if (activeTab === 'reference') {
+        if (m.hasUserAccount) return false;
       } else if (activeTab === 'admin') {
         if (m.role !== 'admin' && m.userRole !== 'admin') return false;
       } else if (activeTab !== 'all') {
@@ -99,6 +102,7 @@ export function DirectoryView({
           {[
             { id: 'all', label: `Todos (${countsByTab.all})` },
             { id: 'has_account', label: `Con Acceso (${countsByTab.has_account})` },
+            { id: 'reference', label: `Solo Ref. (${countsByTab.reference})` },
             { id: 'collaborator', label: `Colab. (${countsByTab.collaborator})` },
             { id: 'vendor', label: `Prov. (${countsByTab.vendor})` }
           ].map((t) => {
@@ -183,7 +187,7 @@ export function DirectoryView({
                       🔑 {userRoleLabel}
                     </span>
                   ) : (
-                    <span style={{ color: '#8C959E' }}>Sin cuenta</span>
+                    <span style={{ color: '#5F6B76' }}>👤 Solo Referencia</span>
                   )}
                 </span>
               </div>
@@ -427,6 +431,7 @@ export function DirectoryView({
           {[
             { id: 'all', label: `Todos (${countsByTab.all})` },
             { id: 'has_account', label: `Con Acceso (${countsByTab.has_account})` },
+            { id: 'reference', label: `Solo Referencia (${countsByTab.reference})` },
             { id: 'collaborator', label: `Colaboradores (${countsByTab.collaborator})` },
             { id: 'vendor', label: `Proveedores (${countsByTab.vendor})` },
             { id: 'admin', label: `Administradores (${countsByTab.admin})` }
@@ -558,15 +563,19 @@ export function DirectoryView({
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          padding: '3px 8px',
+                          gap: '5px',
+                          padding: '3px 9px',
                           borderRadius: '6px',
                           fontSize: '11px',
                           fontWeight: 500,
-                          background: '#EDF0F0',
-                          color: '#5F6B76'
+                          background: '#F1F4F4',
+                          color: '#5F6B76',
+                          border: '1px solid #DDE2E4'
                         }}
+                        title="Integrante registrado como referencia para tareas y proyectos (sin acceso al sistema)"
                       >
-                        Sin cuenta
+                        <span>👤</span>
+                        <span>Solo Referencia</span>
                       </span>
                     )}
                   </td>
