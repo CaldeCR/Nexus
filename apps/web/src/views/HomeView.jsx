@@ -8,6 +8,7 @@ export function HomeView({
   currentUser = null,
   todayStr = '',
   space = 'all',
+  totalStaleCount = 0,
   onSpaceChange,
   onSelectProject,
   onNavigate,
@@ -119,6 +120,15 @@ export function HomeView({
       overdueCount: overdue.length
     };
   }, [filteredTasks, todayStr]);
+
+  // Tareas pendientes de Daily Check (sin avance en >48h) en el espacio actual
+  const staleTasksCount = useMemo(() => {
+    if (space === 'all' && typeof totalStaleCount === 'number') {
+      return totalStaleCount;
+    }
+    return filteredProjects.reduce((sum, p) => sum + (p.staleTasksCount || 0), 0);
+  }, [filteredProjects, space, totalStaleCount]);
+
 
   // 5. Radiografía de Proyectos con semáforos individuales
   const projectsListWithHealth = useMemo(() => {
@@ -751,8 +761,8 @@ export function HomeView({
             >
               <Icons.DailyCheck size={16} />
               <span>Daily Check</span>
-              {taskRisks.overdueCount > 0 && (
-                <span className="top-daily-checkin-badge danger">{taskRisks.overdueCount}</span>
+              {staleTasksCount > 0 && (
+                <span className="top-daily-checkin-badge danger">{staleTasksCount}</span>
               )}
             </button>
 

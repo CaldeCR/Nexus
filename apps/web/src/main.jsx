@@ -2776,6 +2776,7 @@ function App() {
               currentUser={session}
               todayStr={todayStr}
               space={space}
+              totalStaleCount={totalStaleCount}
               onSpaceChange={handleSpaceChange}
               onSelectProject={(id) => {
                 setSelectedProjectId(id);
