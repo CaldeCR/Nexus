@@ -774,8 +774,8 @@ function App() {
 
   // Forms
   const [loginForm, setLoginForm] = useState({
-    email: 'jorge@nexus.local',
-    password: '123456'
+    email: '',
+    password: ''
   });
 
   const [projectForm, setProjectForm] = useState({
@@ -922,7 +922,17 @@ function App() {
     localStorage.setItem('nexus-token', authToken);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    if (token) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {
+        // Ignorar fallo de red al cerrar sesión
+      }
+    }
     setSession(null);
     setToken('');
     setProjects([]);
@@ -930,6 +940,26 @@ function App() {
     setTeamDirectory([]);
     localStorage.removeItem('nexus-session');
     localStorage.removeItem('nexus-token');
+  };
+
+  const fetchOrGeneratePassword = async () => {
+    if (token) {
+      try {
+        const res = await fetch(`${API_BASE}/auth/generate-password`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.password) return data.password;
+        }
+      } catch (err) {
+        console.warn('Fallback a generación criptográfica local de contraseña', err);
+      }
+    }
+    const charset = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*()_+';
+    const buf = new Uint8Array(16);
+    window.crypto.getRandomValues(buf);
+    return Array.from(buf).map((b) => charset[b % charset.length]).join('');
   };
 
   // HANDLERS DEL DIRECTORIO GLOBAL
@@ -1142,16 +1172,10 @@ function App() {
   };
 
   const generateSecurePassword = () => {
-    const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lower = 'abcdefghijkmnopqrstuvwxyz';
-    const numbers = '23456789';
-    const symbols = '!@#$%&*';
-    let pass = 'Nx-';
-    for (let i = 0; i < 2; i++) pass += upper[Math.floor(Math.random() * upper.length)];
-    for (let i = 0; i < 3; i++) pass += lower[Math.floor(Math.random() * lower.length)];
-    pass += symbols[Math.floor(Math.random() * symbols.length)];
-    for (let i = 0; i < 3; i++) pass += numbers[Math.floor(Math.random() * numbers.length)];
-    return pass;
+    const charset = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+    const buf = new Uint8Array(12);
+    window.crypto.getRandomValues(buf);
+    return 'Nx-' + Array.from(buf).map((b) => charset[b % charset.length]).join('');
   };
 
   const handleOpenGenerateAccount = (member) => {
@@ -2655,7 +2679,7 @@ function App() {
                 type="email"
                 value={loginForm.email}
                 onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
-                placeholder="jorge@nexus.local"
+                placeholder="correo@nexus.local"
                 required
               />
             </div>
@@ -2665,7 +2689,7 @@ function App() {
                 type="password"
                 value={loginForm.password}
                 onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                placeholder="123456"
+                placeholder="••••••••"
                 required
               />
             </div>
@@ -4332,7 +4356,7 @@ function App() {
                               const randomPass = generateSecurePassword();
                               setNewDirectoryForm({ ...newDirectoryForm, password: randomPass });
                             }}
-                            title="Generar contraseña sugerida"
+                            title="Generar contraseña segura sugerida"
                           >
                             ⚡ Generar
                           </button>

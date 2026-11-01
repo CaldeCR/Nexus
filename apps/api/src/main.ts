@@ -3,14 +3,53 @@ import cors from 'cors';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension } from './data/store';
+import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension, type SessionRecord } from './data/store';
 
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-const sessionStore = new Map<string, { userId: string; createdAt: number }>();
+// Aislamiento CORS estricto
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : [
+      'http://localhost:5173',
+      'http://localhost:4173',
+      'http://localhost:80',
+      'http://localhost',
+      'https://nexus.mexicocentral.cloudapp.azure.com'
+    ];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Bloqueado por política CORS'));
+  },
+  credentials: true
+}));
+
+app.use(express.json({ limit: '1mb' }));
+
+const sessionStore = new Map<string, { userId: string; createdAt: number; expiresAt: number }>();
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas de validez
+
+// Inicializar sesiones legítimas persistidas en DB al arrancar
+function initSessionsFromDb() {
+  try {
+    const db = readDb();
+    if (Array.isArray(db.sessions)) {
+      const now = Date.now();
+      db.sessions.forEach((s) => {
+        if (s && s.token && s.expiresAt > now) {
+          sessionStore.set(s.token, { userId: s.userId, createdAt: s.createdAt, expiresAt: s.expiresAt });
+        }
+      });
+    }
+  } catch (err) {
+    console.error('Error al inicializar almacén de sesiones:', err);
+  }
+}
+initSessionsFromDb();
 
 // Rate Limiter para Login (5 intentos cada 15 minutos)
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -181,31 +220,36 @@ function getToken(req: express.Request): string | undefined {
   return header.startsWith('Bearer ') ? header.slice(7) : undefined;
 }
 
-function getCurrentUser(req: express.Request) {
+function getCurrentUser(req: express.Request): User | null {
   const token = getToken(req);
   if (!token) return null;
 
-  const session = sessionStore.get(token);
+  const now = Date.now();
+  let session = sessionStore.get(token);
+
+  if (!session) {
+    // Buscar en persistencia de DB
+    const db = readDb();
+    const persisted = Array.isArray(db.sessions) ? db.sessions.find((s) => s.token === token) : undefined;
+    if (persisted && persisted.expiresAt > now) {
+      session = { userId: persisted.userId, createdAt: persisted.createdAt, expiresAt: persisted.expiresAt };
+      sessionStore.set(token, session);
+    }
+  }
+
   if (session) {
-    if (Date.now() - session.createdAt > SESSION_TTL_MS) {
+    if (session.expiresAt <= now) {
       sessionStore.delete(token);
+      const db = readDb();
+      if (Array.isArray(db.sessions)) {
+        db.sessions = db.sessions.filter((s) => s.token !== token);
+        writeDb(db);
+      }
       return null;
     }
 
     const db = readDb();
     return db.users.find((user) => user.id === session.userId) ?? null;
-  }
-
-  // Compatibilidad y resiliencia tras reinicio del servidor:
-  // Rehidratar tokens de sesión con formato legacy o asociados a usuarios válidos
-  const db = readDb();
-  const legacyMatch = token.match(/^nexus-\d+-(.+)$/);
-  if (legacyMatch) {
-    const legacyUser = db.users.find((u) => u.id === legacyMatch[1]);
-    if (legacyUser) {
-      sessionStore.set(token, { userId: legacyUser.id, createdAt: Date.now() });
-      return legacyUser;
-    }
   }
 
   return null;
@@ -278,13 +322,53 @@ app.post('/api/auth/login', async (req, res) => {
   // Login exitoso: limpiar contador de intentos
   loginAttempts.delete(clientIp);
 
-  const token = `nexus-${randomBytes(32).toString("hex")}`;
-  sessionStore.set(token, { userId: user.id, createdAt: Date.now() });
+  const token = `ses_${randomBytes(32).toString('hex')}`;
+  const sessionData = {
+    userId: user.id,
+    createdAt: now,
+    expiresAt: now + SESSION_TTL_MS
+  };
+  sessionStore.set(token, sessionData);
+
+  // Persistir sesión legítima en DB para resiliencia
+  if (!Array.isArray(db.sessions)) {
+    db.sessions = [];
+  }
+  db.sessions = db.sessions.filter((s) => s.expiresAt > now);
+  db.sessions.push({ token, ...sessionData });
+  writeDb(db);
 
   return res.json({
     token,
     user: { id: user.id, name: user.name, email: user.email, role: user.role }
   });
+});
+
+app.post('/api/auth/logout', (req, res) => {
+  const token = getToken(req);
+  if (token) {
+    sessionStore.delete(token);
+    const db = readDb();
+    if (Array.isArray(db.sessions)) {
+      db.sessions = db.sessions.filter((s) => s.token !== token);
+      writeDb(db);
+    }
+  }
+  return res.json({ ok: true, message: 'Sesión finalizada correctamente.' });
+});
+
+// Endpoint seguro para generación de contraseñas de alta entropía (Solo administradores)
+app.get('/api/auth/generate-password', (req, res) => {
+  const admin = requireAdmin(req, res);
+  if (!admin) return;
+
+  const charset = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789!@#$%^&*()_+';
+  const bytes = randomBytes(16);
+  let password = '';
+  for (let i = 0; i < 16; i++) {
+    password += charset[bytes[i] % charset.length];
+  }
+  return res.json({ password });
 });
 
 // ==========================================

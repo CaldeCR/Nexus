@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import bcrypt from 'bcryptjs';
 
 export type User = {
   id: string;
@@ -8,6 +9,13 @@ export type User = {
   password?: string;
   passwordHash?: string;
   role: 'owner' | 'admin' | 'member';
+};
+
+export type SessionRecord = {
+  token: string;
+  userId: string;
+  createdAt: number;
+  expiresAt: number;
 };
 
 export type ProjectMemberRole = 'admin' | 'collaborator' | 'vendor' | 'viewer';
@@ -111,6 +119,7 @@ export type DbState = {
   projects: Project[];
   workItems: WorkItem[];
   teamDirectory: GlobalMember[];
+  sessions?: SessionRecord[];
 };
 
 function createDefaultDb(): DbState {
@@ -120,7 +129,7 @@ function createDefaultDb(): DbState {
         id: 'u-1',
         email: 'jorge@nexus.local',
         name: 'Jorge',
-        password: '123456',
+        passwordHash: '$2b$12$qQqxfmLXIFbYU/J3mkcDGOVijM7FILhJ.fP5Ykwk12xqGSqMsQ/Zy',
         role: 'owner'
       }
     ],
@@ -570,11 +579,35 @@ function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
       }))
     : harvestTeamDirectory(projects, workItems);
 
+  const rawUsers = Array.isArray(raw?.users) && raw.users.length ? raw.users : defaults.users;
+  const users = rawUsers.map((u) => {
+    if (u.password && !u.passwordHash) {
+      try {
+        const hash = bcrypt.hashSync(u.password, 12);
+        const { password, ...clean } = u;
+        return { ...clean, passwordHash: hash };
+      } catch {
+        return u;
+      }
+    }
+    if (u.password && u.passwordHash) {
+      const { password, ...clean } = u;
+      return clean;
+    }
+    return u;
+  });
+
+  const now = Date.now();
+  const sessions = Array.isArray(raw?.sessions)
+    ? raw.sessions.filter((s) => s && typeof s.token === 'string' && s.expiresAt > now)
+    : [];
+
   return {
-    users: Array.isArray(raw?.users) && raw.users.length ? raw.users : defaults.users,
+    users,
     projects,
     workItems,
-    teamDirectory
+    teamDirectory,
+    sessions
   };
 }
 

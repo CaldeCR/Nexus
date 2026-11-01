@@ -38,7 +38,12 @@ lerna-debug.log*
 
 # Runtime data & backups
 /data/
+apps/api/data/*.json
+!apps/api/data/.gitkeep
 *.backup.json
+*.key
+*.pem
+*.cert
 
 # OS generated files
 .DS_Store

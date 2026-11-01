@@ -5,3 +5,17 @@ dist
 *.log
 .DS_Store
 Thumbs.db
+
+# Secrets & Environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.cert
+*.pfx
+
+# Runtime Data
+data/
+apps/api/data/*.json
+!apps/api/data/.gitkeep

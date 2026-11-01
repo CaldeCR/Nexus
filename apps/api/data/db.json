@@ -11,15 +11,15 @@
       "id": "u-1792019074625",
       "name": "Ana Rodriguez",
       "email": "ana@nexus.local",
-      "passwordHash": "$2b$12$Js7EsK/ZOmNIAjLxQ7EVEO2Tj6EIlOOFzu1Y//qIQ6Ij3lwe/1SkO",
-      "role": "member"
+      "role": "member",
+      "passwordHash": "$2b$12$Js7EsK/ZOmNIAjLxQ7EVEO2Tj6EIlOOFzu1Y//qIQ6Ij3lwe/1SkO"
     },
     {
       "id": "u-1792020629821",
       "name": "Esteban Montoya",
       "email": "esteban@nexus.local",
-      "passwordHash": "$2b$12$lZ/dLDSA9uTyB.i3pGiYI.cF2nkTlgWJ/TWKIUQQjW1GpbKvdn/qu",
-      "role": "member"
+      "role": "member",
+      "passwordHash": "$2b$12$lZ/dLDSA9uTyB.i3pGiYI.cF2nkTlgWJ/TWKIUQQjW1GpbKvdn/qu"
     }
   ],
   "projects": [
@@ -1400,5 +1400,6 @@
       "organization": "QA & Testing",
       "createdAt": "2026-10-14T23:04:34.626Z"
     }
-  ]
+  ],
+  "sessions": []
 }

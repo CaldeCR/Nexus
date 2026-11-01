@@ -246,10 +246,10 @@ export function Rail({
             >
               <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--line-100)' }}>
                 <strong style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--ink-900)' }}>
-                  {user?.name || 'Jorge Calderón'}
+                  {user?.name || 'Usuario'}
                 </strong>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-500)' }}>
-                  {user?.email || 'jorge@empresa.com'}
+                  {user?.email || 'usuario@nexus.local'}
                 </span>
               </div>
 
