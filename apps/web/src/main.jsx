@@ -1847,18 +1847,19 @@ function App() {
     }
   };
 
-  const openEditTaskModal = (task) => {
+  const openEditTaskModal = (task, overrideForm = null) => {
     if (!task) return;
     const list = getTaskAssignees(task);
     setEditingTask(task);
     setNewProgressText('');
     setNewProgressAuthor(session?.name || 'Jorge');
+    const newStatus = overrideForm?.status || task.status || 'backlog';
     setEditTaskForm({
       projectId: task.projectId || selectedProjectId || (projects[0] && projects[0].id) || '',
       title: task.title || '',
       description: task.description || '',
       type: task.type || 'task',
-      status: task.status || 'backlog',
+      status: newStatus,
       priority: task.priority || 'medium',
       assignees: list,
       assignee: list.join(', '),
@@ -1869,9 +1870,12 @@ function App() {
       completionType: task.completionType || 'full',
       completionReport: task.completionReport || '',
       continuationTaskId: task.continuationTaskId || '',
-      completedAt: task.completedAt && typeof task.completedAt === 'string' ? task.completedAt.split('T')[0] : (task.completedAt || ''),
+      completedAt: task.completedAt && typeof task.completedAt === 'string'
+        ? task.completedAt.split('T')[0]
+        : (newStatus === 'done' ? (todayStr || new Date().toISOString().split('T')[0]) : (task.completedAt || '')),
       progressLogs: Array.isArray(task.progressLogs) ? task.progressLogs : [],
-      phaseIds: Array.isArray(task.phaseIds) ? task.phaseIds : []
+      phaseIds: Array.isArray(task.phaseIds) ? task.phaseIds : [],
+      ...(overrideForm || {})
     });
     setIsEditTaskModalOpen(true);
   };
@@ -2093,6 +2097,26 @@ function App() {
       setWorkItems((prev) => prev.map((item) => (item.id === data.id ? data : item)));
       setIsEditTaskModalOpen(false);
       setEditingTask(null);
+
+      // Si el Daily Check-in está abierto, reflejar el cambio o avanzar a la siguiente tarea si se cerró
+      if (isDailyCheckinModalOpen) {
+        if (data.status === 'done') {
+          const updatedList = dailyCheckinTasks.filter((t) => t.id !== data.id);
+          if (updatedList.length === 0) {
+            setIsDailyCheckinModalOpen(false);
+            setDailyCheckinTasks([]);
+            setSuccess(`🎉 Tarea "${data.title}" cerrada exitosamente. ¡Daily Check-in completado!`);
+          } else {
+            setDailyCheckinTasks(updatedList);
+            const nextIdx = dailyCheckinIndex >= updatedList.length ? Math.max(0, updatedList.length - 1) : dailyCheckinIndex;
+            setDailyCheckinIndex(nextIdx);
+            setDailyCheckinInputText('');
+            setSuccess(`✓ Tarea "${data.title}" cerrada exitosamente. Continuando Daily Check...`);
+          }
+        } else {
+          setDailyCheckinTasks((prev) => prev.map((t) => (t.id === data.id ? data : t)));
+        }
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -2111,6 +2135,19 @@ function App() {
       setIsEditTaskModalOpen(false);
       setEditingTask(null);
       setTaskToDelete(null);
+
+      if (isDailyCheckinModalOpen) {
+        const updatedList = dailyCheckinTasks.filter((t) => t.id !== taskId);
+        if (updatedList.length === 0) {
+          setIsDailyCheckinModalOpen(false);
+          setDailyCheckinTasks([]);
+        } else {
+          setDailyCheckinTasks(updatedList);
+          const nextIdx = dailyCheckinIndex >= updatedList.length ? Math.max(0, updatedList.length - 1) : dailyCheckinIndex;
+          setDailyCheckinIndex(nextIdx);
+          setDailyCheckinInputText('');
+        }
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -3020,7 +3057,7 @@ function App() {
 
       {/* MODAL: EDITAR TAREA */}
       {isEditTaskModalOpen && editingTask && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -3486,14 +3523,38 @@ function App() {
               return (
                 <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   <div className="daily-checkin-task-preview">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         {currentTask.code && <span className="task-code-badge">{currentTask.code}</span>}
                         <span className="project-tag">{proj?.name || 'Proyecto'}</span>
                       </div>
-                      <span className="task-freshness-pill warning">
-                        <Icons.Clock /> {freshness.label}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span className="task-freshness-pill warning">
+                          <Icons.Clock /> {freshness.label}
+                        </span>
+                        <button
+                          type="button"
+                          className="ui-btn ui-btn--ghost ui-btn--small"
+                          onClick={() => {
+                            const fresh = workItems.find((w) => w.id === currentTask.id) || currentTask;
+                            openEditTaskModal(fresh);
+                          }}
+                          style={{
+                            padding: '3px 8px',
+                            fontSize: '0.78rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            border: '1px solid var(--line-300)',
+                            borderRadius: 'var(--radius-sm, 6px)',
+                            cursor: 'pointer'
+                          }}
+                          title="Editar todos los campos de la tarea"
+                        >
+                          <Icons.Edit />
+                          <span>Editar</span>
+                        </button>
+                      </div>
                     </div>
 
                     <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--ink-900)' }}>
@@ -3534,15 +3595,37 @@ function App() {
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', flexWrap: 'wrap', gap: '10px' }}>
-                    <button
-                      type="button"
-                      className="ui-btn ui-btn--secondary"
-                      onClick={() => handleDailyCheckinAdvance(true)}
-                      disabled={isSubmittingDailyCheckin}
-                      title="Registrar que la tarea continúa en curso sin cambios relevantes"
-                    >
-                      <Icons.Check /> <span>Continúa en curso (Sin cambios)</span>
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn--secondary"
+                        onClick={() => handleDailyCheckinAdvance(true)}
+                        disabled={isSubmittingDailyCheckin}
+                        title="Registrar que la tarea continúa en curso sin cambios relevantes"
+                      >
+                        <Icons.Check /> <span>Continúa en curso (Sin cambios)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="ui-btn ui-btn--secondary"
+                        onClick={() => {
+                          const fresh = workItems.find((w) => w.id === currentTask.id) || currentTask;
+                          openEditTaskModal(fresh, { status: 'done' });
+                        }}
+                        disabled={isSubmittingDailyCheckin}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          borderColor: 'rgba(16, 185, 129, 0.4)',
+                          color: '#10b981'
+                        }}
+                        title="Cerrar y documentar entrega de esta tarea"
+                      >
+                        <Icons.Check /> <span>Cerrar tarea</span>
+                      </button>
+                    </div>
 
                     <button
                       type="button"
