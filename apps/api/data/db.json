@@ -360,6 +360,30 @@
         }
       ],
       "code": "P6"
+    },
+    {
+      "id": "p-1792532349205",
+      "code": "P8",
+      "name": "CIBERSEGURIDAD-TELECABLE",
+      "description": "",
+      "template": "kanban",
+      "status": "execution",
+      "role": "lead",
+      "admins": [
+        "Jorge"
+      ],
+      "members": [],
+      "teamMembers": [
+        {
+          "id": "mem-adm-0-p-1792532349205",
+          "name": "Jorge",
+          "role": "admin"
+        }
+      ],
+      "startDate": "2026-10-15",
+      "targetDate": "2026-10-30",
+      "originalTargetDate": "2026-10-30",
+      "dateExtensions": []
     }
   ],
   "workItems": [
@@ -2446,6 +2470,241 @@
         "phase-5"
       ],
       "progressLogs": []
+    },
+    {
+      "id": "wi-1792433793868",
+      "code": "P4-T3",
+      "projectId": "p-1790886001488",
+      "title": "Recepción de propuesta de implementación Entra ID",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-16",
+      "createdAt": "2026-10-19T18:16:33.868Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1792433853175-e5k8",
+          "text": "Se recibe correo el día de hoy 19 de octubre con la propuesta. Queda pendiente el tema de los costos de licencias.",
+          "author": "Jorge",
+          "createdAt": "2026-10-19T18:17:33.175Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1792433602143",
+      "code": "P6-T12",
+      "projectId": "p-1790876119003",
+      "title": "Revisión de contratos y temas legales",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-16",
+      "createdAt": "2026-10-19T18:13:22.143Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1792433674188-y978",
+          "text": "El encargado de Legal de GE no está disponible, Se buscó ayuda a legal de Transcomer quienes no estarán ayudando con la revisión.",
+          "author": "Jorge",
+          "createdAt": "2026-10-19T18:14:34.188Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1792433551757",
+      "code": "P6-T11",
+      "projectId": "p-1790876119003",
+      "title": "Probar posible integración de clientes con Zoho",
+      "description": "",
+      "type": "milestone",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge, Josué B",
+      "assignees": [
+        "Jorge",
+        "Josué B"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-23",
+      "createdAt": "2026-10-19T18:12:31.757Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1792433575878-gmdb",
+          "text": "Se están validando accesos al API de Zoho con medusa",
+          "author": "Jorge",
+          "createdAt": "2026-10-19T18:12:55.878Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1792187411585",
+      "code": "P1-T7",
+      "projectId": "p-1790951494828",
+      "title": "Preparación de ambiente de prueba en paralelo",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-19",
+      "createdAt": "2026-10-16T21:50:11.585Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1792187477758-ir6s",
+          "text": "Se tomó el video existente de una capacitación de hace 2 años como referencia para intentar levantar el ambiente de prueba.",
+          "author": "Jorge",
+          "createdAt": "2026-10-16T21:51:17.758Z"
+        },
+        {
+          "id": "log-1792187447106-xr2y",
+          "text": "En la computadora creada para pruebas, se instaló softland y se configuró con  los archivos que hoy se tienen.",
+          "author": "Jorge",
+          "createdAt": "2026-10-16T21:50:47.106Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1791995342565",
+      "code": "P2-T6",
+      "projectId": "p-1790895374161",
+      "title": "Confirmar tema de Youtube con Joel",
+      "description": "",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-16",
+      "createdAt": "2026-10-14T16:29:02.565Z",
+      "completionReport": "",
+      "progressLogs": []
+    },
+    {
+      "id": "wi-1791987763542",
+      "code": "P7-T10",
+      "projectId": "p-1791231911086",
+      "title": "Dar seguimiento a Truesec sobre informe de visita",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-19",
+      "createdAt": "2026-10-14T14:22:43.542Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1792187721107-7dse",
+          "text": "Don Marco solicitó que yo de seguimiento a todas las tareas de la lista.",
+          "author": "Jorge",
+          "createdAt": "2026-10-16T21:55:21.107Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1791915804636",
+      "code": "P7-T9",
+      "projectId": "p-1791231911086",
+      "title": "R-17 ",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-13",
+      "createdAt": "2026-10-13T18:23:24.636Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1791915844214-61w9",
+          "text": "Esta tarea está asociada al proyecto de Entra ID ya en ejecución.",
+          "author": "Jorge",
+          "createdAt": "2026-10-13T18:24:04.214Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1791915694698",
+      "code": "P7-T8",
+      "projectId": "p-1791231911086",
+      "title": "R-15",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-13",
+      "createdAt": "2026-10-13T18:21:34.698Z",
+      "completionReport": "",
+      "progressLogs": [
+        {
+          "id": "log-1791915767026-j5ti",
+          "text": "Plantear a RH un flujo interno de salida de personal con acceso a recursos tecnológicos de GE. Este consiste en que desde una plataforma se tenga el control de la desactivación de los usuarios a sistemas que utilizan las personas que dejan de ser empleadas.",
+          "author": "Jorge",
+          "createdAt": "2026-10-13T18:22:47.026Z"
+        }
+      ],
+      "completionType": "full"
+    },
+    {
+      "id": "wi-1791915512017",
+      "code": "P7-T7",
+      "projectId": "p-1791231911086",
+      "title": "R-14 ",
+      "description": "",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "medium",
+      "assignee": "Jorge",
+      "assignees": [
+        "Jorge"
+      ],
+      "assigneeType": "me",
+      "dueDate": "2026-10-13",
+      "createdAt": "2026-10-13T18:18:32.017Z",
+      "completionReport": "",
+      "progressLogs": [],
+      "completionType": "full"
     }
   ],
   "teamDirectory": [
@@ -2578,5 +2837,12 @@
       "createdAt": "2026-11-23T17:47:47.500Z"
     }
   ],
-  "sessions": []
+  "sessions": [
+    {
+      "token": "ses_559c4b177caf8b2a6acc77938256663f8f0b7c9e2ee8ea63fac93f25fd4a62ce",
+      "userId": "u-1",
+      "createdAt": 1795472502376,
+      "expiresAt": 1795558902376
+    }
+  ]
 }
