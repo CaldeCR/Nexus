@@ -22,6 +22,7 @@ import { DailyCheckView } from './views/DailyCheckView';
 import { ProjectDrawer } from './components/forms/ProjectDrawer';
 import { TaskDrawer } from './components/forms/TaskDrawer';
 import { AssigneeDropdownPicker } from './components/forms/AssigneeDropdownPicker';
+import { ImportExcelModal } from './components/forms/ImportExcelModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -692,6 +693,8 @@ function App() {
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [isEditTaskModalOpen, setIsEditTaskModalOpen] = useState(false);
+  const [isImportExcelModalOpen, setIsImportExcelModalOpen] = useState(false);
+  const [importTargetProjectId, setImportTargetProjectId] = useState(null);
   const [isDoneReportModalOpen, setIsDoneReportModalOpen] = useState(false);
   const [doneReportFilter, setDoneReportFilter] = useState('all'); // 'all' | 'full' | 'partial'
   const [doneReportSearch, setDoneReportSearch] = useState('');
@@ -1765,6 +1768,20 @@ function App() {
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const openImportExcelModal = (projectId = null) => {
+    setImportTargetProjectId(projectId || selectedProjectId || null);
+    setIsImportExcelModalOpen(true);
+  };
+
+  const handleImportExcelComplete = async (targetProjId, result) => {
+    setSuccess(`Se importaron ${result.count || ''} tareas con éxito`);
+    if (targetProjId) {
+      setSelectedProjectId(targetProjId);
+    }
+    await fetchProjects();
+    await fetchWorkItems();
   };
 
   const openNewTaskModal = (initialData = {}) => {
@@ -2938,6 +2955,7 @@ function App() {
               onUpdateMeeting={handleUpdateMeeting}
               onDeleteMeeting={handleDeleteMeeting}
               onCreateTaskFromAction={handleCreateTaskFromMeetingAction}
+              onOpenImportExcel={openImportExcelModal}
             />
           )}
 
@@ -3005,6 +3023,7 @@ function App() {
               onOpenStatusModal={(proj) => openProjectStatusModal(proj)}
               onDeleteTask={(task) => handleDeleteTask(task.id)}
               onUpdateProject={handleSaveEditProject}
+              onOpenImportExcel={openImportExcelModal}
             />
           )}
 
@@ -3053,6 +3072,16 @@ function App() {
         selectedProjectId={taskForm.projectId || selectedProjectId}
         currentUser={session}
         teamDirectory={teamDirectory}
+      />
+
+      {/* MODAL: IMPORTAR EXCEL / CSV CON PLANTILLA */}
+      <ImportExcelModal
+        isOpen={isImportExcelModalOpen}
+        onClose={() => setIsImportExcelModalOpen(false)}
+        projects={enrichedProjects}
+        selectedProjectId={importTargetProjectId || selectedProjectId}
+        currentUser={session}
+        onImportComplete={handleImportExcelComplete}
       />
 
       {/* MODAL: EDITAR TAREA */}

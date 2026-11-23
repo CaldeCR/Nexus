@@ -1322,6 +1322,124 @@ app.post('/api/work-items', (req, res) => {
   return res.status(201).json(newItem);
 });
 
+app.post('/api/work-items/batch', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  const { projectId, items, newPhases } = req.body;
+  if (!projectId || !Array.isArray(items)) {
+    return res.status(400).json({ message: 'Faltan parámetros requeridos (projectId, items)' });
+  }
+
+  const db = readDb();
+  const project = db.projects.find((p) => p.id === projectId);
+  if (!project) {
+    return res.status(404).json({ message: 'Proyecto no encontrado' });
+  }
+
+  // Actualizar fases si vienen especificadas
+  if (Array.isArray(newPhases) && newPhases.length > 0) {
+    project.hasPhases = true;
+    const existingPhases = Array.isArray(project.phases) ? [...project.phases] : [];
+    newPhases.forEach((np: any) => {
+      const found = existingPhases.find((p) => p.id === np.id || p.name.toLowerCase().trim() === (np.name || '').toLowerCase().trim());
+      if (!found && np.name) {
+        existingPhases.push({
+          id: np.id || `phase-${existingPhases.length}`,
+          name: np.name,
+          startDate: np.startDate || '',
+          targetDate: np.targetDate || '',
+          status: np.status || 'pending',
+          order: existingPhases.length
+        });
+      }
+    });
+    project.phases = existingPhases;
+  }
+
+  const projCode = project.code || 'P1';
+  const createdItems: WorkItem[] = [];
+  const nowIso = new Date().toISOString();
+
+  if (!Array.isArray(db.teamDirectory)) db.teamDirectory = [];
+  const knownNames = new Set(db.teamDirectory.map((m: any) => (m.name || '').toLowerCase().trim()));
+
+  for (let i = 0; i < items.length; i++) {
+    const raw = items[i];
+    if (!raw.title || typeof raw.title !== 'string') continue;
+
+    let assigneesList: string[] = [];
+    if (Array.isArray(raw.assignees) && raw.assignees.length > 0) {
+      assigneesList = raw.assignees.map((s: any) => String(s).trim()).filter(Boolean);
+    } else if (raw.assignee) {
+      assigneesList = String(raw.assignee).split(/[\/,]/).map((s) => s.trim()).filter(Boolean);
+    } else {
+      assigneesList = [user.name || 'Jorge'];
+    }
+    const assigneeStr = assigneesList.join(', ');
+
+    assigneesList.forEach((name) => {
+      if (name && !knownNames.has(name.toLowerCase())) {
+        knownNames.add(name.toLowerCase());
+        db.teamDirectory.push({
+          id: `dir-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          name,
+          role: 'collaborator',
+          organization: 'Equipo de Proyecto',
+          createdAt: nowIso
+        });
+      }
+    });
+
+    const code = raw.code || getNextWorkItemCode([...db.workItems, ...createdItems], projCode);
+    const status = raw.status || 'backlog';
+    const isDone = status === 'done';
+
+    const newItem: WorkItem = {
+      id: raw.id && !raw.id.startsWith('wi-') ? `wi-${projectId}-${raw.id.toLowerCase()}` : (raw.id || `wi-${Date.now()}-${i}-${Math.random().toString(36).substring(2, 6)}`),
+      code,
+      projectId,
+      title: raw.title.trim(),
+      description: (raw.description || '').trim(),
+      type: raw.type || (raw.title.toLowerCase().startsWith('hito') ? 'milestone' : 'task'),
+      status: status,
+      priority: raw.priority || 'medium',
+      assignee: assigneeStr,
+      assignees: assigneesList,
+      assigneeType: assigneesList.some((a) => a.toLowerCase() === (user.name || 'jorge').toLowerCase()) ? 'me' : 'team',
+      startDate: raw.startDate || '',
+      dueDate: raw.dueDate || '',
+      createdAt: raw.createdAt || nowIso,
+      completionType: isDone ? 'full' : undefined,
+      completionReport: isDone ? (raw.completionReport || raw.description || 'Completado según registro de importación.') : '',
+      completedAt: isDone ? (raw.completedAt || raw.dueDate || nowIso) : undefined,
+      progressLogs: Array.isArray(raw.progressLogs) ? raw.progressLogs : (
+        isDone ? [{
+          id: `log-${Date.now()}-${i}`,
+          text: raw.description || 'Completado según importación inicial.',
+          author: assigneeStr || user.name || 'Sistema',
+          createdAt: raw.dueDate ? `${raw.dueDate}T12:00:00.000Z` : nowIso
+        }] : []
+      ),
+      phaseIds: Array.isArray(raw.phaseIds) ? raw.phaseIds : []
+    };
+
+    createdItems.push(newItem);
+  }
+
+  db.workItems = [...(db.workItems || []), ...createdItems];
+  writeDb(db);
+
+  return res.status(201).json({
+    ok: true,
+    count: createdItems.length,
+    items: createdItems,
+    project
+  });
+});
+
 app.put('/api/work-items/:id', (req, res) => {
   const user = getCurrentUser(req);
   if (!user) {

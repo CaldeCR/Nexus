@@ -151,7 +151,7 @@
       "name": "VIAJA EXTRA - ZOHO",
       "description": "Crear el sitio de Viaja Extra para el manejo de clientes en el CRM de Zoho",
       "template": "kanban",
-      "status": "review",
+      "status": "execution",
       "role": "lead",
       "admins": [
         "Jorge"
@@ -171,9 +171,9 @@
           "role": "collaborator"
         }
       ],
-      "startDate": "2026-09-01",
+      "startDate": "2026-10-26",
       "originalTargetDate": "2026-10-15",
-      "targetDate": "2026-10-29",
+      "targetDate": "2027-03-31",
       "dateExtensions": [
         {
           "id": "ext-1791222937037",
@@ -194,27 +194,41 @@
           "name": "Fase 0: Salida al público",
           "startDate": "2026-10-26",
           "targetDate": "2026-11-04",
-          "status": "in_progress"
+          "status": "completed"
         },
         {
           "id": "phase-1",
-          "name": "Fase 1:",
+          "name": "Fase 1: Oportunidades y Presupuestos",
           "startDate": "2026-11-04",
-          "targetDate": "2026-12-01",
-          "status": "pending"
+          "targetDate": "2026-11-30",
+          "status": "in_progress"
         },
         {
           "id": "phase-2",
-          "name": "Fase 2:",
+          "name": "Fase 2: Comunicaciones y Seguimiento",
           "startDate": "2026-12-01",
           "targetDate": "2026-12-31",
           "status": "pending"
         },
         {
           "id": "phase-3",
-          "name": "Fase 3:",
-          "startDate": "2026-12-31",
-          "targetDate": "2027-01-29",
+          "name": "Fase 3: Omnicanalidad y Redes Sociales",
+          "startDate": "2027-01-01",
+          "targetDate": "2027-01-31",
+          "status": "pending"
+        },
+        {
+          "id": "phase-4",
+          "name": "Fase 4: Pagos y Facturación",
+          "startDate": "2027-02-01",
+          "targetDate": "2027-02-28",
+          "status": "pending"
+        },
+        {
+          "id": "phase-5",
+          "name": "Fase 5: Postventa y Fidelización",
+          "startDate": "2027-03-01",
+          "targetDate": "2027-03-31",
           "status": "pending"
         }
       ]
@@ -350,51 +364,6 @@
   ],
   "workItems": [
     {
-      "id": "wi-p2-t11",
-      "code": "P2-T11",
-      "projectId": "p-1790895374161",
-      "title": "Configurar WhatsApp Business y números de agentes",
-      "type": "task",
-      "status": "in_progress",
-      "priority": "high",
-      "assignee": "Jorge",
-      "assignees": [
-        "Jorge"
-      ],
-      "assigneeType": "me",
-      "startDate": "2026-10-26",
-      "dueDate": "2026-11-04",
-      "createdAt": "2026-10-26T10:00:00.000Z",
-      "completionReport": "",
-      "progressLogs": [],
-      "phaseIds": [
-        "phase-0",
-        "phase-1"
-      ]
-    },
-    {
-      "id": "wi-p2-t10",
-      "code": "P2-T10",
-      "projectId": "p-1790895374161",
-      "title": "Habilitar landing page con botón de contacto",
-      "type": "task",
-      "status": "in_progress",
-      "priority": "medium",
-      "assignee": "Jorge",
-      "assignees": [
-        "Jorge"
-      ],
-      "assigneeType": "me",
-      "startDate": "2026-10-26",
-      "dueDate": "2026-11-03",
-      "createdAt": "2026-10-26T10:00:00.000Z",
-      "completionReport": "",
-      "progressLogs": [],
-      "phaseIds": [
-        "phase-0"
-      ]
-    },
-    {
       "id": "wi-1793048127439",
       "code": "P5-T3",
       "projectId": "p-1793048127432",
@@ -416,31 +385,6 @@
         "phase-2",
         "phase-3"
       ]
-    },
-    {
-      "id": "wi-1791499339625",
-      "code": "P2-T5",
-      "projectId": "p-1790895374161",
-      "title": "Validar requerimiento de integración de Zoho con Whatsapp ",
-      "description": "",
-      "type": "task",
-      "status": "backlog",
-      "priority": "medium",
-      "assignee": "Jorge, Josué B",
-      "assignees": [
-        "Jorge",
-        "Josué B"
-      ],
-      "assigneeType": "me",
-      "dueDate": "2026-10-13",
-      "createdAt": "2026-10-08T22:42:19.625Z",
-      "completionReport": "Se complet� la validaci�n del requerimiento t�cnico de integraci�n.",
-      "progressLogs": [],
-      "completionType": "full",
-      "completedAt": "2026-10-20T20:30:18.819Z",
-      "closedAt": "2026-10-20T20:30:18.819Z",
-      "closedBy": "Jorge",
-      "closeType": "completed"
     },
     {
       "id": "wi-1791492272340",
@@ -883,106 +827,6 @@
       ]
     },
     {
-      "id": "wi-1790950296101",
-      "projectId": "p-1790895374161",
-      "title": "Solicitar datos para la creación de clientes de Viaja Extra",
-      "description": "",
-      "type": "task",
-      "status": "done",
-      "priority": "medium",
-      "assignee": "Jorge",
-      "assigneeType": "me",
-      "dueDate": "2026-10-02",
-      "createdAt": "2026-10-02T14:11:36.101Z",
-      "code": "P2-T1",
-      "completionType": "full",
-      "completionReport": "",
-      "completedAt": "2026-10-02T14:11:36.101Z",
-      "progressLogs": [],
-      "assignees": [
-        "Jorge"
-      ]
-    },
-    {
-      "id": "wi-1790895474009",
-      "projectId": "p-1790895374161",
-      "title": "Validar compra de licencias Viaja Extra",
-      "description": "",
-      "type": "task",
-      "status": "backlog",
-      "priority": "medium",
-      "assignee": "Jorge",
-      "assigneeType": "me",
-      "dueDate": "2026-10-08",
-      "createdAt": "2026-10-01T22:57:54.009Z",
-      "code": "P2-T2",
-      "completionReport": "",
-      "progressLogs": [],
-      "completionType": "full",
-      "assignees": [
-        "Jorge"
-      ]
-    },
-    {
-      "id": "wi-1790895446521",
-      "projectId": "p-1790895374161",
-      "title": "Definir roles para usuarios de Viaja Extra",
-      "description": "",
-      "type": "task",
-      "status": "backlog",
-      "priority": "medium",
-      "assignee": "Jorge",
-      "assigneeType": "me",
-      "dueDate": "2026-10-08",
-      "createdAt": "2026-10-01T22:57:26.521Z",
-      "code": "P2-T3",
-      "completionReport": "",
-      "progressLogs": [],
-      "completionType": "full",
-      "assignees": [
-        "Jorge"
-      ]
-    },
-    {
-      "id": "wi-1790895425777",
-      "projectId": "p-1790895374161",
-      "title": "Definir la forma de trabajo en Zoho para Viaja Extra",
-      "description": "",
-      "type": "task",
-      "status": "in_progress",
-      "priority": "high",
-      "assignee": "Jorge",
-      "assigneeType": "me",
-      "dueDate": "2026-10-01",
-      "createdAt": "2026-10-01T22:57:05.777Z",
-      "code": "P2-T4",
-      "completionReport": "",
-      "progressLogs": [
-        {
-          "id": "log-1791499257224-qvkc",
-          "text": "Se definieron reuniones semanales para ver avance",
-          "author": "Jorge",
-          "createdAt": "2026-10-08T22:40:57.225Z"
-        },
-        {
-          "id": "log-1791499244768-lwgd",
-          "text": "Se definió que se deberá coordinar con Sebastian Cubillo la integración son Zoho y el sitio web que están desarrollando.",
-          "author": "Jorge",
-          "createdAt": "2026-10-08T22:40:44.768Z"
-        },
-        {
-          "id": "log-1791499194494-h8sr",
-          "text": "Se tuvo una reunión donde se discutió la forma en la que quieren trabajar el uso de Zoho",
-          "author": "Jorge",
-          "createdAt": "2026-10-08T22:39:54.494Z"
-        }
-      ],
-      "completionType": "full",
-      "assignees": [
-        "Jorge"
-      ]
-    },
-    {
       "id": "wi-1790894954882",
       "projectId": "p-1790894640083",
       "title": "Reinicio de servidores y pruebas de funcionamiento. ",
@@ -1311,6 +1155,1297 @@
       "completionReport": "",
       "completedAt": "2026-10-01T17:42:30.000Z",
       "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f0-01",
+      "code": "P2-F0-01",
+      "projectId": "p-1790895374161",
+      "title": "Landing page con información general de paquetes y servicios",
+      "description": "Origen: Definida. Alojada en el servidor web del proyecto.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Sebastián Cubillos",
+      "assignees": [
+        "Sebastián Cubillos"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.494Z",
+      "completionType": "full",
+      "completionReport": "Alojada en el servidor web del proyecto.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Alojada en el servidor web del proyecto.",
+          "author": "Sebastián Cubillos",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-02",
+      "code": "P2-F0-02",
+      "projectId": "p-1790895374161",
+      "title": "Botón «Hablá con un asesor»: pide nombre y teléfono y abre WhatsApp",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Sebastián Cubillos",
+      "assignees": [
+        "Sebastián Cubillos"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Hito completado con éxito.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Entregable completado y validado según cronograma de fase.",
+          "author": "Sebastián Cubillos",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-03",
+      "code": "P2-F0-03",
+      "projectId": "p-1790895374161",
+      "title": "Registro automático de consultas web en Zoho (Zoho Forms → Consultas Viajá Extra → Cliente «Posible Cliente»)",
+      "description": "Origen: Definida. Rediseñado el 12/11 para no perder consultas de clientes existentes (R30–R32).",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI (Jorge Calderón)",
+      "assignees": [
+        "TI (Jorge Calderón)"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Rediseñado el 12/11 para no perder consultas de clientes existentes (R30–R32).",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Rediseñado el 12/11 para no perder consultas de clientes existentes (R30–R32).",
+          "author": "TI (Jorge Calderón)",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-04",
+      "code": "P2-F0-04",
+      "projectId": "p-1790895374161",
+      "title": "Configurar WhatsApp Business (etiquetas y respuestas rápidas)",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Asesores / Viviana",
+      "assignees": [
+        "Asesores",
+        "Viviana"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Hito completado con éxito.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Entregable completado y validado según cronograma de fase.",
+          "author": "Asesores / Viviana",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-05",
+      "code": "P2-F0-05",
+      "projectId": "p-1790895374161",
+      "title": "Enlaces wa.me con mensaje prellenado por campaña",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI / Web",
+      "assignees": [
+        "TI",
+        "Web"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Hito completado con éxito.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Entregable completado y validado según cronograma de fase.",
+          "author": "TI / Web",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-06",
+      "code": "P2-F0-06",
+      "projectId": "p-1790895374161",
+      "title": "Capacitar al PVE en el registro manual temporal",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Viviana",
+      "assignees": [
+        "Viviana"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Hito completado con éxito.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Entregable completado y validado según cronograma de fase.",
+          "author": "Viviana",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f0-07",
+      "code": "P2-F0-07",
+      "projectId": "p-1790895374161",
+      "title": "Servidor web para la landing y el CMS",
+      "description": "Origen: Definida. Servidor entregado y recursos creados.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "Sebastián Cubillos / TI",
+      "assignees": [
+        "Sebastián Cubillos",
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-10-26",
+      "dueDate": "2026-11-04",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "Servidor entregado y recursos creados.",
+      "completedAt": "2026-11-04T12:00:00.000Z",
+      "phaseIds": [
+        "phase-0"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Servidor entregado y recursos creados.",
+          "author": "Sebastián Cubillos / TI",
+          "createdAt": "2026-11-04T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-mf-01",
+      "code": "P2-MF-01",
+      "projectId": "p-1790895374161",
+      "title": "Registro manual en Zoho de contactos por otros medios (redes sociales, etc.)",
+      "description": "Origen: Definida. Arrancó en la Fase 0. Termina cuando se automaticen las redes sociales (Fase 3). (Cierre multifase: Fase 3)",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "PVE",
+      "assignees": [
+        "PVE"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-0",
+        "phase-1",
+        "phase-2",
+        "phase-3"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Arrancó en la Fase 0. Termina cuando se automaticen las redes sociales (Fase 3).",
+          "author": "PVE",
+          "createdAt": "2026-11-23T17:47:47.499Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-mf-02",
+      "code": "P2-MF-02",
+      "projectId": "p-1790895374161",
+      "title": "CMS de Viajá Extra (el PVE gestiona la web sin depender del proveedor)",
+      "description": "Origen: Definida. Desarrollo inicial en la Fase 1 y continúa. Falta definir plataforma y quién administra el servidor. (Cierre multifase: Por confirmar)",
+      "type": "task",
+      "status": "in_progress",
+      "priority": "high",
+      "assignee": "Sebastián Cubillos / TI",
+      "assignees": [
+        "Sebastián Cubillos",
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1",
+        "phase-2",
+        "phase-3",
+        "phase-4",
+        "phase-5"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "Desarrollo inicial en la Fase 1 y continúa. Falta definir plataforma y quién administra el servidor.",
+          "author": "Sebastián Cubillos / TI",
+          "createdAt": "2026-11-23T17:47:47.499Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-01",
+      "code": "P2-F1-01",
+      "projectId": "p-1790895374161",
+      "title": "Diseño de Oportunidades (9 fases, 29 campos)",
+      "description": "Origen: Definida. En producción.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-11",
+      "createdAt": "2026-11-23T17:47:47.499Z",
+      "completionType": "full",
+      "completionReport": "En producción.",
+      "completedAt": "2026-11-11T12:00:00.000Z",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067499-1",
+          "text": "En producción.",
+          "author": "TI",
+          "createdAt": "2026-11-11T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-02",
+      "code": "P2-F1-02",
+      "projectId": "p-1790895374161",
+      "title": "Cotizaciones en Presupuestos: subformulario Opciones y plantilla PDF con logo",
+      "description": "Origen: Nueva. En producción (tanda 1).",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-11",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionType": "full",
+      "completionReport": "En producción (tanda 1).",
+      "completedAt": "2026-11-11T12:00:00.000Z",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067500-1",
+          "text": "En producción (tanda 1).",
+          "author": "TI",
+          "createdAt": "2026-11-11T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-03",
+      "code": "P2-F1-03",
+      "projectId": "p-1790895374161",
+      "title": "Botón «Generar y enviar PDF» desde reservas@viajaextra.com",
+      "description": "Origen: Nueva. En producción (tanda 2).",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-11",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionType": "full",
+      "completionReport": "En producción (tanda 2).",
+      "completedAt": "2026-11-11T12:00:00.000Z",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067500-1",
+          "text": "En producción (tanda 2).",
+          "author": "TI",
+          "createdAt": "2026-11-11T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-04",
+      "code": "P2-F1-04",
+      "projectId": "p-1790895374161",
+      "title": "Prueba controlada del botón de PDF en producción",
+      "description": "Origen: Nueva.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-05",
+      "code": "P2-F1-05",
+      "projectId": "p-1790895374161",
+      "title": "Código de producto automático por categoría",
+      "description": "Origen: Nueva. R27 y R28.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-11",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionType": "full",
+      "completionReport": "R27 y R28.",
+      "completedAt": "2026-11-11T12:00:00.000Z",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067500-1",
+          "text": "R27 y R28.",
+          "author": "TI",
+          "createdAt": "2026-11-11T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-06",
+      "code": "P2-F1-06",
+      "projectId": "p-1790895374161",
+      "title": "Tipo de cambio diario desde Hacienda",
+      "description": "Origen: Nueva. Programado a las 6:00, 9:00 y 13:00.",
+      "type": "task",
+      "status": "done",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-12",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionType": "full",
+      "completionReport": "Programado a las 6:00, 9:00 y 13:00.",
+      "completedAt": "2026-11-12T12:00:00.000Z",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": [
+        {
+          "id": "log-1795456067500-1",
+          "text": "Programado a las 6:00, 9:00 y 13:00.",
+          "author": "TI",
+          "createdAt": "2026-11-12T12:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "wi-p2-f1-07",
+      "code": "P2-F1-07",
+      "projectId": "p-1790895374161",
+      "title": "Validaciones por etapa: campos obligatorios, edades de niños e infantes, pasaporte si es internacional con aéreo",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-08",
+      "code": "P2-F1-08",
+      "projectId": "p-1790895374161",
+      "title": "Estado de Cliente simplificado (Posible / Activo / Cliente Viajá Extra) y automatizado desde las oportunidades",
+      "description": "Origen: Nueva. R22.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-09",
+      "code": "P2-F1-09",
+      "projectId": "p-1790895374161",
+      "title": "Salidas del embudo: En pausa (recontacto y tarea), Perdido (motivo), Descartado",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-10",
+      "code": "P2-F1-10",
+      "projectId": "p-1790895374161",
+      "title": "Revisión de duplicados de Clientes por teléfono y correo",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-11",
+      "code": "P2-F1-11",
+      "projectId": "p-1790895374161",
+      "title": "Asignación automática por turno (round-robin)",
+      "description": "Origen: Definida. Hoy el propietario se cambia a mano (R29).",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI / Viviana",
+      "assignees": [
+        "TI",
+        "Viviana"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-12",
+      "code": "P2-F1-12",
+      "projectId": "p-1790895374161",
+      "title": "Alertas: cliente sin respuesta en 15 min hábiles y oportunidad 5 días en Cotizado",
+      "description": "Origen: Definida. Falta definir el horario hábil.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-13",
+      "code": "P2-F1-13",
+      "projectId": "p-1790895374161",
+      "title": "Reasignación de registros y notas obligatorias antes de una ausencia",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-14",
+      "code": "P2-F1-14",
+      "projectId": "p-1790895374161",
+      "title": "Importe de la oportunidad desde la opción aceptada y aviso de presupuesto sin oportunidad",
+      "description": "Origen: Nueva.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-15",
+      "code": "P2-F1-15",
+      "projectId": "p-1790895374161",
+      "title": "Permisos: el perfil ViajaExtra ve solo los registros de Viajá Extra",
+      "description": "Origen: Nueva. Afecta a otros negocios: probar primero en el sandbox.",
+      "type": "task",
+      "status": "review",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-16",
+      "code": "P2-F1-16",
+      "projectId": "p-1790895374161",
+      "title": "Canal de contacto: valor predeterminado y copia al Cliente",
+      "description": "Origen: Nueva.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-17",
+      "code": "P2-F1-17",
+      "projectId": "p-1790895374161",
+      "title": "Limpieza: desactivar FormularioPosibleClienteViajaExtra, quitar el campo «Prueba» y borrar los registros PRUEBA",
+      "description": "Origen: Nueva.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-18",
+      "code": "P2-F1-18",
+      "projectId": "p-1790895374161",
+      "title": "Cargar y activar el catálogo de productos y la lista de destinos",
+      "description": "Origen: Definida. Los productos del catálogo están inactivos en Zoho.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI / PVE",
+      "assignees": [
+        "TI",
+        "PVE"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-19",
+      "code": "P2-F1-19",
+      "projectId": "p-1790895374161",
+      "title": "Pruebas de las restricciones de campos obligatorios",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f1-20",
+      "code": "P2-F1-20",
+      "projectId": "p-1790895374161",
+      "title": "Capacitación del PVE en el embudo",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "high",
+      "assignee": "Viviana / TI",
+      "assignees": [
+        "Viviana",
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "2026-11-30",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-1"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-01",
+      "code": "P2-F2-01",
+      "projectId": "p-1790895374161",
+      "title": "Integrar Zoho CRM con Outlook (correos entrantes y salientes)",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-02",
+      "code": "P2-F2-02",
+      "projectId": "p-1790895374161",
+      "title": "Plantillas de correo: cotización, confirmación, recordatorio de documentos y encuesta",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Viviana / Asesores",
+      "assignees": [
+        "Viviana",
+        "Asesores"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-03",
+      "code": "P2-F2-03",
+      "projectId": "p-1790895374161",
+      "title": "Campos de tarifa y anticipo: fecha límite, monto y estado de pago",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-04",
+      "code": "P2-F2-04",
+      "projectId": "p-1790895374161",
+      "title": "Alertas de vencimiento: tarifa a 48 h y 24 h y paso a «En pausa»; anticipo a 48 h",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-05",
+      "code": "P2-F2-05",
+      "projectId": "p-1790895374161",
+      "title": "Conectar WhatsApp Business API a Zoho (conversaciones en el expediente)",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f2-06",
+      "code": "P2-F2-06",
+      "projectId": "p-1790895374161",
+      "title": "Enviar el PDF de la cotización por WhatsApp desde Zoho",
+      "description": "Origen: Nueva. Hoy se descarga y se envía a mano (R19).",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-2"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-01",
+      "code": "P2-F3-01",
+      "projectId": "p-1790895374161",
+      "title": "Chatbot (asesor IA) en WhatsApp que crea el Cliente con canal y medio de origen",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-02",
+      "code": "P2-F3-02",
+      "projectId": "p-1790895374161",
+      "title": "Integrar mensajes y formularios de Meta (Facebook / Instagram)",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-03",
+      "code": "P2-F3-03",
+      "projectId": "p-1790895374161",
+      "title": "TikTok: formulario de anuncio o enlace a WhatsApp",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-04",
+      "code": "P2-F3-04",
+      "projectId": "p-1790895374161",
+      "title": "YouTube: enlace a WhatsApp o formulario con UTM",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI / Web",
+      "assignees": [
+        "TI",
+        "Web"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-05",
+      "code": "P2-F3-05",
+      "projectId": "p-1790895374161",
+      "title": "Guion de contingencia (handoff) si el chatbot falla",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Comercial",
+      "assignees": [
+        "Comercial"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f3-06",
+      "code": "P2-F3-06",
+      "projectId": "p-1790895374161",
+      "title": "Hito: fin del registro manual de redes sociales",
+      "description": "Origen: Definida. Cierra MF-01.",
+      "type": "milestone",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "PVE",
+      "assignees": [
+        "PVE"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-3"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f4-01",
+      "code": "P2-F4-01",
+      "projectId": "p-1790895374161",
+      "title": "Link de pago y confirmación del pago en Zoho",
+      "description": "Origen: Definida. Falta definir la plataforma.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-4"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f4-02",
+      "code": "P2-F4-02",
+      "projectId": "p-1790895374161",
+      "title": "Registro del pago: fecha, monto, forma y comprobante (sin datos de tarjeta)",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-4"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f4-03",
+      "code": "P2-F4-03",
+      "projectId": "p-1790895374161",
+      "title": "Datos para la factura electrónica en la etapa Venta",
+      "description": "Origen: Definida. La facturación sigue fuera de Zoho (R11).",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-4"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f4-04",
+      "code": "P2-F4-04",
+      "projectId": "p-1790895374161",
+      "title": "Vínculo con el sistema contable / ERP",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI / Finanzas",
+      "assignees": [
+        "TI",
+        "Finanzas"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-4"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f4-05",
+      "code": "P2-F4-05",
+      "projectId": "p-1790895374161",
+      "title": "Reportes de conversión por etapa, medio de origen y asesor",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-4"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f5-01",
+      "code": "P2-F5-01",
+      "projectId": "p-1790895374161",
+      "title": "Recordatorios al viajero",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-5"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f5-02",
+      "code": "P2-F5-02",
+      "projectId": "p-1790895374161",
+      "title": "Encuesta postventa y solicitud de referidos automatizadas",
+      "description": "Origen: Sugerida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI / Comercial",
+      "assignees": [
+        "TI",
+        "Comercial"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-5"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f5-03",
+      "code": "P2-F5-03",
+      "projectId": "p-1790895374161",
+      "title": "Campañas mensuales a clientes en pausa o perdidos",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "Comercial / TI",
+      "assignees": [
+        "Comercial",
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-5"
+      ],
+      "progressLogs": []
+    },
+    {
+      "id": "wi-p2-f5-04",
+      "code": "P2-F5-04",
+      "projectId": "p-1790895374161",
+      "title": "Marca de cliente recurrente desde la 2.ª compra",
+      "description": "Origen: Definida.",
+      "type": "task",
+      "status": "backlog",
+      "priority": "medium",
+      "assignee": "TI",
+      "assignees": [
+        "TI"
+      ],
+      "assigneeType": "team",
+      "startDate": "2026-11-04",
+      "dueDate": "",
+      "createdAt": "2026-11-23T17:47:47.500Z",
+      "completionReport": "",
+      "phaseIds": [
+        "phase-5"
+      ],
+      "progressLogs": []
     }
   ],
   "teamDirectory": [
@@ -1399,6 +2534,48 @@
       "email": "ana@nexus.local",
       "organization": "QA & Testing",
       "createdAt": "2026-10-14T23:04:34.626Z"
+    },
+    {
+      "id": "dir-1795456067500-19lr",
+      "name": "Sebastián Cubillos",
+      "role": "collaborator",
+      "organization": "Desarrollo Web / Frontend",
+      "createdAt": "2026-11-23T17:47:47.500Z"
+    },
+    {
+      "id": "dir-1795456067500-k0zc",
+      "name": "Viviana",
+      "role": "collaborator",
+      "organization": "Operaciones / PVE",
+      "createdAt": "2026-11-23T17:47:47.500Z"
+    },
+    {
+      "id": "dir-1795456067500-7hvi",
+      "name": "PVE",
+      "role": "collaborator",
+      "organization": "Punto de Venta / Asesores",
+      "createdAt": "2026-11-23T17:47:47.500Z"
+    },
+    {
+      "id": "dir-1795456067500-lf96",
+      "name": "Asesores",
+      "role": "collaborator",
+      "organization": "Equipo Comercial",
+      "createdAt": "2026-11-23T17:47:47.500Z"
+    },
+    {
+      "id": "dir-1795456067500-jdxn",
+      "name": "Comercial",
+      "role": "collaborator",
+      "organization": "Dirección Comercial",
+      "createdAt": "2026-11-23T17:47:47.500Z"
+    },
+    {
+      "id": "dir-1795456067500-qglh",
+      "name": "TI",
+      "role": "admin",
+      "organization": "Tecnología e Información",
+      "createdAt": "2026-11-23T17:47:47.500Z"
     }
   ],
   "sessions": []

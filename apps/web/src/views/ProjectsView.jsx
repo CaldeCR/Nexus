@@ -36,7 +36,8 @@ export function ProjectsView({
   onCreateMeeting,
   onUpdateMeeting,
   onDeleteMeeting,
-  onCreateTaskFromAction
+  onCreateTaskFromAction,
+  onOpenImportExcel
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -606,15 +607,33 @@ export function ProjectsView({
                 </div>
               </div>
 
-              <button
-                type="button"
-                className="ui-btn ui-btn--primary ui-btn--small"
-                onClick={() => onOpenNewTask && onOpenNewTask({ projectId: selectedProject.id })}
-                title="Crear nueva tarea preasignada a este proyecto"
-              >
-                <Icons.Plus size={16} />
-                <span>Nueva Tarea</span>
-              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {onOpenImportExcel && (
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--secondary ui-btn--small"
+                    onClick={() => onOpenImportExcel(selectedProject.id)}
+                    title="Importar tareas a este proyecto desde Excel o CSV"
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="18" x2="12" y2="12" />
+                      <line x1="9" y1="15" x2="15" y2="15" />
+                    </svg>
+                    <span>Importar Excel</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ui-btn ui-btn--primary ui-btn--small"
+                  onClick={() => onOpenNewTask && onOpenNewTask({ projectId: selectedProject.id })}
+                  title="Crear nueva tarea preasignada a este proyecto"
+                >
+                  <Icons.Plus size={16} />
+                  <span>Nueva Tarea</span>
+                </button>
+              </div>
             </div>
 
             {/* Listado de tareas */}
@@ -625,13 +644,30 @@ export function ProjectsView({
                     ? 'Este proyecto aún no tiene tareas asignadas.'
                     : 'No hay tareas en el filtro seleccionado.'}
                 </p>
-                <button
-                  type="button"
-                  className="ui-btn ui-btn--secondary ui-btn--small"
-                  onClick={() => onOpenNewTask && onOpenNewTask({ projectId: selectedProject.id })}
-                >
-                  <Icons.Plus size={14} /> <span>Añadir primera tarea</span>
-                </button>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <button
+                    type="button"
+                    className="ui-btn ui-btn--primary ui-btn--small"
+                    onClick={() => onOpenNewTask && onOpenNewTask({ projectId: selectedProject.id })}
+                  >
+                    <Icons.Plus size={14} /> <span>Añadir primera tarea</span>
+                  </button>
+                  {onOpenImportExcel && (
+                    <button
+                      type="button"
+                      className="ui-btn ui-btn--secondary ui-btn--small"
+                      onClick={() => onOpenImportExcel(selectedProject.id)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="15" y2="15" />
+                      </svg>
+                      <span>Importar desde Excel</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -976,7 +1012,23 @@ export function ProjectsView({
             Control de portafolio y seguimiento de metas · {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <div className="projects-header-actions">
+        <div className="projects-header-actions" style={{ display: 'flex', gap: '8px' }}>
+          {onOpenImportExcel && (
+            <button
+              type="button"
+              className="ui-btn ui-btn--secondary"
+              onClick={() => onOpenImportExcel(null)}
+              title="Importar proyecto o tareas desde Excel o CSV"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="12" y1="18" x2="12" y2="12" />
+                <line x1="9" y1="15" x2="15" y2="15" />
+              </svg>
+              <span>Importar Excel</span>
+            </button>
+          )}
           <button
             type="button"
             className="ui-btn ui-btn--primary"
