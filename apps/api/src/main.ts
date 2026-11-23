@@ -56,6 +56,16 @@ const loginAttempts = new Map<string, { count: number; resetAt: number }>();
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
+// Purgado periódico de memoria para prevenir fugas en loginAttempts
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, attempt] of loginAttempts.entries()) {
+    if (attempt.resetAt <= now) {
+      loginAttempts.delete(ip);
+    }
+  }
+}, 10 * 60 * 1000).unref();
+
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6)
@@ -266,6 +276,25 @@ function requireAdmin(req: express.Request, res: express.Response): User | null 
     return null;
   }
   return user;
+}
+
+// BOLA Prevention: Comprueba si un usuario tiene facultades de gestión/administración sobre un proyecto
+function canManageProject(user: User, project: Project): boolean {
+  if (user.role === 'owner' || user.role === 'admin') return true;
+  const userName = user.name?.trim().toLowerCase();
+  if (!userName) return false;
+  if (Array.isArray(project.admins) && project.admins.some((a) => a && a.trim().toLowerCase() === userName)) {
+    return true;
+  }
+  return false;
+}
+
+// Data Isolation: Comprueba si un usuario tiene autorización para ver o acceder a un proyecto
+function canAccessProject(user: User, project: Project): boolean {
+  if (project.space === 'personal') {
+    return canManageProject(user, project);
+  }
+  return true;
 }
 
 app.get('/api/health', (_req, res) => {
@@ -501,9 +530,12 @@ app.get('/api/projects', (req, res) => {
 
   const db = readDb();
   const space = req.query.space as string | undefined;
+  
+  // Aislamiento de privacidad: los proyectos personales solo son visibles para su creador/admin o administradores globales
+  const accessibleProjects = db.projects.filter((p) => canAccessProject(user, p));
   const filtered = space && space !== 'all'
-    ? db.projects.filter((p) => (p.space || 'work') === space)
-    : db.projects;
+    ? accessibleProjects.filter((p) => (p.space || 'work') === space)
+    : accessibleProjects;
   res.json({ items: filtered });
 });
 
@@ -566,8 +598,16 @@ app.put('/api/projects/:id', (req, res) => {
     return res.status(404).json({ message: 'Proyecto no encontrado' });
   }
 
+  const existingProject = db.projects[projectIndex];
+  if (!canManageProject(user, existingProject)) {
+    return res.status(403).json({ message: 'Acceso denegado: No tienes permisos para modificar este proyecto.' });
+  }
+
+  // Solo administradores globales u owner pueden modificar la lista de administradores del proyecto
+  const canEditAdmins = user.role === 'owner' || user.role === 'admin';
+
   let updated = {
-    ...db.projects[projectIndex],
+    ...existingProject,
     ...(req.body.code !== undefined && { code: req.body.code }),
     ...(req.body.name && { name: req.body.name }),
     ...(req.body.description !== undefined && { description: req.body.description }),
@@ -576,7 +616,7 @@ app.put('/api/projects/:id', (req, res) => {
     ...(req.body.space !== undefined && { space: req.body.space }),
     ...(req.body.organization !== undefined && { organization: req.body.organization }),
     ...(req.body.template && { template: req.body.template }),
-    ...(req.body.admins !== undefined && { admins: req.body.admins }),
+    ...(canEditAdmins && req.body.admins !== undefined && { admins: req.body.admins }),
     ...(req.body.members !== undefined && { members: req.body.members }),
     ...(Array.isArray(req.body.teamMembers) && {
       teamMembers: req.body.teamMembers.map((m: any, idx: number) => ({
@@ -612,6 +652,10 @@ app.put('/api/projects/:id/phases', (req, res) => {
     return res.status(404).json({ message: 'Proyecto no encontrado' });
   }
 
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: No tienes permisos para modificar las fases de este proyecto.' });
+  }
+
   if (!Array.isArray(req.body.phases)) {
     return res.status(400).json({ message: 'Se esperaba un arreglo de fases.' });
   }
@@ -640,6 +684,9 @@ app.post('/api/projects/:id/extensions', (req, res) => {
   }
 
   const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores del proyecto o administradores globales pueden autorizar prórrogas.' });
+  }
   const currentTarget = project.targetDate || new Date().toISOString().split('T')[0];
   const newTarget = parsed.data.newTargetDate;
 
@@ -690,8 +737,13 @@ app.put('/api/projects/:id/status', (req, res) => {
     return res.status(404).json({ message: 'Proyecto no encontrado' });
   }
 
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: No tienes permisos para cambiar la etapa de este proyecto.' });
+  }
+
   db.projects[projectIndex] = {
-    ...db.projects[projectIndex],
+    ...project,
     status: parsed.data.status
   };
   writeDb(db);
@@ -708,6 +760,11 @@ app.delete('/api/projects/:id', (req, res) => {
   const projectIndex = db.projects.findIndex((project) => project.id === req.params.id);
   if (projectIndex === -1) {
     return res.status(404).json({ message: 'Proyecto no encontrado' });
+  }
+
+  const projectToDelete = db.projects[projectIndex];
+  if (!canManageProject(user, projectToDelete)) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores de este proyecto o administradores globales pueden eliminarlo.' });
   }
 
   const [deletedProject] = db.projects.splice(projectIndex, 1);
@@ -743,6 +800,9 @@ app.post('/api/projects/:id/members', (req, res) => {
   if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
 
   const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores del proyecto pueden gestionar sus integrantes.' });
+  }
   const newMember: ProjectMember = {
     id: `mem-${Date.now()}`,
     name: parsed.data.name.trim(),
@@ -771,6 +831,9 @@ app.put('/api/projects/:id/members/:memberId', (req, res) => {
   if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
 
   const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores del proyecto pueden gestionar sus integrantes.' });
+  }
   const memberIndex = (project.teamMembers || []).findIndex((m) => m.id === req.params.memberId);
   if (memberIndex === -1) return res.status(404).json({ message: 'Miembro no encontrado' });
 
@@ -796,6 +859,9 @@ app.delete('/api/projects/:id/members/:memberId', (req, res) => {
   if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
 
   const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores del proyecto pueden gestionar sus integrantes.' });
+  }
   project.teamMembers = (project.teamMembers || []).filter((m) => m.id !== req.params.memberId);
   syncProjectMembers(project);
   writeDb(db);
@@ -826,8 +892,8 @@ app.get('/api/directory', (req, res) => {
 });
 
 app.post('/api/directory', async (req, res) => {
-  const user = getCurrentUser(req);
-  if (!user) return res.status(401).json({ message: 'No autorizado' });
+  const user = requireAdmin(req, res);
+  if (!user) return;
 
   const parsed = createGlobalMemberSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -1004,8 +1070,8 @@ app.delete('/api/directory/:id/revoke-access', (req, res) => {
 });
 
 app.put('/api/directory/:id', (req, res) => {
-  const user = getCurrentUser(req);
-  if (!user) return res.status(401).json({ message: 'No autorizado' });
+  const user = requireAdmin(req, res);
+  if (!user) return;
 
   const parsed = updateGlobalMemberSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -1104,8 +1170,8 @@ app.put('/api/directory/:id', (req, res) => {
 });
 
 app.delete('/api/directory/:id', (req, res) => {
-  const user = getCurrentUser(req);
-  if (!user) return res.status(401).json({ message: 'No autorizado' });
+  const user = requireAdmin(req, res);
+  if (!user) return;
 
   const db = readDb();
   if (!Array.isArray(db.teamDirectory)) db.teamDirectory = [];
@@ -1179,11 +1245,17 @@ app.get('/api/work-items', (req, res) => {
     return res.status(401).json({ message: 'No autorizado' });
   }
 
-  const projectId = String(req.query.projectId || '');
   const db = readDb();
-  const items = projectId
-    ? db.workItems.filter((item) => item.projectId === projectId)
-    : db.workItems;
+  // Filtrar tareas pertenecientes a proyectos accesibles para el usuario
+  const accessibleProjectIds = new Set(
+    db.projects.filter((p) => canAccessProject(user, p)).map((p) => p.id)
+  );
+
+  const projectId = String(req.query.projectId || '');
+  let items = db.workItems.filter((item) => accessibleProjectIds.has(item.projectId));
+  if (projectId) {
+    items = items.filter((item) => item.projectId === projectId);
+  }
 
   return res.json({ items });
 });
@@ -1427,9 +1499,25 @@ app.delete('/api/work-items/:id', (req, res) => {
     return res.status(404).json({ message: 'Tarea no encontrada' });
   }
 
+  const itemToDelete = db.workItems[itemIndex];
+  const targetProject = db.projects.find((p) => p.id === itemToDelete.projectId);
+  const canDelete = user.role === 'owner' || user.role === 'admin' || (targetProject && canManageProject(user, targetProject));
+  if (!canDelete) {
+    return res.status(403).json({ message: 'Acceso denegado: Solo administradores o líderes del proyecto pueden eliminar esta tarea.' });
+  }
+
   const [deleted] = db.workItems.splice(itemIndex, 1);
   writeDb(db);
   return res.json({ ok: true, deleted });
+});
+
+// Manejador global de errores para Express (evita stack traces y caídas)
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('Error no controlado en API:', err?.message || err);
+  if (err?.message === 'Bloqueado por política CORS') {
+    return res.status(403).json({ message: 'Acceso bloqueado por política CORS.' });
+  }
+  return res.status(500).json({ message: 'Error interno del servidor.' });
 });
 
 const port = Number(process.env.PORT || 4001);

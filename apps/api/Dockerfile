@@ -31,7 +31,9 @@ RUN npm ci --omit=dev --workspace=apps/api && npm cache clean --force
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chown -R node:node /app
+
+USER node
 
 EXPOSE 4001
 

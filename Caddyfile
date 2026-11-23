@@ -11,6 +11,8 @@ nexus.mexicocentral.cloudapp.azure.com {
         Referrer-Policy "strict-origin-when-cross-origin"
         # Forzar HTTPS durante 1 año (HSTS)
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        # Restricción de APIs del navegador
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
         # Quitar firma del servidor por discreción
         -Server
     }
