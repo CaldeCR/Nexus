@@ -44,6 +44,7 @@ apps/api/data/*.json
 *.key
 *.pem
 *.cert
+*.ppk
 
 # OS generated files
 .DS_Store
