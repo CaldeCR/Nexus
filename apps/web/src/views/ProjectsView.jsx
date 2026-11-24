@@ -5,7 +5,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { AvatarGroup } from '../components/ui/Avatar';
 import { KpiStrip } from '../components/ui/KpiStrip';
 import { EmptyState } from '../components/ui/EmptyState';
-import { Icons } from '../components/ui';
+import { Icons, NavIcons } from '../components/ui';
 import { ProjectMeetingsTab } from '../components/meetings/ProjectMeetingsTab';
 
 export function ProjectsView({
@@ -48,6 +48,8 @@ export function ProjectsView({
   const [openMenuProjectId, setOpenMenuProjectId] = useState(null);
   const [taskFilter, setTaskFilter] = useState('all'); // 'all' | 'pending' | 'in_progress' | 'done'
   const [activeDetailTab, setActiveDetailTab] = useState('tasks'); // 'tasks' | 'meetings'
+  const [activeSectionOpen, setActiveSectionOpen] = useState(true);
+  const [finalizedSectionOpen, setFinalizedSectionOpen] = useState(false);
 
   // Close actions menu on click outside
   React.useEffect(() => {
@@ -158,6 +160,22 @@ export function ProjectsView({
       return true;
     });
   }, [projects, space, searchTerm, roleFilter, stageFilter]);
+
+  // Separar en Proyectos Activos vs Finalizados
+  const activeFilteredProjects = useMemo(() => {
+    return filteredProjects.filter((p) => p.status !== 'completed');
+  }, [filteredProjects]);
+
+  const finalizedFilteredProjects = useMemo(() => {
+    return filteredProjects.filter((p) => p.status === 'completed');
+  }, [filteredProjects]);
+
+  // Si el usuario filtra específicamente por etapa 'completed', expandir la pestaña de finalizados
+  React.useEffect(() => {
+    if (stageFilter === 'completed') {
+      setFinalizedSectionOpen(true);
+    }
+  }, [stageFilter]);
 
   // Global KPIs calculation (§6.7)
   const kpis = useMemo(() => {
@@ -1146,7 +1164,7 @@ export function ProjectsView({
         </div>
       </div>
 
-      {/* 4. Tabla Moderna (§7.1) */}
+      {/* 4. Tabla Moderna Organizada en Pestañas/Secciones (§7.1) */}
       {filteredProjects.length === 0 ? (
         space === 'personal' ? (
           <EmptyState
@@ -1168,210 +1186,439 @@ export function ProjectsView({
           />
         )
       ) : (
-        <div className="projects-table-card">
-          <div className="projects-table-wrapper">
-            <table className="projects-table" role="table">
-              <thead>
-                <tr>
-                  <th scope="col" style={{ width: '34%' }}>Proyecto</th>
-                  <th scope="col" style={{ width: '14%' }}>Espacio</th>
-                  <th scope="col" style={{ width: '12%' }}>Estado</th>
-                  <th scope="col" style={{ width: '15%' }}>Avance</th>
-                  <th scope="col" style={{ width: '11%' }}>Equipo</th>
-                  <th scope="col" style={{ width: '10%' }}>Fecha Meta</th>
-                  <th scope="col" style={{ width: '4%', textAlign: 'right' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProjects.map((project) => {
-                  const daysOverdue = calculateDaysOverdue(project.targetDate);
-                  const isMenuOpen = openMenuProjectId === project.id;
-                  const teamMembers = getTeamNames(project);
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* PESTAÑA PRINCIPAL: PROYECTOS ACTIVOS (Abierta desde el inicio) */}
+          <div className="projects-category-card">
+            <button
+              type="button"
+              className={`projects-category-toggle ${activeSectionOpen ? 'is-open' : ''}`}
+              onClick={() => setActiveSectionOpen(!activeSectionOpen)}
+              aria-expanded={activeSectionOpen}
+              title={activeSectionOpen ? 'Contraer proyectos activos' : 'Expandir proyectos activos'}
+            >
+              <div className="projects-category-title-group">
+                <span className="projects-category-icon">
+                  <NavIcons.Folder size={17} />
+                </span>
+                <h2 className="projects-category-title">Proyectos Activos</h2>
+                <span className="projects-category-badge">
+                  {activeFilteredProjects.length}
+                </span>
+              </div>
+              <div className="projects-category-right">
+                <span>{activeSectionOpen ? 'Ocultar' : 'Mostrar'}</span>
+                <span className="projects-category-chevron">
+                  {activeSectionOpen ? <NavIcons.ChevronDown size={16} /> : <NavIcons.ChevronRight size={16} />}
+                </span>
+              </div>
+            </button>
 
-                  return (
-                    <tr
-                      key={project.id}
-                      className="projects-table-row"
-                    >
-                      {/* 1. Proyecto (Código + Nombre + Descripción) */}
-                      <td className="projects-cell-title">
-                        <div className="projects-name-wrap">
-                          <div className="projects-code-row">
-                            {project.code && (
-                              <span className="projects-code-badge">{project.code}</span>
-                            )}
-                            <button
-                              type="button"
-                              className="projects-name-link"
-                              onClick={() => onSelectProject(project.id)}
-                              title={`Abrir tablero de ${project.name}`}
-                            >
-                              {project.name}
-                            </button>
-                          </div>
-                          {project.description && (
-                            <p className="projects-desc-text" title={project.description}>
-                              {project.description}
-                            </p>
-                          )}
-                        </div>
-                      </td>
+            {activeSectionOpen && (
+              activeFilteredProjects.length === 0 ? (
+                <div style={{ padding: '32px 20px', textAlign: 'center', color: 'var(--ink-500)', fontSize: 'var(--text-sm)' }}>
+                  No hay proyectos activos con los filtros actuales.
+                </div>
+              ) : (
+                <div className="projects-table-wrapper">
+                  <table className="projects-table" role="table">
+                    <thead>
+                      <tr>
+                        <th scope="col" style={{ width: '34%' }}>Proyecto</th>
+                        <th scope="col" style={{ width: '14%' }}>Espacio</th>
+                        <th scope="col" style={{ width: '12%' }}>Estado</th>
+                        <th scope="col" style={{ width: '15%' }}>Avance</th>
+                        <th scope="col" style={{ width: '11%' }}>Equipo</th>
+                        <th scope="col" style={{ width: '10%' }}>Fecha Meta</th>
+                        <th scope="col" style={{ width: '4%', textAlign: 'right' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeFilteredProjects.map((project) => {
+                        const daysOverdue = calculateDaysOverdue(project.targetDate);
+                        const isMenuOpen = openMenuProjectId === project.id;
+                        const teamMembers = getTeamNames(project);
 
-                      {/* 2. Espacio & Metodología */}
-                      <td className="projects-cell-space">
-                        <span className="projects-space-tag">
-                          {getSpaceLabel(project)}
-                        </span>
-                      </td>
-
-                      {/* 3. Estado (StatusDot §6.2) */}
-                      <td className="projects-cell-status">
-                        <StatusDot status={project.status || 'execution'} />
-                      </td>
-
-                      {/* 4. Avance (ProgressBar 4px §6.3) */}
-                      <td className="projects-cell-progress">
-                        <ProgressBar
-                          value={project.progressPct || 0}
-                          sublabel={`${project.doneTasks || 0} de ${project.totalTasks || 0} tareas`}
-                          size="small"
-                        />
-                      </td>
-
-                      {/* 5. Equipo (AvatarGroup §6.4) */}
-                      <td className="projects-cell-team">
-                        <AvatarGroup
-                          names={teamMembers}
-                          max={3}
-                          size={26}
-                        />
-                      </td>
-
-                      {/* 6. Fecha Meta */}
-                      <td className="projects-cell-date">
-                        {project.targetDate ? (
-                          project.isOverdue ? (
-                            <div className="projects-date-overdue">
-                              <span className="projects-date-text">{project.targetDate}</span>
-                              <span className="projects-date-badge">
-                                {daysOverdue > 0 ? `${daysOverdue} d atraso` : 'Atrasado'}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="projects-date-normal">{project.targetDate}</span>
-                          )
-                        ) : (
-                          <span className="projects-date-none">Sin fecha</span>
-                        )}
-                      </td>
-
-                      {/* 7. Acciones (Daily Check + Menú ⋯) */}
-                      <td className="projects-cell-actions">
-                        <div className="projects-actions-cluster">
-                          {/* Botón Daily Check */}
-                          <button
-                            type="button"
-                            className={`projects-daily-check-btn ${project.staleTasksCount > 0 ? 'is-pending' : 'is-clean'}`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onDailyCheckProject(project);
-                            }}
-                            title={
-                              project.staleTasksCount > 0
-                                ? `Daily Check: ${project.staleTasksCount} tarea(s) requieren atención hoy`
-                                : `Daily Check: Todo al día en ${project.name}`
-                            }
-                            aria-label={`Daily Check para ${project.name}`}
-                          >
-                            <Icons.DailyCheck />
-                            {project.staleTasksCount > 0 && (
-                              <span className="projects-daily-check-dot" />
-                            )}
-                          </button>
-
-                          {/* Menú ⋯ */}
-                          <div className="projects-menu-anchor" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              className={`projects-menu-trigger ${isMenuOpen ? 'is-active' : ''}`}
-                              onClick={() => setOpenMenuProjectId(isMenuOpen ? null : project.id)}
-                              aria-haspopup="true"
-                              aria-expanded={isMenuOpen}
-                              title="Acciones del proyecto"
-                              aria-label={`Opciones para ${project.name}`}
-                            >
-                              ⋯
-                            </button>
-
-                            {isMenuOpen && (
-                              <div className="projects-action-dropdown" role="menu">
-                                <button
-                                  type="button"
-                                  className="projects-dropdown-item"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onSelectProject(project.id);
-                                  }}
-                                >
-                                  <Icons.Board /> <span>Abrir Tablero</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="projects-dropdown-item"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onOpenStatusModal(project);
-                                  }}
-                                >
-                                  <Icons.FileText /> <span>Estatus y Resumen</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="projects-dropdown-item"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onOpenTeamModal(project);
-                                  }}
-                                >
-                                  <Icons.UsersGear /> <span>Gestionar Equipo</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="projects-dropdown-item"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onEditProject(project);
-                                  }}
-                                >
-                                  <Icons.Edit /> <span>Editar Información</span>
-                                </button>
-                                <div className="projects-dropdown-divider" />
-                                <button
-                                  type="button"
-                                  className="projects-dropdown-item is-danger"
-                                  role="menuitem"
-                                  onClick={() => {
-                                    setOpenMenuProjectId(null);
-                                    onDeleteProject(project);
-                                  }}
-                                >
-                                  <Icons.Trash /> <span>Eliminar Proyecto</span>
-                                </button>
+                        return (
+                          <tr key={project.id} className="projects-table-row">
+                            {/* 1. Proyecto (Código + Nombre + Descripción) */}
+                            <td className="projects-cell-title">
+                              <div className="projects-name-wrap">
+                                <div className="projects-code-row">
+                                  {project.code && (
+                                    <span className="projects-code-badge">{project.code}</span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="projects-name-link"
+                                    onClick={() => onSelectProject(project.id)}
+                                    title={`Abrir tablero de ${project.name}`}
+                                  >
+                                    {project.name}
+                                  </button>
+                                </div>
+                                {project.description && (
+                                  <p className="projects-desc-text" title={project.description}>
+                                    {project.description}
+                                  </p>
+                                )}
                               </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            </td>
+
+                            {/* 2. Espacio & Metodología */}
+                            <td className="projects-cell-space">
+                              <span className="projects-space-tag">
+                                {getSpaceLabel(project)}
+                              </span>
+                            </td>
+
+                            {/* 3. Estado */}
+                            <td className="projects-cell-status">
+                              <StatusDot status={project.status || 'execution'} />
+                            </td>
+
+                            {/* 4. Avance */}
+                            <td className="projects-cell-progress">
+                              <ProgressBar
+                                value={project.progressPct || 0}
+                                sublabel={`${project.doneTasks || 0} de ${project.totalTasks || 0} tareas`}
+                                size="small"
+                              />
+                            </td>
+
+                            {/* 5. Equipo */}
+                            <td className="projects-cell-team">
+                              <AvatarGroup names={teamMembers} max={3} size={26} />
+                            </td>
+
+                            {/* 6. Fecha Meta */}
+                            <td className="projects-cell-date">
+                              {project.targetDate ? (
+                                project.isOverdue ? (
+                                  <div className="projects-date-overdue">
+                                    <span className="projects-date-text">{project.targetDate}</span>
+                                    <span className="projects-date-badge">
+                                      {daysOverdue > 0 ? `${daysOverdue} d atraso` : 'Atrasado'}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="projects-date-normal">{project.targetDate}</span>
+                                )
+                              ) : (
+                                <span className="projects-date-none">Sin fecha</span>
+                              )}
+                            </td>
+
+                            {/* 7. Acciones */}
+                            <td className="projects-cell-actions">
+                              <div className="projects-actions-cluster">
+                                <button
+                                  type="button"
+                                  className={`projects-daily-check-btn ${project.staleTasksCount > 0 ? 'is-pending' : 'is-clean'}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDailyCheckProject(project);
+                                  }}
+                                  title={
+                                    project.staleTasksCount > 0
+                                      ? `Daily Check: ${project.staleTasksCount} tarea(s) requieren atención hoy`
+                                      : `Daily Check: Todo al día en ${project.name}`
+                                  }
+                                  aria-label={`Daily Check para ${project.name}`}
+                                >
+                                  <Icons.DailyCheck />
+                                  {project.staleTasksCount > 0 && <span className="projects-daily-check-dot" />}
+                                </button>
+
+                                <div className="projects-menu-anchor" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className={`projects-menu-trigger ${isMenuOpen ? 'is-active' : ''}`}
+                                    onClick={() => setOpenMenuProjectId(isMenuOpen ? null : project.id)}
+                                    aria-haspopup="true"
+                                    aria-expanded={isMenuOpen}
+                                    title="Acciones del proyecto"
+                                    aria-label={`Opciones para ${project.name}`}
+                                  >
+                                    ⋯
+                                  </button>
+
+                                  {isMenuOpen && (
+                                    <div className="projects-action-dropdown" role="menu">
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onSelectProject(project.id);
+                                        }}
+                                      >
+                                        <Icons.Board /> <span>Abrir Tablero</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onOpenStatusModal(project);
+                                        }}
+                                      >
+                                        <Icons.FileText /> <span>Estatus y Resumen</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onOpenTeamModal(project);
+                                        }}
+                                      >
+                                        <Icons.UsersGear /> <span>Gestionar Equipo</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onEditProject(project);
+                                        }}
+                                      >
+                                        <Icons.Edit /> <span>Editar Información</span>
+                                      </button>
+                                      <div className="projects-dropdown-divider" />
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item is-danger"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onDeleteProject(project);
+                                        }}
+                                      >
+                                        <Icons.Trash /> <span>Eliminar Proyecto</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
           </div>
+
+          {/* SUB-CATEGORÍA / PESTAÑA: PROYECTOS FINALIZADOS (Siempre cerrada por defecto) */}
+          {finalizedFilteredProjects.length > 0 && (
+            <div className="projects-category-card is-finalized">
+              <button
+                type="button"
+                className={`projects-category-toggle ${finalizedSectionOpen ? 'is-open' : ''}`}
+                onClick={() => setFinalizedSectionOpen(!finalizedSectionOpen)}
+                aria-expanded={finalizedSectionOpen}
+                title={finalizedSectionOpen ? 'Ocultar proyectos finalizados' : 'Clic para desplegar y ver proyectos finalizados'}
+              >
+                <div className="projects-category-title-group">
+                  <span className="projects-category-icon is-done">
+                    <NavIcons.CheckCircle size={17} />
+                  </span>
+                  <h2 className="projects-category-title">Proyectos Finalizados</h2>
+                  <span className="projects-category-badge is-done">
+                    {finalizedFilteredProjects.length}
+                  </span>
+                </div>
+                <div className="projects-category-right">
+                  <span>{finalizedSectionOpen ? 'Ocultar proyectos cerrados' : 'Clic para ver proyectos cerrados'}</span>
+                  <span className="projects-category-chevron">
+                    {finalizedSectionOpen ? <NavIcons.ChevronDown size={16} /> : <NavIcons.ChevronRight size={16} />}
+                  </span>
+                </div>
+              </button>
+
+              {finalizedSectionOpen && (
+                <div className="projects-table-wrapper">
+                  <table className="projects-table" role="table">
+                    <thead>
+                      <tr>
+                        <th scope="col" style={{ width: '34%' }}>Proyecto</th>
+                        <th scope="col" style={{ width: '14%' }}>Espacio</th>
+                        <th scope="col" style={{ width: '12%' }}>Estado</th>
+                        <th scope="col" style={{ width: '15%' }}>Avance</th>
+                        <th scope="col" style={{ width: '11%' }}>Equipo</th>
+                        <th scope="col" style={{ width: '10%' }}>Fecha Meta</th>
+                        <th scope="col" style={{ width: '4%', textAlign: 'right' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {finalizedFilteredProjects.map((project) => {
+                        const daysOverdue = calculateDaysOverdue(project.targetDate);
+                        const isMenuOpen = openMenuProjectId === project.id;
+                        const teamMembers = getTeamNames(project);
+
+                        return (
+                          <tr key={project.id} className="projects-table-row">
+                            <td className="projects-cell-title">
+                              <div className="projects-name-wrap">
+                                <div className="projects-code-row">
+                                  {project.code && (
+                                    <span className="projects-code-badge" style={{ background: '#e2e8f0', color: '#475569' }}>
+                                      {project.code}
+                                    </span>
+                                  )}
+                                  <button
+                                    type="button"
+                                    className="projects-name-link"
+                                    onClick={() => onSelectProject(project.id)}
+                                    title={`Abrir tablero de ${project.name}`}
+                                  >
+                                    {project.name}
+                                  </button>
+                                </div>
+                                {project.description && (
+                                  <p className="projects-desc-text" title={project.description}>
+                                    {project.description}
+                                  </p>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="projects-cell-space">
+                              <span className="projects-space-tag">
+                                {getSpaceLabel(project)}
+                              </span>
+                            </td>
+
+                            <td className="projects-cell-status">
+                              <StatusDot status={project.status || 'completed'} />
+                            </td>
+
+                            <td className="projects-cell-progress">
+                              <ProgressBar
+                                value={project.progressPct || 100}
+                                sublabel={`${project.doneTasks || 0} de ${project.totalTasks || 0} tareas`}
+                                size="small"
+                              />
+                            </td>
+
+                            <td className="projects-cell-team">
+                              <AvatarGroup names={teamMembers} max={3} size={26} />
+                            </td>
+
+                            <td className="projects-cell-date">
+                              {project.targetDate ? (
+                                <span className="projects-date-normal">{project.targetDate}</span>
+                              ) : (
+                                <span className="projects-date-none">Sin fecha</span>
+                              )}
+                            </td>
+
+                            <td className="projects-cell-actions">
+                              <div className="projects-actions-cluster">
+                                <button
+                                  type="button"
+                                  className="projects-daily-check-btn is-clean"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onDailyCheckProject(project);
+                                  }}
+                                  title={`Daily Check: Todo al día en ${project.name}`}
+                                  aria-label={`Daily Check para ${project.name}`}
+                                >
+                                  <Icons.DailyCheck />
+                                </button>
+
+                                <div className="projects-menu-anchor" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className={`projects-menu-trigger ${isMenuOpen ? 'is-active' : ''}`}
+                                    onClick={() => setOpenMenuProjectId(isMenuOpen ? null : project.id)}
+                                    aria-haspopup="true"
+                                    aria-expanded={isMenuOpen}
+                                    title="Acciones del proyecto"
+                                    aria-label={`Opciones para ${project.name}`}
+                                  >
+                                    ⋯
+                                  </button>
+
+                                  {isMenuOpen && (
+                                    <div className="projects-action-dropdown" role="menu">
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onSelectProject(project.id);
+                                        }}
+                                      >
+                                        <Icons.Board /> <span>Abrir Tablero</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onOpenStatusModal(project);
+                                        }}
+                                      >
+                                        <Icons.FileText /> <span>Estatus y Resumen</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onOpenTeamModal(project);
+                                        }}
+                                      >
+                                        <Icons.UsersGear /> <span>Gestionar Equipo</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onEditProject(project);
+                                        }}
+                                      >
+                                        <Icons.Edit /> <span>Editar Información</span>
+                                      </button>
+                                      <div className="projects-dropdown-divider" />
+                                      <button
+                                        type="button"
+                                        className="projects-dropdown-item is-danger"
+                                        role="menuitem"
+                                        onClick={() => {
+                                          setOpenMenuProjectId(null);
+                                          onDeleteProject(project);
+                                        }}
+                                      >
+                                        <Icons.Trash /> <span>Eliminar Proyecto</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
