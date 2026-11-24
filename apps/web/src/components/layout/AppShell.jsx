@@ -19,6 +19,7 @@ export function AppShell({
   onToggleTheme,
   user,
   onLogout,
+  onOpenProfileModal,
   onFabClick,
   onCreatePersonalProject,
   children
@@ -85,6 +86,7 @@ export function AppShell({
         onToggleTheme={onToggleTheme}
         user={user}
         onLogout={onLogout}
+        onOpenProfileModal={onOpenProfileModal}
         onFabClick={onFabClick}
         onCreatePersonalProject={onCreatePersonalProject}
       >
@@ -112,6 +114,7 @@ export function AppShell({
         onToggleTheme={onToggleTheme}
         user={user}
         onLogout={onLogout}
+        onOpenProfileModal={onOpenProfileModal}
       />
 
       {/* 2. BACKDROP SI ESTÁ EN TABLET OVERLAY */}

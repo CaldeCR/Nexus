@@ -23,6 +23,7 @@ import { ProjectDrawer } from './components/forms/ProjectDrawer';
 import { TaskDrawer } from './components/forms/TaskDrawer';
 import { AssigneeDropdownPicker } from './components/forms/AssigneeDropdownPicker';
 import { ImportExcelModal } from './components/forms/ImportExcelModal';
+import { UserProfileModal } from './components/forms/UserProfileModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -765,6 +766,7 @@ function App() {
     role: 'member'
   });
   const [editingDirectoryMember, setEditingDirectoryMember] = useState(null);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [editDirectoryForm, setEditDirectoryForm] = useState({
     name: '',
     role: 'collaborator',
@@ -2785,6 +2787,7 @@ function App() {
       onToggleTheme={toggleTheme}
       user={session}
       onLogout={logout}
+      onOpenProfileModal={() => setIsProfileModalOpen(true)}
       onFabClick={() => {
         if (activeView === 'portfolio') {
           setIsNewProjectModalOpen(true);
@@ -3082,6 +3085,20 @@ function App() {
         selectedProjectId={importTargetProjectId || selectedProjectId}
         currentUser={session}
         onImportComplete={handleImportExcelComplete}
+      />
+
+      {/* MODAL: PERFIL DE USUARIO Y ROLES */}
+      <UserProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={session}
+        projects={enrichedProjects}
+        teamDirectory={teamDirectory}
+        workItems={workItems}
+        onUpdateProfile={(updatedUser) => {
+          saveSession(updatedUser, token);
+          setSuccess('Perfil actualizado correctamente');
+        }}
       />
 
       {/* MODAL: EDITAR TAREA */}

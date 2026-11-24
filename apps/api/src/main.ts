@@ -522,6 +522,71 @@ app.get('/api/auth/me', (req, res) => {
   });
 });
 
+app.put('/api/auth/me', async (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) {
+    return res.status(401).json({ message: 'No autorizado' });
+  }
+
+  const { name, email, currentPassword, newPassword } = req.body;
+  const db = readDb();
+  const dbUser = db.users.find((u) => u.id === user.id);
+  if (!dbUser) {
+    return res.status(404).json({ message: 'Usuario no encontrado' });
+  }
+
+  const oldName = dbUser.name;
+  const oldEmail = dbUser.email;
+
+  if (name && typeof name === 'string' && name.trim().length >= 2) {
+    dbUser.name = name.trim();
+  }
+
+  if (email && typeof email === 'string' && email.trim()) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const emailConflict = db.users.find((u) => u.id !== user.id && u.email.toLowerCase() === normalizedEmail);
+    if (emailConflict) {
+      return res.status(409).json({ message: 'Ya existe otro usuario con este correo electrónico' });
+    }
+    dbUser.email = normalizedEmail;
+  }
+
+  if (newPassword && typeof newPassword === 'string') {
+    if (newPassword.length < 8) {
+      return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 8 caracteres' });
+    }
+    if (dbUser.passwordHash) {
+      if (!currentPassword || typeof currentPassword !== 'string') {
+        return res.status(400).json({ message: 'Debes proporcionar tu contraseña actual para cambiarla' });
+      }
+      const match = await bcrypt.compare(currentPassword, dbUser.passwordHash);
+      if (!match) {
+        return res.status(401).json({ message: 'La contraseña actual no es correcta' });
+      }
+    }
+    dbUser.passwordHash = await bcrypt.hash(newPassword, 12);
+    delete dbUser.password;
+  }
+
+  // Sincronizar nombre y correo en el Directorio
+  if (Array.isArray(db.teamDirectory)) {
+    const dirMember = db.teamDirectory.find(
+      (m) => (m.email && m.email.toLowerCase() === oldEmail.toLowerCase()) || m.name.toLowerCase() === oldName.toLowerCase()
+    );
+    if (dirMember) {
+      if (dbUser.name) dirMember.name = dbUser.name;
+      if (dbUser.email) dirMember.email = dbUser.email;
+    }
+  }
+
+  writeDb(db);
+
+  return res.json({
+    message: 'Perfil actualizado correctamente',
+    user: { id: dbUser.id, name: dbUser.name, email: dbUser.email, role: dbUser.role }
+  });
+});
+
 app.get('/api/projects', (req, res) => {
   const user = getCurrentUser(req);
   if (!user) {

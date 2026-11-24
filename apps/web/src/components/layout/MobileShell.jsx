@@ -15,6 +15,7 @@ export function MobileShell({
   onToggleTheme,
   user,
   onLogout,
+  onOpenProfileModal,
   onFabClick,
   onCreatePersonalProject,
   children
@@ -168,6 +169,19 @@ export function MobileShell({
               >
                 <NavIcons.DailyCheck size={18} />
                 <span>Daily Check-in ({totalStaleCount > 0 ? `${totalStaleCount} pendientes` : 'Al día'})</span>
+              </button>
+
+              <button
+                type="button"
+                className="mobile-drawer-footer-btn"
+                style={{ fontWeight: 600, color: 'var(--ink-900)' }}
+                onClick={() => {
+                  setDrawerOpen(false);
+                  if (onOpenProfileModal) onOpenProfileModal();
+                }}
+              >
+                <NavIcons.Users size={18} />
+                <span>Mi Perfil y Roles</span>
               </button>
 
               <button

@@ -13,7 +13,8 @@ export function Rail({
   darkMode,
   onToggleTheme,
   user,
-  onLogout
+  onLogout,
+  onOpenProfileModal
 }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
@@ -251,9 +252,26 @@ export function Rail({
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-500)' }}>
                   {user?.email || 'usuario@nexus.local'}
                 </span>
+                <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--nexus-teal, #2A6F62)', background: 'rgba(42, 111, 98, 0.12)', padding: '1px 6px', borderRadius: '4px' }}>
+                  {user?.role === 'owner' || user?.role === 'admin' ? '👑 Super Admin / Lead' : '👤 Colaborador'}
+                </span>
               </div>
 
-              <div style={{ padding: '4px 0' }}>
+              <div style={{ padding: '4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <button
+                  type="button"
+                  className="mobile-drawer-footer-btn"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    if (onOpenProfileModal) onOpenProfileModal();
+                  }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-900)', fontWeight: 600 }}
+                  title="Ver roles asignados y editar datos"
+                >
+                  <NavIcons.Users size={14} />
+                  <span>Mi Perfil y Roles</span>
+                </button>
+
                 <button
                   type="button"
                   className="mobile-drawer-footer-btn"
@@ -261,7 +279,7 @@ export function Rail({
                     setAccountMenuOpen(false);
                     onToggleTheme();
                   }}
-                  style={{ fontSize: 'var(--text-xs)', padding: '6px 8px' }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
                   {darkMode ? <NavIcons.Sun size={14} /> : <NavIcons.Moon size={14} />}
                   <span>Modo {darkMode ? 'Claro' : 'Oscuro'}</span>
@@ -274,7 +292,7 @@ export function Rail({
                     setAccountMenuOpen(false);
                     onLogout();
                   }}
-                  style={{ fontSize: 'var(--text-xs)', padding: '6px 8px', color: 'var(--danger-600)' }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger-600)' }}
                 >
                   <NavIcons.LogOut size={14} />
                   <span>Cerrar sesión</span>
