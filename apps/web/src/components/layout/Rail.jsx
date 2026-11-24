@@ -17,6 +17,31 @@ export function Rail({
   onOpenProfileModal
 }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const userBtnRef = React.useRef(null);
+  const [menuCoords, setMenuCoords] = useState({ left: 72, bottom: 16 });
+
+  // Recalcular posición fixed del menú para escapar el overflow de la barra lateral
+  React.useEffect(() => {
+    if (accountMenuOpen && userBtnRef.current) {
+      const rect = userBtnRef.current.getBoundingClientRect();
+      setMenuCoords({
+        left: rect.right + 12,
+        bottom: Math.max(16, window.innerHeight - rect.bottom)
+      });
+    }
+  }, [accountMenuOpen, railExpanded]);
+
+  // Cerrar al hacer clic fuera del menú
+  React.useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleOutsideClick = (e) => {
+      if (userBtnRef.current && !userBtnRef.current.contains(e.target)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', handleOutsideClick);
+    return () => window.removeEventListener('mousedown', handleOutsideClick);
+  }, [accountMenuOpen]);
 
   const navItems = [
     { key: 'home', label: 'Inicio', icon: <NavIcons.Home size={20} /> },
@@ -210,7 +235,7 @@ export function Rail({
         </button>
 
         {/* AVATAR DE USUARIO CON MENÚ */}
-        <div style={{ position: 'relative', width: railExpanded ? '100%' : 'auto' }}>
+        <div ref={userBtnRef} style={{ position: 'relative', width: railExpanded ? '100%' : 'auto' }}>
           <button
             type="button"
             className={railExpanded ? 'rail-user-card-btn' : 'rail-avatar-btn'}
@@ -231,33 +256,35 @@ export function Rail({
           {accountMenuOpen && (
             <div
               style={{
-                position: 'absolute',
-                bottom: 0,
-                left: railExpanded ? '100%' : '52px',
-                marginLeft: railExpanded ? '8px' : 0,
-                width: '210px',
-                background: 'var(--surface-card)',
-                border: '1px solid var(--line-200)',
-                borderRadius: 'var(--radius-md)',
-                boxShadow: 'var(--shadow-floating)',
-                padding: '8px',
-                zIndex: 100,
+                position: 'fixed',
+                bottom: `${menuCoords.bottom}px`,
+                left: `${menuCoords.left}px`,
+                width: '230px',
+                background: 'var(--surface-card, #ffffff)',
+                border: '1px solid var(--line-200, #dde2e4)',
+                borderRadius: 'var(--radius-lg, 12px)',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.15)',
+                padding: '10px',
+                zIndex: 99999,
                 color: 'var(--ink-900)'
               }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--line-100)' }}>
+              <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--line-100)' }}>
                 <strong style={{ display: 'block', fontSize: 'var(--text-sm)', color: 'var(--ink-900)' }}>
                   {user?.name || 'Usuario'}
                 </strong>
                 <span style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-500)' }}>
                   {user?.email || 'usuario@nexus.local'}
                 </span>
-                <span style={{ display: 'inline-block', marginTop: '4px', fontSize: '11px', fontWeight: 600, color: 'var(--nexus-teal, #2A6F62)', background: 'rgba(42, 111, 98, 0.12)', padding: '1px 6px', borderRadius: '4px' }}>
-                  {user?.role === 'owner' || user?.role === 'admin' ? '👑 Super Admin / Lead' : '👤 Colaborador'}
-                </span>
+                <div style={{ marginTop: '4px' }}>
+                  <span style={{ display: 'inline-block', fontSize: '11px', fontWeight: 600, color: 'var(--nexus-teal, #2A6F62)', background: 'rgba(42, 111, 98, 0.12)', padding: '2px 7px', borderRadius: '4px' }}>
+                    {user?.role === 'owner' || user?.role === 'admin' ? '👑 Super Admin / Lead' : '👤 Colaborador'}
+                  </span>
+                </div>
               </div>
 
-              <div style={{ padding: '4px 0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <div style={{ padding: '6px 0 2px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                 <button
                   type="button"
                   className="mobile-drawer-footer-btn"
@@ -265,10 +292,10 @@ export function Rail({
                     setAccountMenuOpen(false);
                     if (onOpenProfileModal) onOpenProfileModal();
                   }}
-                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-900)', fontWeight: 600 }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '8px 10px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--ink-900)', fontWeight: 600, background: 'var(--surface-hover, rgba(0,0,0,0.03))' }}
                   title="Ver roles asignados y editar datos"
                 >
-                  <NavIcons.Users size={14} />
+                  <NavIcons.Users size={15} />
                   <span>Mi Perfil y Roles</span>
                 </button>
 
@@ -279,9 +306,9 @@ export function Rail({
                     setAccountMenuOpen(false);
                     onToggleTheme();
                   }}
-                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '8px 10px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
-                  {darkMode ? <NavIcons.Sun size={14} /> : <NavIcons.Moon size={14} />}
+                  {darkMode ? <NavIcons.Sun size={15} /> : <NavIcons.Moon size={15} />}
                   <span>Modo {darkMode ? 'Claro' : 'Oscuro'}</span>
                 </button>
 
@@ -292,9 +319,9 @@ export function Rail({
                     setAccountMenuOpen(false);
                     onLogout();
                   }}
-                  style={{ fontSize: 'var(--text-xs)', padding: '7px 8px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger-600)' }}
+                  style={{ fontSize: 'var(--text-xs)', padding: '8px 10px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--danger-600)' }}
                 >
-                  <NavIcons.LogOut size={14} />
+                  <NavIcons.LogOut size={15} />
                   <span>Cerrar sesión</span>
                 </button>
               </div>

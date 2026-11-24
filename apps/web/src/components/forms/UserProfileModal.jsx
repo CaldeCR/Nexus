@@ -194,7 +194,7 @@ export function UserProfileModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 9999,
+        zIndex: 100000,
         background: 'rgba(15, 23, 42, 0.65)',
         backdropFilter: 'blur(4px)',
         display: 'flex',
