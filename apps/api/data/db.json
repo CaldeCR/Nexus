@@ -360,30 +360,6 @@
         }
       ],
       "code": "P6"
-    },
-    {
-      "id": "p-1792532349205",
-      "code": "P8",
-      "name": "CIBERSEGURIDAD-TELECABLE",
-      "description": "",
-      "template": "kanban",
-      "status": "execution",
-      "role": "lead",
-      "admins": [
-        "Jorge"
-      ],
-      "members": [],
-      "teamMembers": [
-        {
-          "id": "mem-adm-0-p-1792532349205",
-          "name": "Jorge",
-          "role": "admin"
-        }
-      ],
-      "startDate": "2026-10-15",
-      "targetDate": "2026-10-30",
-      "originalTargetDate": "2026-10-30",
-      "dateExtensions": []
     }
   ],
   "workItems": [
