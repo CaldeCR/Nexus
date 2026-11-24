@@ -395,7 +395,7 @@ export function TasksView({
   /* VISTA ESCRITORIO / TABLET (§7.4)                                          */
   /* ========================================================================= */
   return (
-    <div className="tasks-view-container" style={{ padding: bp === 'tablet' ? '24px 28px' : undefined }}>
+    <div className="tasks-view-container">
       {/* 1. CABECERA DE LA VISTA */}
       <div className="tasks-view-header">
         <div>

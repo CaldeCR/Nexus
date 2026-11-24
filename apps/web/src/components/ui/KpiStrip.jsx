@@ -13,23 +13,30 @@ export function KpiStrip({
       <div className="ui-kpi-strip" role="region" aria-label="Resumen de indicadores">
         {items.map((item, idx) => (
           <div key={item.label || idx} className="ui-kpi-cell">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: item.progress !== undefined ? '4px' : 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
               <span className="ui-kpi-label">{item.label}</span>
-              {item.progress !== undefined && (
+              {item.badge && (
+                <span className="kpi-alert-badge">
+                  {item.badge}
+                </span>
+              )}
+              {item.progress !== undefined && !item.badge && (
                 <strong className="ui-kpi-value-sm" style={{ color: item.color || 'inherit' }}>
                   {item.value}
                 </strong>
               )}
             </div>
             {item.progress !== undefined ? (
-              <ProgressBar value={item.progress} height={4} />
+              <div style={{ marginTop: '2px', marginBottom: '4px' }}>
+                <ProgressBar value={item.progress} height={7} />
+              </div>
             ) : (
               <strong className="ui-kpi-value" style={{ color: item.color || 'inherit' }}>
                 {item.value}
               </strong>
             )}
             {item.sublabel && (
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--ink-500)', marginTop: '2px', display: 'block' }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: item.badge ? item.color || '#c5372d' : 'var(--ink-500)', marginTop: '4px', display: 'block', fontWeight: item.badge ? 600 : 400 }}>
                 {item.sublabel}
               </span>
             )}

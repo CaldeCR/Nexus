@@ -244,7 +244,7 @@ export function ProjectsView({
       : null;
 
     return (
-      <div className="project-detail-container" style={{ padding: bp === 'tablet' ? '24px 28px' : (isMobile ? '16px 16px 88px 16px' : undefined) }}>
+      <div className="project-detail-container">
         {/* 1. Barra Superior con Botón de Regreso y Acciones de Control */}
         <div className="project-detail-topbar">
           <button
@@ -1003,16 +1003,20 @@ export function ProjectsView({
   /* VISTA ESCRITORIO / TABLET (§7.1)                                          */
   /* ========================================================================= */
   return (
-    <div className="projects-view-container" style={{ padding: bp === 'tablet' ? '24px 28px' : undefined }}>
+    <div className="projects-view-container">
       {/* 1. Header (§3) */}
       <div className="projects-view-header">
         <div>
           <h1 className="projects-page-title">Mis Proyectos</h1>
           <p className="projects-page-subtitle">
-            Control de portafolio y seguimiento de metas · {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            <span>Control de portafolio y seguimiento de metas</span>
+            <span style={{ opacity: 0.5 }}>•</span>
+            <span style={{ textTransform: 'capitalize' }}>
+              {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
           </p>
         </div>
-        <div className="projects-header-actions" style={{ display: 'flex', gap: '8px' }}>
+        <div className="projects-header-actions">
           {onOpenImportExcel && (
             <button
               type="button"
@@ -1020,7 +1024,7 @@ export function ProjectsView({
               onClick={() => onOpenImportExcel(null)}
               title="Importar proyecto o tareas desde Excel o CSV"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#107c41' }}>
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
                 <line x1="12" y1="18" x2="12" y2="12" />
@@ -1034,7 +1038,7 @@ export function ProjectsView({
             className="ui-btn ui-btn--primary"
             onClick={onOpenNewProject}
           >
-            <Icons.Plus /> <span>Nuevo Proyecto</span>
+            <Icons.Plus size={18} /> <span>Nuevo Proyecto</span>
           </button>
         </div>
       </div>
@@ -1055,8 +1059,9 @@ export function ProjectsView({
           {
             label: 'Fuera de fecha',
             value: kpis.overdueCount,
-            color: kpis.overdueCount > 0 ? 'var(--status-late-ink)' : 'inherit',
-            sublabel: kpis.overdueCount > 0 ? `${kpis.overdueCount} con fecha vencida` : 'Todo en plazo'
+            color: kpis.overdueCount > 0 ? '#c5372d' : 'inherit',
+            badge: kpis.overdueCount > 0 ? `${kpis.overdueCount} vencidas` : null,
+            sublabel: kpis.overdueCount > 0 ? 'Requieren atención urgente' : 'Todo al día'
           },
           {
             label: 'Avance general',
