@@ -38,6 +38,9 @@ lerna-debug.log*
 
 # Runtime data & backups
 /data/
+/backups/
+backups/
+nexus_backups/
 apps/api/data/*.json
 !apps/api/data/.gitkeep
 *.backup.json

@@ -26,6 +26,12 @@ fi
 echo "🔄 Nuevos cambios detectados. Descargando código..."
 git pull origin main
 
+# 2.5 Respaldo preventivo de seguridad antes de reconstruir contenedores
+if [ -f "$PROJECT_DIR/backup-db.sh" ]; then
+    echo "💾 Ejecutando respaldo preventivo de la base de datos..."
+    bash "$PROJECT_DIR/backup-db.sh" || echo "⚠️ Advertencia: El respaldo preventivo falló, pero continuando con despliegue..."
+fi
+
 # 3. Reconstruir los contenedores Docker en segundo plano
 echo "🐳 Reconstruyendo y actualizando contenedores con Docker Compose..."
 docker compose up -d --build
