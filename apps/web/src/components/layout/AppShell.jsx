@@ -20,6 +20,7 @@ export function AppShell({
   user,
   onLogout,
   onOpenProfileModal,
+  onOpenCategoryManager,
   onFabClick,
   onCreatePersonalProject,
   children
@@ -115,6 +116,7 @@ export function AppShell({
         user={user}
         onLogout={onLogout}
         onOpenProfileModal={onOpenProfileModal}
+        onOpenCategoryManager={onOpenCategoryManager}
       />
 
       {/* 2. BACKDROP SI ESTÁ EN TABLET OVERLAY */}

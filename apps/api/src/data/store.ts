@@ -47,13 +47,20 @@ export type ProjectPhase = {
   order?: number;
 };
 
-export type ProjectCategory =
-  | 'development'
-  | 'implementation'
-  | 'hybrid'
-  | 'infrastructure'
-  | 'maintenance'
-  | 'other';
+export type ProjectCategoryConfig = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  bgColor?: string;
+  description?: string;
+  isDefault?: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+};
+
+export type ProjectCategory = string;
 
 export type RequirementType =
   | 'functional'
@@ -163,10 +170,83 @@ export type DbState = {
   workItems: WorkItem[];
   teamDirectory: GlobalMember[];
   sessions?: SessionRecord[];
+  projectCategories?: ProjectCategoryConfig[];
 };
+
+export function getDefaultCategories(): ProjectCategoryConfig[] {
+  return [
+    {
+      id: 'cat-dev',
+      name: 'Desarrollo de Software',
+      icon: '💻',
+      color: '#0284c7',
+      bgColor: 'rgba(2, 132, 199, 0.08)',
+      description: 'Construcción de software, frontend, backend, APIs y microservicios.',
+      isDefault: true,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'cat-impl',
+      name: 'Implementación / Configuración',
+      icon: '⚙️',
+      color: '#7c3aed',
+      bgColor: 'rgba(124, 58, 237, 0.08)',
+      description: 'Puesta en marcha de software empresarial, ERP, CRM y SaaS.',
+      isDefault: false,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'cat-hybrid',
+      name: 'Híbrido (Desarrollo + Implementación)',
+      icon: '🔀',
+      color: '#2563eb',
+      bgColor: 'rgba(37, 99, 235, 0.08)',
+      description: 'Proyectos combinados de desarrollo a medida e implementación de plataformas.',
+      isDefault: false,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'cat-infra',
+      name: 'Infraestructura & Cloud',
+      icon: '☁️',
+      color: '#0891b2',
+      bgColor: 'rgba(8, 145, 178, 0.08)',
+      description: 'Servidores, redes, DevOps, migraciones cloud y bases de datos.',
+      isDefault: false,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'cat-maintenance',
+      name: 'Soporte & Mantenimiento',
+      icon: '🛠️',
+      color: '#d97706',
+      bgColor: 'rgba(217, 119, 6, 0.08)',
+      description: 'Mantenimiento evolutivo, soporte correctivo y actualizaciones.',
+      isDefault: false,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    },
+    {
+      id: 'cat-other',
+      name: 'General / Otro',
+      icon: '📦',
+      color: '#64748b',
+      bgColor: 'rgba(100, 116, 139, 0.08)',
+      description: 'Otras tipologías o proyectos generales.',
+      isDefault: false,
+      isActive: true,
+      createdAt: '2026-01-01T00:00:00.000Z'
+    }
+  ];
+}
 
 function createDefaultDb(): DbState {
   return {
+    projectCategories: getDefaultCategories(),
     users: [
       {
         id: 'u-1',
@@ -563,9 +643,20 @@ function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
     }
     projectCodeMap.set(project.id, code);
 
+    const categoryMap: Record<string, string> = {
+      development: 'cat-dev',
+      implementation: 'cat-impl',
+      hybrid: 'cat-hybrid',
+      infrastructure: 'cat-infra',
+      maintenance: 'cat-maintenance',
+      other: 'cat-other'
+    };
+    const category = project.category ? (categoryMap[project.category] || project.category) : 'cat-dev';
+
     return syncProjectMembers({
       ...project,
       code,
+      category,
       status: project.status || 'execution',
       role: project.role || 'lead',
       targetDate: project.targetDate || '',
@@ -645,12 +736,31 @@ function normalizeDb(raw: Partial<DbState> | null | undefined): DbState {
     ? raw.sessions.filter((s) => s && typeof s.token === 'string' && s.expiresAt > now)
     : [];
 
+  const defaultCats = getDefaultCategories();
+  const rawCats = Array.isArray(raw?.projectCategories) && raw.projectCategories.length > 0
+    ? raw.projectCategories
+    : defaultCats;
+
+  const projectCategories = rawCats.map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon || '📁',
+    color: c.color || '#0284c7',
+    bgColor: c.bgColor || 'rgba(2, 132, 199, 0.08)',
+    description: c.description || '',
+    isDefault: Boolean(c.isDefault),
+    isActive: c.isActive !== false,
+    createdAt: c.createdAt || new Date().toISOString(),
+    updatedAt: c.updatedAt
+  }));
+
   return {
     users,
     projects,
     workItems,
     teamDirectory,
-    sessions
+    sessions,
+    projectCategories
   };
 }
 

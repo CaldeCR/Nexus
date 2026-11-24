@@ -53,7 +53,9 @@ export function ProjectsView({
   onCreateTaskFromAction,
   onOpenImportExcel,
   onRefreshProjects,
-  onRefreshWorkItems
+  onRefreshWorkItems,
+  categories = [],
+  onOpenCategoryManager
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -68,12 +70,29 @@ export function ProjectsView({
   const [activeSectionOpen, setActiveSectionOpen] = useState(true);
   const [finalizedSectionOpen, setFinalizedSectionOpen] = useState(false);
 
-  // Close actions menu on click outside
+  // Cerrar al hacer clic fuera
   React.useEffect(() => {
     const handleOutsideClick = () => setOpenMenuProjectId(null);
     window.addEventListener('click', handleOutsideClick);
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
+
+  const findCategoryMeta = (catId) => {
+    if (!catId) return { label: 'Desarrollo TI', icon: '💻', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' };
+    const found = categories.find((c) => c.id === catId || c.id === `cat-${catId}`);
+    if (found) {
+      return {
+        label: found.name,
+        icon: found.icon || '📁',
+        color: found.color || '#0284c7',
+        bg: found.bgColor || `${found.color || '#0284c7'}15`,
+        border: `${found.color || '#0284c7'}30`
+      };
+    }
+    const legacy = PROJECT_CATEGORIES[catId];
+    if (legacy) return legacy;
+    return { label: catId, icon: '📁', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
+  };
 
   // Proyecto seleccionado para vista de Detalle & Control (Master-Detail)
   const selectedProject = useMemo(() => {
@@ -176,13 +195,14 @@ export function ProjectsView({
 
       // Category filter
       if (categoryFilter !== 'all') {
-        const cat = project.category || 'development';
-        if (cat !== categoryFilter) return false;
+        const cat = project.category || 'cat-dev';
+        const matches = cat === categoryFilter || cat === `cat-${categoryFilter}` || (categoryFilter === 'cat-dev' && cat === 'development');
+        if (!matches) return false;
       }
 
       return true;
     });
-  }, [projects, space, searchTerm, roleFilter, stageFilter, categoryFilter]);
+  }, [projects, space, searchTerm, roleFilter, stageFilter, categoryFilter, categories]);
 
   // Separar en Proyectos Activos vs Finalizados
   const activeFilteredProjects = useMemo(() => {
@@ -413,13 +433,13 @@ export function ProjectsView({
                     <span
                       className="project-meta-pill"
                       style={{
-                        background: getCategoryMeta(selectedProject.category).bg,
-                        color: getCategoryMeta(selectedProject.category).color,
-                        border: `1px solid ${getCategoryMeta(selectedProject.category).border}`,
+                        background: findCategoryMeta(selectedProject.category).bg,
+                        color: findCategoryMeta(selectedProject.category).color,
+                        border: `1px solid ${findCategoryMeta(selectedProject.category).border}`,
                         fontWeight: 600
                       }}
                     >
-                      {getCategoryMeta(selectedProject.category).icon} {getCategoryMeta(selectedProject.category).label}
+                      {findCategoryMeta(selectedProject.category).icon} {findCategoryMeta(selectedProject.category).label}
                     </span>
                   )}
                   <span className="project-meta-pill">
@@ -1113,6 +1133,16 @@ export function ProjectsView({
           </p>
         </div>
         <div className="projects-header-actions">
+          {onOpenCategoryManager && (currentUser?.role === 'owner' || currentUser?.role === 'admin') && (
+            <button
+              type="button"
+              className="ui-btn ui-btn--secondary"
+              onClick={onOpenCategoryManager}
+              title="CMS de Catálogos: Crear y editar tipologías de proyecto"
+            >
+              <span>⚙️ Tipologías CMS</span>
+            </button>
+          )}
           {onOpenImportExcel && (
             <button
               type="button"
@@ -1241,21 +1271,31 @@ export function ProjectsView({
           </select>
         </div>
 
-        {/* Selector de Tipo / Categoría */}
+        {/* Selector de Tipo / Categoría Dinámico */}
         <div className="projects-stage-filter">
           <select
             className="projects-stage-select"
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            aria-label="Filtrar por tipo de proyecto"
+            aria-label="Filtrar por tipología"
           >
-            <option value="all">Todos los tipos</option>
-            <option value="development">💻 Desarrollo TI</option>
-            <option value="implementation">⚙️ Implementación</option>
-            <option value="hybrid">🔀 Híbrido</option>
-            <option value="infrastructure">☁️ Infraestructura</option>
-            <option value="maintenance">🛠️ Soporte & Mant.</option>
-            <option value="other">📦 General / Otro</option>
+            <option value="all">Todas las tipologías</option>
+            {categories && categories.length > 0 ? (
+              categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
+              ))
+            ) : (
+              <>
+                <option value="cat-dev">💻 Desarrollo de Software</option>
+                <option value="cat-impl">⚙️ Implementación</option>
+                <option value="cat-hybrid">🔀 Híbrido</option>
+                <option value="cat-infra">☁️ Infraestructura</option>
+                <option value="cat-maintenance">🛠️ Soporte & Mant.</option>
+                <option value="cat-other">📦 General / Otro</option>
+              </>
+            )}
           </select>
         </div>
       </div>
@@ -1373,13 +1413,13 @@ export function ProjectsView({
                                   marginTop: '4px',
                                   fontSize: '11px',
                                   fontWeight: 500,
-                                  color: getCategoryMeta(project.category).color,
-                                  background: getCategoryMeta(project.category).bg,
-                                  border: `1px solid ${getCategoryMeta(project.category).border}`,
+                                  color: findCategoryMeta(project.category).color,
+                                  background: findCategoryMeta(project.category).bg,
+                                  border: `1px solid ${findCategoryMeta(project.category).border}`,
                                   padding: '1px 6px',
                                   borderRadius: '4px'
                                 }}>
-                                  {getCategoryMeta(project.category).icon} {getCategoryMeta(project.category).label}
+                                  {findCategoryMeta(project.category).icon} {findCategoryMeta(project.category).label}
                                 </span>
                               )}
                             </td>
@@ -1614,13 +1654,13 @@ export function ProjectsView({
                                   marginTop: '4px',
                                   fontSize: '11px',
                                   fontWeight: 500,
-                                  color: getCategoryMeta(project.category).color,
-                                  background: getCategoryMeta(project.category).bg,
-                                  border: `1px solid ${getCategoryMeta(project.category).border}`,
+                                  color: findCategoryMeta(project.category).color,
+                                  background: findCategoryMeta(project.category).bg,
+                                  border: `1px solid ${findCategoryMeta(project.category).border}`,
                                   padding: '1px 6px',
                                   borderRadius: '4px'
                                 }}>
-                                  {getCategoryMeta(project.category).icon} {getCategoryMeta(project.category).label}
+                                  {findCategoryMeta(project.category).icon} {findCategoryMeta(project.category).label}
                                 </span>
                               )}
                             </td>

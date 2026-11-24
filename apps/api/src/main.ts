@@ -3,7 +3,7 @@ import cors from 'cors';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension, type SessionRecord, type ProjectRequirement, type ProjectCategory } from './data/store';
+import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, getDefaultCategories, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension, type SessionRecord, type ProjectRequirement, type ProjectCategory, type ProjectCategoryConfig } from './data/store';
 
 const app = express();
 
@@ -135,14 +135,27 @@ const projectPhaseSchema = z.object({
   order: z.number().optional()
 });
 
-const projectCategorySchema = z.enum([
-  'development',
-  'implementation',
-  'hybrid',
-  'infrastructure',
-  'maintenance',
-  'other'
-]);
+const projectCategorySchema = z.string();
+
+const categoryCreateSchema = z.object({
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  icon: z.string().default('📁'),
+  color: z.string().default('#0284c7'),
+  bgColor: z.string().optional(),
+  description: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  isActive: z.boolean().default(true)
+});
+
+const categoryUpdateSchema = z.object({
+  name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
+  icon: z.string().optional(),
+  color: z.string().optional(),
+  bgColor: z.string().optional(),
+  description: z.string().optional(),
+  isDefault: z.boolean().optional(),
+  isActive: z.boolean().optional()
+});
 
 const requirementTypeSchema = z.enum([
   'functional',
@@ -1182,6 +1195,244 @@ app.post('/api/projects/:id/requirements/:reqId/convert-to-task', (req, res) => 
   writeDb(db);
 
   return res.status(201).json({ task: newTask, requirement: reqItem });
+});
+
+// ==========================================
+// CMS DE CATÁLOGOS: CATEGORÍAS DE PROYECTO
+// ==========================================
+
+function projectMatchesCategory(projectCategory: string | undefined, categoryId: string): boolean {
+  if (!projectCategory) return categoryId === 'cat-dev';
+  if (projectCategory === categoryId) return true;
+  const legacyMap: Record<string, string> = {
+    development: 'cat-dev',
+    implementation: 'cat-impl',
+    hybrid: 'cat-hybrid',
+    infrastructure: 'cat-infra',
+    maintenance: 'cat-maintenance',
+    other: 'cat-other'
+  };
+  return legacyMap[projectCategory] === categoryId;
+}
+
+// GET /api/categories
+app.get('/api/categories', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const categories = Array.isArray(db.projectCategories) && db.projectCategories.length > 0
+    ? db.projectCategories
+    : getDefaultCategories();
+
+  const items = categories.map((cat) => {
+    const associatedProjects = (db.projects || []).filter((p) => projectMatchesCategory(p.category, cat.id));
+    return {
+      ...cat,
+      projectCount: associatedProjects.length,
+      projectNames: associatedProjects.map((p) => p.name)
+    };
+  });
+
+  return res.json({ items });
+});
+
+// POST /api/categories
+app.post('/api/categories', (req, res) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  const parsed = categoryCreateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Datos de la categoría inválidos', errors: parsed.error.flatten() });
+  }
+
+  const db = readDb();
+  if (!Array.isArray(db.projectCategories)) {
+    db.projectCategories = getDefaultCategories();
+  }
+
+  const slug = parsed.data.name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+
+  let newId = `cat-${slug}`;
+  if (db.projectCategories.some((c) => c.id === newId)) {
+    newId = `cat-${slug}-${Date.now().toString(36)}`;
+  }
+
+  if (parsed.data.isDefault) {
+    db.projectCategories.forEach((c) => { c.isDefault = false; });
+  }
+
+  const newCategory: ProjectCategoryConfig = {
+    id: newId,
+    name: parsed.data.name.trim(),
+    icon: parsed.data.icon || '📁',
+    color: parsed.data.color || '#0284c7',
+    bgColor: parsed.data.bgColor || `${parsed.data.color || '#0284c7'}15`,
+    description: parsed.data.description?.trim() || '',
+    isDefault: Boolean(parsed.data.isDefault),
+    isActive: parsed.data.isActive !== false,
+    createdAt: new Date().toISOString()
+  };
+
+  db.projectCategories.push(newCategory);
+  writeDb(db);
+
+  return res.status(201).json(newCategory);
+});
+
+// PUT /api/categories/:id
+app.put('/api/categories/:id', (req, res) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  const parsed = categoryUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Datos inválidos', errors: parsed.error.flatten() });
+  }
+
+  const db = readDb();
+  if (!Array.isArray(db.projectCategories)) db.projectCategories = getDefaultCategories();
+
+  const catIndex = db.projectCategories.findIndex((c) => c.id === req.params.id);
+  if (catIndex === -1) {
+    return res.status(404).json({ message: 'Categoría no encontrada' });
+  }
+
+  if (parsed.data.isDefault) {
+    db.projectCategories.forEach((c) => { c.isDefault = false; });
+  }
+
+  const existing = db.projectCategories[catIndex];
+  const updated: ProjectCategoryConfig = {
+    ...existing,
+    ...(parsed.data.name !== undefined && { name: parsed.data.name.trim() }),
+    ...(parsed.data.icon !== undefined && { icon: parsed.data.icon }),
+    ...(parsed.data.color !== undefined && { color: parsed.data.color }),
+    ...(parsed.data.bgColor !== undefined && { bgColor: parsed.data.bgColor }),
+    ...(parsed.data.description !== undefined && { description: parsed.data.description.trim() }),
+    ...(parsed.data.isDefault !== undefined && { isDefault: parsed.data.isDefault }),
+    ...(parsed.data.isActive !== undefined && { isActive: parsed.data.isActive }),
+    updatedAt: new Date().toISOString()
+  };
+
+  db.projectCategories[catIndex] = updated;
+  writeDb(db);
+
+  return res.json(updated);
+});
+
+// DELETE /api/categories/:id (con regla estricta de no orfandad)
+app.delete('/api/categories/:id', (req, res) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  const db = readDb();
+  if (!Array.isArray(db.projectCategories)) db.projectCategories = getDefaultCategories();
+
+  const cat = db.projectCategories.find((c) => c.id === req.params.id);
+  if (!cat) {
+    return res.status(404).json({ message: 'Categoría no encontrada' });
+  }
+
+  // Comprobar proyectos asociados
+  const associatedProjects = (db.projects || []).filter((p) => projectMatchesCategory(p.category, req.params.id));
+  if (associatedProjects.length > 0) {
+    return res.status(409).json({
+      error: 'CATEGORY_IN_USE',
+      message: `No se puede eliminar la categoría "${cat.name}" porque está asignada a ${associatedProjects.length} proyecto(s). Debes reasignar los proyectos a otra categoría antes de eliminarla.`,
+      projectCount: associatedProjects.length,
+      projectNames: associatedProjects.map((p) => p.name)
+    });
+  }
+
+  db.projectCategories = db.projectCategories.filter((c) => c.id !== req.params.id);
+  writeDb(db);
+
+  return res.json({ ok: true, message: `Categoría "${cat.name}" eliminada con éxito` });
+});
+
+// POST /api/categories/:id/reassign-and-delete
+app.post('/api/categories/:id/reassign-and-delete', (req, res) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  const { targetCategoryId } = req.body;
+  if (!targetCategoryId || targetCategoryId === req.params.id) {
+    return res.status(400).json({ message: 'Debes seleccionar una categoría de destino diferente a la que vas a eliminar.' });
+  }
+
+  const db = readDb();
+  if (!Array.isArray(db.projectCategories)) db.projectCategories = getDefaultCategories();
+
+  const sourceCat = db.projectCategories.find((c) => c.id === req.params.id);
+  const targetCat = db.projectCategories.find((c) => c.id === targetCategoryId);
+
+  if (!sourceCat) return res.status(404).json({ message: 'Categoría origen no encontrada' });
+  if (!targetCat) return res.status(404).json({ message: 'Categoría destino no encontrada' });
+
+  let reassignedCount = 0;
+  db.projects = (db.projects || []).map((project) => {
+    if (projectMatchesCategory(project.category, req.params.id)) {
+      reassignedCount++;
+      return {
+        ...project,
+        category: targetCategoryId
+      };
+    }
+    return project;
+  });
+
+  db.projectCategories = db.projectCategories.filter((c) => c.id !== req.params.id);
+  writeDb(db);
+
+  return res.json({
+    ok: true,
+    reassignedCount,
+    message: `Se reasignaron ${reassignedCount} proyecto(s) a "${targetCat.name}" y se eliminó la categoría "${sourceCat.name}".`
+  });
+});
+
+// POST /api/categories/reassign-projects
+app.post('/api/categories/reassign-projects', (req, res) => {
+  const user = requireAdmin(req, res);
+  if (!user) return;
+
+  const { sourceCategoryId, targetCategoryId } = req.body;
+  if (!sourceCategoryId || !targetCategoryId || sourceCategoryId === targetCategoryId) {
+    return res.status(400).json({ message: 'Selecciona una categoría de origen y una de destino válidas y distintas.' });
+  }
+
+  const db = readDb();
+  if (!Array.isArray(db.projectCategories)) db.projectCategories = getDefaultCategories();
+
+  const targetCat = db.projectCategories.find((c) => c.id === targetCategoryId);
+  if (!targetCat) return res.status(404).json({ message: 'Categoría destino no encontrada' });
+
+  let reassignedCount = 0;
+  db.projects = (db.projects || []).map((project) => {
+    if (projectMatchesCategory(project.category, sourceCategoryId)) {
+      reassignedCount++;
+      return {
+        ...project,
+        category: targetCategoryId
+      };
+    }
+    return project;
+  });
+
+  writeDb(db);
+
+  return res.json({
+    ok: true,
+    reassignedCount,
+    message: `Se reasignaron ${reassignedCount} proyecto(s) a "${targetCat.name}".`
+  });
 });
 
 // ==========================================

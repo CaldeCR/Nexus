@@ -24,6 +24,7 @@ import { TaskDrawer } from './components/forms/TaskDrawer';
 import { AssigneeDropdownPicker } from './components/forms/AssigneeDropdownPicker';
 import { ImportExcelModal } from './components/forms/ImportExcelModal';
 import { UserProfileModal } from './components/forms/UserProfileModal';
+import { CategoryManagerModal } from './components/admin/CategoryManagerModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4001/api';
 
@@ -895,11 +896,30 @@ function App() {
     }
   };
 
+  const [categories, setCategories] = useState([]);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
+
+  const fetchCategories = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/categories`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCategories(data.items || []);
+      }
+    } catch (err) {
+      console.error('Error al conectar con la API de categorías:', err);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchProjects();
       fetchWorkItems();
       fetchDirectory();
+      fetchCategories();
     }
   }, [token]);
 
@@ -2789,6 +2809,7 @@ function App() {
       user={session}
       onLogout={logout}
       onOpenProfileModal={() => setIsProfileModalOpen(true)}
+      onOpenCategoryManager={() => setIsCategoryModalOpen(true)}
       onFabClick={() => {
         if (activeView === 'portfolio') {
           setIsNewProjectModalOpen(true);
@@ -2962,6 +2983,8 @@ function App() {
               onOpenImportExcel={openImportExcelModal}
               onRefreshProjects={fetchProjects}
               onRefreshWorkItems={fetchWorkItems}
+              categories={categories}
+              onOpenCategoryManager={() => setIsCategoryModalOpen(true)}
             />
           )}
 
@@ -3067,6 +3090,7 @@ function App() {
         onSubmit={handleCreateProject}
         currentUser={session}
         teamDirectory={teamDirectory}
+        categories={categories}
       />
 
       {/* 520px DRAWER: NUEVA TAREA (§7.7) */}
@@ -3101,6 +3125,17 @@ function App() {
         onUpdateProfile={(updatedUser) => {
           saveSession(updatedUser, token);
           setSuccess('Perfil actualizado correctamente');
+        }}
+      />
+
+      {/* MODAL: CMS DE CATÁLOGOS Y TIPOLOGÍAS */}
+      <CategoryManagerModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        currentUser={session}
+        onCategoriesChanged={() => {
+          fetchCategories();
+          fetchProjects();
         }}
       />
 
@@ -4041,6 +4076,7 @@ function App() {
         isEdit={true}
         currentUser={session}
         teamDirectory={teamDirectory}
+        categories={categories}
       />
 
       {/* MODAL: GESTIÓN DE EQUIPO, ADMINISTRADORES, COLABORADORES Y TERCEROS */}

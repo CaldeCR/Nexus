@@ -9,13 +9,38 @@ export function ProjectDrawer({
   initialData = null,
   isEdit = false,
   currentUser = null,
-  teamDirectory = []
+  teamDirectory = [],
+  categories = []
 }) {
+  const normalizeCatId = (cat) => {
+    if (!cat) return 'cat-dev';
+    const map = {
+      development: 'cat-dev',
+      implementation: 'cat-impl',
+      hybrid: 'cat-hybrid',
+      infrastructure: 'cat-infra',
+      maintenance: 'cat-maintenance',
+      other: 'cat-other'
+    };
+    return map[cat] || cat;
+  };
+
+  const defaultCategoryList = [
+    { id: 'cat-dev', name: 'Desarrollo de Software', icon: '💻' },
+    { id: 'cat-impl', name: 'Implementación / Configuración', icon: '⚙️' },
+    { id: 'cat-hybrid', name: 'Híbrido (Desarrollo + Implementación)', icon: '🔀' },
+    { id: 'cat-infra', name: 'Infraestructura & Cloud', icon: '☁️' },
+    { id: 'cat-maintenance', name: 'Soporte & Mantenimiento', icon: '🛠️' },
+    { id: 'cat-other', name: 'General / Otro', icon: '📦' }
+  ];
+
+  const availableCategories = (categories && categories.length > 0) ? categories : defaultCategoryList;
+
   const [formData, setFormData] = useState({
     name: '',
     space: 'work',
     template: 'kanban',
-    category: 'development',
+    category: 'cat-dev',
     targetDate: '',
     startDate: new Date().toISOString().split('T')[0],
     description: '',
@@ -35,7 +60,7 @@ export function ProjectDrawer({
         name: initialData.name || '',
         space: initialData.space || 'work',
         template: initialData.template || 'kanban',
-        category: initialData.category || 'development',
+        category: normalizeCatId(initialData.category),
         targetDate: initialData.targetDate || '',
         startDate: initialData.startDate || new Date().toISOString().split('T')[0],
         description: initialData.description || '',
@@ -47,11 +72,12 @@ export function ProjectDrawer({
         phases: Array.isArray(initialData.phases) ? initialData.phases : []
       });
     } else {
+      const defCat = availableCategories.find((c) => c.isDefault)?.id || 'cat-dev';
       setFormData({
         name: '',
         space: 'work',
         template: 'kanban',
-        category: 'development',
+        category: defCat,
         targetDate: '',
         startDate: new Date().toISOString().split('T')[0],
         description: '',
@@ -63,7 +89,7 @@ export function ProjectDrawer({
         phases: []
       });
     }
-  }, [initialData, isOpen, currentUser]);
+  }, [initialData, isOpen, currentUser, categories]);
 
   useEffect(() => {
     if (isOpen) {
@@ -210,15 +236,14 @@ export function ProjectDrawer({
             <select
               id="proj-category"
               className="ui-drawer-select"
-              value={formData.category || 'development'}
+              value={formData.category || 'cat-dev'}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
             >
-              <option value="development">💻 Desarrollo de Software (Apps, APIs, Código)</option>
-              <option value="implementation">⚙️ Implementación / Configuración (ERP, SaaS, Herramientas)</option>
-              <option value="hybrid">🔀 Híbrido (Desarrollo + Implementación)</option>
-              <option value="infrastructure">☁️ Infraestructura & Cloud (Servidores, Redes, Migración)</option>
-              <option value="maintenance">🛠️ Soporte & Mantenimiento</option>
-              <option value="other">📦 Otro</option>
+              {availableCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
+              ))}
             </select>
           </div>
 

@@ -14,7 +14,8 @@ export function Rail({
   onToggleTheme,
   user,
   onLogout,
-  onOpenProfileModal
+  onOpenProfileModal,
+  onOpenCategoryManager
 }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const userBtnRef = React.useRef(null);
@@ -298,6 +299,22 @@ export function Rail({
                   <NavIcons.Users size={15} />
                   <span>Mi Perfil y Roles</span>
                 </button>
+
+                {(user?.role === 'owner' || user?.role === 'admin') && onOpenCategoryManager && (
+                  <button
+                    type="button"
+                    className="mobile-drawer-footer-btn"
+                    onClick={() => {
+                      setAccountMenuOpen(false);
+                      onOpenCategoryManager();
+                    }}
+                    style={{ fontSize: 'var(--text-xs)', padding: '8px 10px', width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontWeight: 600, background: '#f0f9ff' }}
+                    title="CMS de Catálogos y Tipologías de Proyecto"
+                  >
+                    <span>⚙️</span>
+                    <span>CMS de Catálogos</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
