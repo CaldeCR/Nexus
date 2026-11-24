@@ -1408,6 +1408,7 @@ function App() {
       name: project.name || '',
       description: project.description || '',
       template: project.template || 'kanban',
+      category: project.category || 'development',
       status: project.status || 'execution',
       role: project.role || 'lead',
       startDate: project.startDate || project.effectiveStartDate || '',
@@ -2959,6 +2960,8 @@ function App() {
               onDeleteMeeting={handleDeleteMeeting}
               onCreateTaskFromAction={handleCreateTaskFromMeetingAction}
               onOpenImportExcel={openImportExcelModal}
+              onRefreshProjects={fetchProjects}
+              onRefreshWorkItems={fetchWorkItems}
             />
           )}
 

@@ -23,7 +23,8 @@ export function TaskDrawer({
     type: 'task',
     priority: 'medium',
     description: '',
-    phaseIds: []
+    phaseIds: [],
+    requirementId: undefined
   });
 
   const firstInputRef = useRef(null);
@@ -42,7 +43,8 @@ export function TaskDrawer({
         type: initialData.type || 'task',
         priority: initialData.priority || 'medium',
         description: initialData.description || '',
-        phaseIds: Array.isArray(initialData.phaseIds) ? initialData.phaseIds : []
+        phaseIds: Array.isArray(initialData.phaseIds) ? initialData.phaseIds : [],
+        requirementId: initialData.requirementId
       });
     } else {
       setFormData({
@@ -55,7 +57,8 @@ export function TaskDrawer({
         type: 'task',
         priority: 'medium',
         description: '',
-        phaseIds: []
+        phaseIds: [],
+        requirementId: undefined
       });
     }
   }, [initialData, isOpen, selectedProjectId, projects, currentUser]);
@@ -133,6 +136,25 @@ export function TaskDrawer({
           <div className="ui-drawer-notice">
             <span>Completa los <strong>4 campos obligatorios</strong> para registrar la tarea.</span>
           </div>
+
+          {formData.requirementId && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              background: 'rgba(42, 111, 98, 0.08)',
+              border: '1px solid rgba(42, 111, 98, 0.25)',
+              borderRadius: '6px',
+              color: '#2A6F62',
+              fontSize: '12px',
+              fontWeight: 500,
+              marginBottom: '14px'
+            }}>
+              <span>🎯</span>
+              <span>Esta tarea se creará vinculada al requerimiento del proyecto.</span>
+            </div>
+          )}
 
           {/* 1. Título */}
           <div className="ui-drawer-field">

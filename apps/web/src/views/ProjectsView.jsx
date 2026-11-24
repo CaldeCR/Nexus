@@ -7,6 +7,20 @@ import { KpiStrip } from '../components/ui/KpiStrip';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Icons, NavIcons } from '../components/ui';
 import { ProjectMeetingsTab } from '../components/meetings/ProjectMeetingsTab';
+import { ProjectRequirementsTab } from '../components/requirements/ProjectRequirementsTab';
+
+export const PROJECT_CATEGORIES = {
+  development: { label: 'Desarrollo TI', icon: '💻', color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' },
+  implementation: { label: 'Implementación', icon: '⚙️', color: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe' },
+  hybrid: { label: 'Híbrido', icon: '🔀', color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
+  infrastructure: { label: 'Infraestructura', icon: '☁️', color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' },
+  maintenance: { label: 'Mantenimiento', icon: '🛠️', color: '#b45309', bg: '#fffbeb', border: '#fde68a' },
+  other: { label: 'General', icon: '📦', color: '#475569', bg: '#f8fafc', border: '#e2e8f0' }
+};
+
+export const getCategoryMeta = (cat) => {
+  return PROJECT_CATEGORIES[cat] || PROJECT_CATEGORIES.development;
+};
 
 export function ProjectsView({
   projects = [],
@@ -37,7 +51,9 @@ export function ProjectsView({
   onUpdateMeeting,
   onDeleteMeeting,
   onCreateTaskFromAction,
-  onOpenImportExcel
+  onOpenImportExcel,
+  onRefreshProjects,
+  onRefreshWorkItems
 }) {
   const bp = useBreakpoint();
   const isMobile = bp === 'mobile';
@@ -45,9 +61,10 @@ export function ProjectsView({
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all'); // 'all' | 'lead' | 'collaborator'
   const [stageFilter, setStageFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [openMenuProjectId, setOpenMenuProjectId] = useState(null);
   const [taskFilter, setTaskFilter] = useState('all'); // 'all' | 'pending' | 'in_progress' | 'done'
-  const [activeDetailTab, setActiveDetailTab] = useState('tasks'); // 'tasks' | 'meetings'
+  const [activeDetailTab, setActiveDetailTab] = useState('tasks'); // 'tasks' | 'requirements' | 'meetings'
   const [activeSectionOpen, setActiveSectionOpen] = useState(true);
   const [finalizedSectionOpen, setFinalizedSectionOpen] = useState(false);
 
@@ -157,9 +174,15 @@ export function ProjectsView({
         if (project.status !== stageFilter) return false;
       }
 
+      // Category filter
+      if (categoryFilter !== 'all') {
+        const cat = project.category || 'development';
+        if (cat !== categoryFilter) return false;
+      }
+
       return true;
     });
-  }, [projects, space, searchTerm, roleFilter, stageFilter]);
+  }, [projects, space, searchTerm, roleFilter, stageFilter, categoryFilter]);
 
   // Separar en Proyectos Activos vs Finalizados
   const activeFilteredProjects = useMemo(() => {
@@ -386,6 +409,19 @@ export function ProjectsView({
                   <span className="project-meta-pill is-primary">
                     {getSpaceLabel(selectedProject)}
                   </span>
+                  {selectedProject.category && (
+                    <span
+                      className="project-meta-pill"
+                      style={{
+                        background: getCategoryMeta(selectedProject.category).bg,
+                        color: getCategoryMeta(selectedProject.category).color,
+                        border: `1px solid ${getCategoryMeta(selectedProject.category).border}`,
+                        fontWeight: 600
+                      }}
+                    >
+                      {getCategoryMeta(selectedProject.category).icon} {getCategoryMeta(selectedProject.category).label}
+                    </span>
+                  )}
                   <span className="project-meta-pill">
                     {selectedProject.role === 'lead' ? 'Soy encargado' : 'Colaborador'}
                   </span>
@@ -558,7 +594,7 @@ export function ProjectsView({
           )}
         </div>
 
-        {/* Pestañas Principales: Tareas Asignadas vs Bitácora de Reuniones & Acuerdos */}
+        {/* Pestañas Principales: Tareas Asignadas vs Requerimientos vs Bitácora de Reuniones & Acuerdos */}
         <div className="project-detail-main-tabs" role="tablist" aria-label="Secciones del proyecto">
           <button
             type="button"
@@ -568,6 +604,15 @@ export function ProjectsView({
           >
             <span>📋 Tareas Asignadas</span>
             <span className="project-tab-counter">({projectTasks.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`project-main-tab-btn ${activeDetailTab === 'requirements' ? 'is-active' : ''}`}
+            onClick={() => setActiveDetailTab('requirements')}
+            id="tab-project-requirements"
+          >
+            <span>🎯 Requerimientos</span>
+            <span className="project-tab-counter">({(selectedProject.requirements || []).length})</span>
           </button>
           <button
             type="button"
@@ -726,6 +771,29 @@ export function ProjectsView({
                         </span>
                       )}
 
+                      {task.requirementId && (
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDetailTab('requirements');
+                          }}
+                          style={{
+                            fontSize: '10px',
+                            fontWeight: 700,
+                            color: '#0284C7',
+                            background: '#F0F9FF',
+                            border: '1px solid #BAE6FD',
+                            borderRadius: '4px',
+                            padding: '1px 5px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap'
+                          }}
+                          title="Tarea derivada de requerimiento. Clic para ver requerimientos."
+                        >
+                          🎯 REQ
+                        </span>
+                      )}
+
                       {/* Título y descripción */}
                       <div
                         className="project-task-title-wrap"
@@ -793,6 +861,16 @@ export function ProjectsView({
               </div>
             )}
           </div>
+        ) : activeDetailTab === 'requirements' ? (
+          <ProjectRequirementsTab
+            project={selectedProject}
+            workItems={workItems}
+            todayStr={todayStr}
+            currentUser={currentUser}
+            onOpenNewTask={onOpenNewTask}
+            onRefreshProjects={onRefreshProjects}
+            onRefreshWorkItems={onRefreshWorkItems}
+          />
         ) : (
           <ProjectMeetingsTab
             project={selectedProject}
@@ -1162,6 +1240,24 @@ export function ProjectsView({
             <option value="discarded">Descartado</option>
           </select>
         </div>
+
+        {/* Selector de Tipo / Categoría */}
+        <div className="projects-stage-filter">
+          <select
+            className="projects-stage-select"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            aria-label="Filtrar por tipo de proyecto"
+          >
+            <option value="all">Todos los tipos</option>
+            <option value="development">💻 Desarrollo TI</option>
+            <option value="implementation">⚙️ Implementación</option>
+            <option value="hybrid">🔀 Híbrido</option>
+            <option value="infrastructure">☁️ Infraestructura</option>
+            <option value="maintenance">🛠️ Soporte & Mant.</option>
+            <option value="other">📦 General / Otro</option>
+          </select>
+        </div>
       </div>
 
       {/* 4. Tabla Moderna Organizada en Pestañas/Secciones (§7.1) */}
@@ -1269,6 +1365,23 @@ export function ProjectsView({
                               <span className="projects-space-tag">
                                 {getSpaceLabel(project)}
                               </span>
+                              {project.category && (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  marginTop: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  color: getCategoryMeta(project.category).color,
+                                  background: getCategoryMeta(project.category).bg,
+                                  border: `1px solid ${getCategoryMeta(project.category).border}`,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px'
+                                }}>
+                                  {getCategoryMeta(project.category).icon} {getCategoryMeta(project.category).label}
+                                </span>
+                              )}
                             </td>
 
                             {/* 3. Estado */}
@@ -1493,6 +1606,23 @@ export function ProjectsView({
                               <span className="projects-space-tag">
                                 {getSpaceLabel(project)}
                               </span>
+                              {project.category && (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  marginTop: '4px',
+                                  fontSize: '11px',
+                                  fontWeight: 500,
+                                  color: getCategoryMeta(project.category).color,
+                                  background: getCategoryMeta(project.category).bg,
+                                  border: `1px solid ${getCategoryMeta(project.category).border}`,
+                                  padding: '1px 6px',
+                                  borderRadius: '4px'
+                                }}>
+                                  {getCategoryMeta(project.category).icon} {getCategoryMeta(project.category).label}
+                                </span>
+                              )}
                             </td>
 
                             <td className="projects-cell-status">

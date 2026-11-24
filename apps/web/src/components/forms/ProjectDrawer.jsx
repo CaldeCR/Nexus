@@ -15,6 +15,7 @@ export function ProjectDrawer({
     name: '',
     space: 'work',
     template: 'kanban',
+    category: 'development',
     targetDate: '',
     startDate: new Date().toISOString().split('T')[0],
     description: '',
@@ -34,6 +35,7 @@ export function ProjectDrawer({
         name: initialData.name || '',
         space: initialData.space || 'work',
         template: initialData.template || 'kanban',
+        category: initialData.category || 'development',
         targetDate: initialData.targetDate || '',
         startDate: initialData.startDate || new Date().toISOString().split('T')[0],
         description: initialData.description || '',
@@ -49,6 +51,7 @@ export function ProjectDrawer({
         name: '',
         space: 'work',
         template: 'kanban',
+        category: 'development',
         targetDate: '',
         startDate: new Date().toISOString().split('T')[0],
         description: '',
@@ -196,6 +199,26 @@ export function ProjectDrawer({
               <option value="scrum">Scrum (Sprints ágiles)</option>
               <option value="pmi">PMI (Predictivo / Tradicional)</option>
               <option value="custom">Personalizada</option>
+            </select>
+          </div>
+
+          {/* Naturaleza / Tipología de Proyecto */}
+          <div className="ui-drawer-field">
+            <label className="ui-drawer-label" htmlFor="proj-category">
+              Naturaleza / Tipo de Proyecto
+            </label>
+            <select
+              id="proj-category"
+              className="ui-drawer-select"
+              value={formData.category || 'development'}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            >
+              <option value="development">💻 Desarrollo de Software (Apps, APIs, Código)</option>
+              <option value="implementation">⚙️ Implementación / Configuración (ERP, SaaS, Herramientas)</option>
+              <option value="hybrid">🔀 Híbrido (Desarrollo + Implementación)</option>
+              <option value="infrastructure">☁️ Infraestructura & Cloud (Servidores, Redes, Migración)</option>
+              <option value="maintenance">🛠️ Soporte & Mantenimiento</option>
+              <option value="other">📦 Otro</option>
             </select>
           </div>
 

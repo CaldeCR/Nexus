@@ -3,7 +3,7 @@ import cors from 'cors';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import { randomBytes } from 'crypto';
-import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension, type SessionRecord } from './data/store';
+import { readDb, writeDb, syncProjectMembers, getNextProjectCode, getNextWorkItemCode, type User, type Project, type WorkItem, type ProjectMember, type GlobalMember, type GlobalMemberRole, type DateExtension, type SessionRecord, type ProjectRequirement, type ProjectCategory } from './data/store';
 
 const app = express();
 
@@ -135,11 +135,55 @@ const projectPhaseSchema = z.object({
   order: z.number().optional()
 });
 
+const projectCategorySchema = z.enum([
+  'development',
+  'implementation',
+  'hybrid',
+  'infrastructure',
+  'maintenance',
+  'other'
+]);
+
+const requirementTypeSchema = z.enum([
+  'functional',
+  'technical',
+  'security',
+  'integration',
+  'regulatory',
+  'other'
+]);
+
+const requirementPrioritySchema = z.enum(['critical', 'high', 'medium', 'low']);
+
+const requirementStatusSchema = z.enum([
+  'proposed',
+  'approved',
+  'in_development',
+  'completed',
+  'discarded'
+]);
+
+const projectRequirementSchema = z.object({
+  id: z.string().optional(),
+  code: z.string().optional(),
+  projectId: z.string().min(1),
+  title: z.string().min(2),
+  description: z.string().optional(),
+  type: requirementTypeSchema.default('functional'),
+  priority: requirementPrioritySchema.default('medium'),
+  status: requirementStatusSchema.default('proposed'),
+  source: z.string().optional(),
+  linkedTaskIds: z.array(z.string()).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional()
+});
+
 const projectSchema = z.object({
   code: z.string().optional(),
   name: z.string().min(2),
   description: z.string().optional(),
   template: z.enum(['kanban', 'scrum', 'pmi', 'custom']),
+  category: projectCategorySchema.optional(),
   status: z.enum(['preproject', 'review', 'execution', 'completed', 'discarded']).default('preproject'),
   role: z.enum(['lead', 'collaborator']).default('lead'),
   space: z.enum(['work', 'personal']).default('work'),
@@ -151,7 +195,8 @@ const projectSchema = z.object({
   targetDate: z.string().optional(),
   originalTargetDate: z.string().optional(),
   hasPhases: z.boolean().optional(),
-  phases: z.array(projectPhaseSchema).optional()
+  phases: z.array(projectPhaseSchema).optional(),
+  requirements: z.array(projectRequirementSchema).optional()
 });
 
 const projectStatusSchema = z.object({
@@ -187,7 +232,8 @@ const workItemSchema = z.object({
   closedAt: z.string().optional(),
   closedBy: z.string().optional(),
   progressLogs: z.array(taskProgressEntrySchema).optional(),
-  phaseIds: z.array(z.string()).optional()
+  phaseIds: z.array(z.string()).optional(),
+  requirementId: z.string().optional()
 });
 
 const workItemUpdateSchema = z.object({
@@ -212,7 +258,8 @@ const workItemUpdateSchema = z.object({
   closedAt: z.string().optional(),
   closedBy: z.string().optional(),
   progressLogs: z.array(taskProgressEntrySchema).optional(),
-  phaseIds: z.array(z.string()).optional()
+  phaseIds: z.array(z.string()).optional(),
+  requirementId: z.string().optional()
 });
 
 const workItemStatusSchema = z.object({
@@ -623,6 +670,7 @@ app.post('/api/projects', (req, res) => {
     name: parsed.data.name,
     description: parsed.data.description,
     template: parsed.data.template,
+    category: parsed.data.category || 'development',
     status: parsed.data.status,
     role: parsed.data.role,
     space: parsed.data.space || 'work',
@@ -642,7 +690,8 @@ app.post('/api/projects', (req, res) => {
     originalTargetDate: parsed.data.originalTargetDate || parsed.data.targetDate,
     dateExtensions: [],
     hasPhases: Boolean(parsed.data.hasPhases),
-    phases: Array.isArray(parsed.data.phases) ? parsed.data.phases : undefined
+    phases: Array.isArray(parsed.data.phases) ? parsed.data.phases : undefined,
+    requirements: []
   };
 
   newProject = syncProjectMembers(newProject);
@@ -681,6 +730,7 @@ app.put('/api/projects/:id', (req, res) => {
     ...(req.body.space !== undefined && { space: req.body.space }),
     ...(req.body.organization !== undefined && { organization: req.body.organization }),
     ...(req.body.template && { template: req.body.template }),
+    ...(req.body.category !== undefined && { category: req.body.category }),
     ...(canEditAdmins && req.body.admins !== undefined && { admins: req.body.admins }),
     ...(req.body.members !== undefined && { members: req.body.members }),
     ...(Array.isArray(req.body.teamMembers) && {
@@ -696,7 +746,8 @@ app.put('/api/projects/:id', (req, res) => {
     ...(req.body.originalTargetDate !== undefined && { originalTargetDate: req.body.originalTargetDate }),
     ...(Array.isArray(req.body.dateExtensions) && { dateExtensions: req.body.dateExtensions }),
     ...(req.body.hasPhases !== undefined && { hasPhases: Boolean(req.body.hasPhases) }),
-    ...(Array.isArray(req.body.phases) && { phases: req.body.phases })
+    ...(Array.isArray(req.body.phases) && { phases: req.body.phases }),
+    ...(Array.isArray(req.body.requirements) && { requirements: req.body.requirements })
   };
 
   updated = syncProjectMembers(updated);
@@ -932,6 +983,205 @@ app.delete('/api/projects/:id/members/:memberId', (req, res) => {
   writeDb(db);
 
   return res.json({ ok: true, deletedMemberId: req.params.memberId, project });
+});
+
+// ==========================================
+// REQUERIMIENTOS DE PROYECTO
+// ==========================================
+
+// GET /api/projects/:id/requirements
+app.get('/api/projects/:id/requirements', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const project = db.projects.find((p) => p.id === req.params.id);
+  if (!project) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  if (!canAccessProject(user, project)) {
+    return res.status(403).json({ message: 'Acceso denegado' });
+  }
+
+  return res.json({ items: project.requirements || [] });
+});
+
+// POST /api/projects/:id/requirements
+app.post('/api/projects/:id/requirements', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'No tienes permisos para modificar este proyecto' });
+  }
+
+  const parsed = projectRequirementSchema.safeParse({ ...req.body, projectId: req.params.id });
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Datos del requerimiento inválidos', errors: parsed.error.flatten() });
+  }
+
+  if (!Array.isArray(project.requirements)) {
+    project.requirements = [];
+  }
+
+  const count = project.requirements.length + 1;
+  const code = parsed.data.code || `REQ-${String(count).padStart(2, '0')}`;
+
+  const newRequirement: ProjectRequirement = {
+    id: `req-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    code,
+    projectId: project.id,
+    title: parsed.data.title,
+    description: parsed.data.description || '',
+    type: parsed.data.type || 'functional',
+    priority: parsed.data.priority || 'medium',
+    status: parsed.data.status || 'proposed',
+    source: parsed.data.source || '',
+    linkedTaskIds: parsed.data.linkedTaskIds || [],
+    createdAt: new Date().toISOString()
+  };
+
+  project.requirements.unshift(newRequirement);
+  db.projects[projectIndex] = project;
+  writeDb(db);
+
+  return res.status(201).json(newRequirement);
+});
+
+// PUT /api/projects/:id/requirements/:reqId
+app.put('/api/projects/:id/requirements/:reqId', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'No tienes permisos para modificar este proyecto' });
+  }
+
+  if (!Array.isArray(project.requirements)) {
+    return res.status(404).json({ message: 'Requerimiento no encontrado' });
+  }
+
+  const reqIndex = project.requirements.findIndex((r) => r.id === req.params.reqId);
+  if (reqIndex === -1) {
+    return res.status(404).json({ message: 'Requerimiento no encontrado' });
+  }
+
+  const existingReq = project.requirements[reqIndex];
+  const updatedReq: ProjectRequirement = {
+    ...existingReq,
+    ...(req.body.title !== undefined && { title: req.body.title }),
+    ...(req.body.description !== undefined && { description: req.body.description }),
+    ...(req.body.type !== undefined && { type: req.body.type }),
+    ...(req.body.priority !== undefined && { priority: req.body.priority }),
+    ...(req.body.status !== undefined && { status: req.body.status }),
+    ...(req.body.source !== undefined && { source: req.body.source }),
+    ...(Array.isArray(req.body.linkedTaskIds) && { linkedTaskIds: req.body.linkedTaskIds }),
+    updatedAt: new Date().toISOString()
+  };
+
+  project.requirements[reqIndex] = updatedReq;
+  db.projects[projectIndex] = project;
+  writeDb(db);
+
+  return res.json(updatedReq);
+});
+
+// DELETE /api/projects/:id/requirements/:reqId
+app.delete('/api/projects/:id/requirements/:reqId', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'No tienes permisos para modificar este proyecto' });
+  }
+
+  if (!Array.isArray(project.requirements)) {
+    return res.status(404).json({ message: 'Requerimiento no encontrado' });
+  }
+
+  const initialLen = project.requirements.length;
+  project.requirements = project.requirements.filter((r) => r.id !== req.params.reqId);
+  if (project.requirements.length === initialLen) {
+    return res.status(404).json({ message: 'Requerimiento no encontrado' });
+  }
+
+  db.projects[projectIndex] = project;
+  writeDb(db);
+
+  return res.json({ ok: true, message: 'Requerimiento eliminado con éxito' });
+});
+
+// POST /api/projects/:id/requirements/:reqId/convert-to-task
+app.post('/api/projects/:id/requirements/:reqId/convert-to-task', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'No tienes permisos para modificar este proyecto' });
+  }
+
+  if (!Array.isArray(project.requirements)) project.requirements = [];
+  const reqItem = project.requirements.find((r) => r.id === req.params.reqId);
+  if (!reqItem) return res.status(404).json({ message: 'Requerimiento no encontrado' });
+
+  const projCode = project.code || 'P1';
+  const workItems = Array.isArray(db.workItems) ? db.workItems : [];
+  const taskCode = getNextWorkItemCode(workItems, projCode);
+
+  const priorityMap: Record<string, 'low' | 'medium' | 'high'> = {
+    critical: 'high',
+    high: 'high',
+    medium: 'medium',
+    low: 'low'
+  };
+
+  const newTask: WorkItem = {
+    id: `wi-${Date.now()}`,
+    code: taskCode,
+    projectId: project.id,
+    title: req.body.title || reqItem.title,
+    description: req.body.description || (reqItem.description ? `[${reqItem.code}] ${reqItem.description}` : `Derivada del requerimiento ${reqItem.code}`),
+    type: req.body.type || 'task',
+    status: 'backlog',
+    priority: req.body.priority || priorityMap[reqItem.priority] || 'medium',
+    assignee: req.body.assignee || user.name || 'Jorge',
+    assignees: req.body.assignees || [user.name || 'Jorge'],
+    assigneeType: 'me',
+    dueDate: req.body.dueDate || project.targetDate || '',
+    createdAt: new Date().toISOString(),
+    progressLogs: [],
+    requirementId: reqItem.id,
+    phaseIds: req.body.phaseIds || []
+  };
+
+  workItems.unshift(newTask);
+  db.workItems = workItems;
+
+  if (!Array.isArray(reqItem.linkedTaskIds)) reqItem.linkedTaskIds = [];
+  reqItem.linkedTaskIds.push(newTask.id);
+  if (reqItem.status === 'proposed' || reqItem.status === 'approved') {
+    reqItem.status = 'in_development';
+  }
+  reqItem.updatedAt = new Date().toISOString();
+
+  db.projects[projectIndex] = project;
+  writeDb(db);
+
+  return res.status(201).json({ task: newTask, requirement: reqItem });
 });
 
 // ==========================================
@@ -1378,11 +1628,28 @@ app.post('/api/work-items', (req, res) => {
     continuationTaskId: parsed.data.continuationTaskId,
     completedAt: parsed.data.completedAt || (parsed.data.status === 'done' ? new Date().toISOString() : undefined),
     progressLogs: parsed.data.progressLogs || [],
-    phaseIds: Array.isArray(parsed.data.phaseIds) ? parsed.data.phaseIds : []
+    phaseIds: Array.isArray(parsed.data.phaseIds) ? parsed.data.phaseIds : [],
+    requirementId: parsed.data.requirementId
   };
 
   workItems.unshift(newItem);
   db.workItems = workItems;
+
+  if (parsed.data.requirementId && targetProject) {
+    if (!Array.isArray(targetProject.requirements)) targetProject.requirements = [];
+    const reqItem = targetProject.requirements.find((r) => r.id === parsed.data.requirementId);
+    if (reqItem) {
+      if (!Array.isArray(reqItem.linkedTaskIds)) reqItem.linkedTaskIds = [];
+      if (!reqItem.linkedTaskIds.includes(newItem.id)) {
+        reqItem.linkedTaskIds.push(newItem.id);
+      }
+      if (reqItem.status === 'proposed' || reqItem.status === 'approved') {
+        reqItem.status = 'in_development';
+      }
+      reqItem.updatedAt = new Date().toISOString();
+    }
+  }
+
   writeDb(db);
   return res.status(201).json(newItem);
 });

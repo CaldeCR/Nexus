@@ -47,12 +47,53 @@ export type ProjectPhase = {
   order?: number;
 };
 
+export type ProjectCategory =
+  | 'development'
+  | 'implementation'
+  | 'hybrid'
+  | 'infrastructure'
+  | 'maintenance'
+  | 'other';
+
+export type RequirementType =
+  | 'functional'
+  | 'technical'
+  | 'security'
+  | 'integration'
+  | 'regulatory'
+  | 'other';
+
+export type RequirementPriority = 'critical' | 'high' | 'medium' | 'low';
+
+export type RequirementStatus =
+  | 'proposed'
+  | 'approved'
+  | 'in_development'
+  | 'completed'
+  | 'discarded';
+
+export type ProjectRequirement = {
+  id: string;
+  code: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  type: RequirementType;
+  priority: RequirementPriority;
+  status: RequirementStatus;
+  source?: string;
+  linkedTaskIds?: string[];
+  createdAt: string;
+  updatedAt?: string;
+};
+
 export type Project = {
   id: string;
   code?: string;
   name: string;
   description?: string;
   template: 'kanban' | 'scrum' | 'pmi' | 'custom';
+  category?: ProjectCategory;
   status: 'preproject' | 'review' | 'execution' | 'completed' | 'discarded';
   role: 'lead' | 'collaborator';
   admins?: string[];
@@ -66,6 +107,7 @@ export type Project = {
   organization?: string;
   hasPhases?: boolean;
   phases?: ProjectPhase[];
+  requirements?: ProjectRequirement[];
 };
 
 export type TaskProgressEntry = {
@@ -100,6 +142,7 @@ export type WorkItem = {
   completedAt?: string;
   progressLogs?: TaskProgressEntry[];
   phaseIds?: string[];
+  requirementId?: string;
 };
 
 export type GlobalMemberRole = 'admin' | 'collaborator' | 'vendor' | 'viewer';
