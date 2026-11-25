@@ -3987,7 +3987,7 @@ function App() {
 
       {/* MODAL: CONFIRMAR ELIMINACIÓN DE TAREA */}
       {taskToDelete && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
           <div className="modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 style={{ color: 'var(--danger-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4028,7 +4028,7 @@ function App() {
 
       {/* MODAL: CONFIRMACIÓN DE ELIMINACIÓN DE PROYECTO */}
       {projectToDelete && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
           <div className="modal-card" style={{ maxWidth: '440px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3 style={{ color: 'var(--danger-600)', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4675,7 +4675,7 @@ function App() {
 
       {/* MODAL: CONFIRMAR ELIMINACIÓN (SIN TAREAS) */}
       {directoryMemberToDelete && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -4717,7 +4717,7 @@ function App() {
 
       {/* MODAL: BLOQUEO DE ELIMINACIÓN POR ASOCIACIÓN A TAREA */}
       {deletionBlockModal && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" style={{ zIndex: 1300 }}>
           <div className="modal-card modal-card--warning" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#f87171' }}>
