@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Icons } from '../layout/NavIcons';
 
 export const REQUIREMENT_TYPES = {
@@ -23,6 +24,41 @@ export const REQUIREMENT_STATUSES = {
   in_development: { label: 'En Desarrollo', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
   completed: { label: 'Cumplido', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   discarded: { label: 'Descartado', color: '#94a3b8', bg: '#f8fafc', border: '#e2e8f0' }
+};
+
+const normalizeKey = (key) => {
+  return String(key || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+};
+
+const normalizeReqType = (val) => {
+  const c = String(val || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (c.includes('tec') || c.includes('arq') || c.includes('infra') || c.includes('tech')) return 'technical';
+  if (c.includes('seg') || c.includes('sec') || c.includes('ciber')) return 'security';
+  if (c.includes('integ') || c.includes('api') || c.includes('interf')) return 'integration';
+  if (c.includes('reg') || c.includes('leg') || c.includes('norm') || c.includes('aud')) return 'regulatory';
+  if (c.includes('otr') || c.includes('gen') || c.includes('misc')) return 'other';
+  return 'functional';
+};
+
+const normalizeReqPriority = (val) => {
+  const c = String(val || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (c.includes('crit') || c.includes('urg') || c.includes('p0')) return 'critical';
+  if (c.includes('alt') || c.includes('high') || c.includes('p1')) return 'high';
+  if (c.includes('baj') || c.includes('low') || c.includes('p3')) return 'low';
+  return 'medium';
+};
+
+const normalizeReqStatus = (val) => {
+  const c = String(val || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (c.includes('aprob') || c.includes('valid') || c.includes('ok')) return 'approved';
+  if (c.includes('desarr') || c.includes('proc') || c.includes('prog') || c.includes('curso') || c.includes('dev')) return 'in_development';
+  if (c.includes('cumpl') || c.includes('comp') || c.includes('fin') || c.includes('cerr') || c.includes('done')) return 'completed';
+  if (c.includes('descar') || c.includes('rech') || c.includes('canc') || c.includes('obsol')) return 'discarded';
+  return 'proposed';
 };
 
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
@@ -59,6 +95,17 @@ export function ProjectRequirementsTab({
   const [convertDueDate, setConvertDueDate] = useState('');
   const [convertAssignee, setConvertAssignee] = useState(currentUser?.name || 'Jorge');
   const [isConverting, setIsConverting] = useState(false);
+
+  // Importador Masivo & Exportador Excel / RTM
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importFileName, setImportFileName] = useState('');
+  const [importMode, setImportMode] = useState('append'); // 'append' | 'replace'
+  const [importPreview, setImportPreview] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   const token = localStorage.getItem('nexus-token') || '';
   const requirements = useMemo(() => project?.requirements || [], [project]);
@@ -222,6 +269,257 @@ export function ProjectRequirementsTab({
       alert(err.message || 'Error al convertir en tarea');
     } finally {
       setIsConverting(false);
+    }
+  };
+
+  // 1. Descargar Plantilla Oficial Excel
+  const handleDownloadTemplate = () => {
+    const headers = ['Codigo', 'Titulo', 'Descripcion', 'Tipo', 'Prioridad', 'Estado', 'Solicitante'];
+    const sampleRows = [
+      [
+        'REQ-01',
+        'Autenticación unificada con Azure AD / Entra ID',
+        'Integrar inicio de sesión único (SSO SAML 2.0) y sincronización de cuentas y roles corporativos',
+        'Seguridad',
+        'Crítica',
+        'Aprobado',
+        'Ciberseguridad / Jorge Calderón'
+      ],
+      [
+        'REQ-02',
+        'Exportación periódica a Softland ERP',
+        'Generar interfaz plana y automatizada compatible con catálogo contable e inventarios',
+        'Funcional',
+        'Alta',
+        'En Desarrollo',
+        'Operaciones / Contabilidad'
+      ],
+      [
+        'REQ-03',
+        'Webhooks de sincronización con CRM externo',
+        'Recepción y despacho de eventos en tiempo real para actualización de clientes',
+        'Integración',
+        'Media',
+        'Propuesto',
+        'Comercial'
+      ]
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const wsData = [headers, ...sampleRows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [
+      { wch: 12 }, // Codigo
+      { wch: 44 }, // Titulo
+      { wch: 65 }, // Descripcion
+      { wch: 16 }, // Tipo
+      { wch: 14 }, // Prioridad
+      { wch: 16 }, // Estado
+      { wch: 30 }  // Solicitante
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Requerimientos');
+
+    // Hoja 2: Guía de Opciones Válidas
+    const guideHeaders = ['Columna', 'Valores Aceptados / Recomendados', 'Descripción'];
+    const guideRows = [
+      ['Codigo', 'Opcional (ej: REQ-01, REQ-02...)', 'Si se deja vacío, Nexus asignará códigos consecutivos automáticamente.'],
+      ['Titulo', 'Obligatorio (mínimo 2 caracteres)', 'Título descriptivo y conciso del requerimiento.'],
+      ['Descripcion', 'Opcional (texto libre)', 'Detalle de alcance, justificación o criterios de aceptación.'],
+      ['Tipo', 'Funcional | Técnico | Seguridad | Integración | Regulatorio | Otro', 'Clasificación técnica o de negocio.'],
+      ['Prioridad', 'Crítica | Alta | Media | Baja', 'Nivel de impacto y urgencia en el proyecto.'],
+      ['Estado', 'Propuesto | Aprobado | En Desarrollo | Cumplido | Descartado', 'Etapa actual del ciclo de vida del requerimiento.'],
+      ['Solicitante', 'Opcional (persona, departamento o cliente)', 'Área o stakeholder que solicitó el requerimiento.']
+    ];
+    const wsGuide = XLSX.utils.aoa_to_sheet([guideHeaders, ...guideRows]);
+    wsGuide['!cols'] = [{ wch: 16 }, { wch: 55 }, { wch: 65 }];
+    XLSX.utils.book_append_sheet(wb, wsGuide, 'Guia_Valores');
+
+    const cleanProjectCode = (project?.code || 'Nexus').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `Plantilla_Requerimientos_${cleanProjectCode}.xlsx`);
+  };
+
+  // 2. Exportar Matriz de Trazabilidad (RTM) con tareas vinculadas
+  const handleExportRTM = () => {
+    if (!requirements || requirements.length === 0) {
+      alert('No hay requerimientos en este proyecto para exportar.');
+      return;
+    }
+
+    const exportRows = requirements.map((req) => {
+      const linkedTasks = workItems.filter(
+        (w) => w.requirementId === req.id || (req.linkedTaskIds && req.linkedTaskIds.includes(w.id))
+      );
+      const taskCodes = linkedTasks.map((t) => t.code).join(', ');
+      const taskDetails = linkedTasks
+        .map((t) => `${t.code} (${t.status === 'done' ? 'Completada' : t.status === 'in_progress' ? 'En Curso' : 'Backlog'}) - ${t.assignee || 'Sin asignar'}`)
+        .join(' | ');
+
+      return {
+        'Código': req.code || 'S/C',
+        'Título': req.title,
+        'Descripción': req.description || '',
+        'Tipo': REQUIREMENT_TYPES[req.type]?.label || req.type,
+        'Prioridad': REQUIREMENT_PRIORITIES[req.priority]?.label || req.priority,
+        'Estado': REQUIREMENT_STATUSES[req.status]?.label || req.status,
+        'Solicitante / Origen': req.source || 'No especificado',
+        'Cant. Tareas': linkedTasks.length,
+        'Tareas Vinculadas': taskCodes || 'Sin tareas',
+        'Detalle de Tareas': taskDetails || 'Pendiente derivación',
+        'Fecha Registro': req.createdAt ? req.createdAt.split('T')[0] : ''
+      };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(exportRows);
+    ws['!cols'] = [
+      { wch: 12 }, // Código
+      { wch: 38 }, // Título
+      { wch: 55 }, // Descripción
+      { wch: 14 }, // Tipo
+      { wch: 12 }, // Prioridad
+      { wch: 16 }, // Estado
+      { wch: 26 }, // Solicitante
+      { wch: 14 }, // Cant Tareas
+      { wch: 22 }, // Tareas Vinculadas
+      { wch: 45 }, // Detalle de Tareas
+      { wch: 15 }  // Fecha
+    ];
+    XLSX.utils.book_append_sheet(wb, ws, 'Matriz de Requerimientos');
+
+    const cleanProjectCode = (project?.code || 'Proyecto').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const dateStr = todayStr || new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `Matriz_Requerimientos_${cleanProjectCode}_${dateStr}.xlsx`);
+  };
+
+  // 3. Procesar archivo subido para vista previa
+  const processUploadedFile = (selectedFile) => {
+    if (!selectedFile) return;
+    setImportError('');
+    setImportFileName(selectedFile.name);
+    setImportFile(selectedFile);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        const rawRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+        if (!rawRows || rawRows.length === 0) {
+          setImportError('El archivo subido no contiene filas con datos en la primera hoja.');
+          setImportPreview([]);
+          return;
+        }
+
+        const parsed = rawRows.map((row, index) => {
+          const rowKeys = Object.keys(row);
+          const findVal = (terms) => {
+            for (const k of rowKeys) {
+              const norm = normalizeKey(k);
+              if (terms.some((t) => norm.includes(t))) {
+                return String(row[k] || '').trim();
+              }
+            }
+            return '';
+          };
+
+          const codeVal = findVal(['codigo', 'code', 'id']);
+          const titleVal = findVal(['titulo', 'title', 'nombre', 'requerimiento', 'req']);
+          const descVal = findVal(['descripcion', 'desc', 'detalle', 'alcance']);
+          const typeVal = findVal(['tipo', 'type', 'categoria', 'clasificacion']);
+          const prioVal = findVal(['prioridad', 'priority', 'urgencia']);
+          const statusVal = findVal(['estado', 'status', 'fase']);
+          const sourceVal = findVal(['solicitante', 'fuente', 'origen', 'source', 'area', 'departamento']);
+
+          const isValid = Boolean(titleVal && titleVal.length >= 2);
+          const error = !isValid ? 'Falta título obligatorio' : null;
+
+          return {
+            rowNum: index + 2,
+            code: codeVal,
+            title: titleVal,
+            description: descVal,
+            type: normalizeReqType(typeVal),
+            priority: normalizeReqPriority(prioVal),
+            status: normalizeReqStatus(statusVal),
+            source: sourceVal,
+            isValid,
+            error
+          };
+        });
+
+        setImportPreview(parsed);
+      } catch (err) {
+        console.error('Error al procesar archivo:', err);
+        setImportError('No se pudo procesar el archivo. Asegúrate de que sea un archivo Excel (.xlsx, .xls) o CSV válido.');
+        setImportPreview([]);
+      }
+    };
+    reader.readAsArrayBuffer(selectedFile);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) processUploadedFile(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processUploadedFile(file);
+  };
+
+  // 4. Ejecutar Importación Masiva en API
+  const handleExecuteImport = async () => {
+    const validItems = importPreview.filter((i) => i.isValid);
+    if (validItems.length === 0) {
+      setImportError('No hay requerimientos válidos para importar en la lista.');
+      return;
+    }
+    if (!project?.id) return;
+
+    setIsImporting(true);
+    setImportError('');
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/requirements/batch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          mode: importMode,
+          items: validItems.map((item) => ({
+            code: item.code || undefined,
+            title: item.title,
+            description: item.description,
+            type: item.type,
+            priority: item.priority,
+            status: item.status,
+            source: item.source
+          }))
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || 'Error en la importación masiva');
+      }
+
+      const result = await res.json();
+      setIsImportModalOpen(false);
+      setImportFile(null);
+      setImportFileName('');
+      setImportPreview([]);
+      if (onRefreshProjects) await onRefreshProjects();
+      alert(`✅ ${result.message || 'Importación completada con éxito'}`);
+    } catch (err) {
+      setImportError(err.message || 'Error al procesar la importación en el servidor');
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -398,15 +696,53 @@ export function ProjectRequirementsTab({
           </select>
         </div>
 
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="ui-btn ui-btn--primary"
-          style={{ whiteSpace: 'nowrap' }}
-        >
-          <Icons.Plus size={16} />
-          <span>+ Nuevo Requerimiento</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            className="ui-btn ui-btn--secondary"
+            title="Descargar plantilla Excel oficial preformateada para carga masiva"
+            style={{ fontSize: '12.5px', padding: '0 12px', height: '36px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📄 Plantilla Excel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportRTM}
+            className="ui-btn ui-btn--secondary"
+            title="Descargar Matriz de Requerimientos con tareas vinculadas en Excel"
+            style={{ fontSize: '12.5px', padding: '0 12px', height: '36px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📊 Exportar RTM</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setImportFile(null);
+              setImportFileName('');
+              setImportPreview([]);
+              setImportError('');
+              setIsImportModalOpen(true);
+            }}
+            className="ui-btn ui-btn--secondary"
+            title="Subir archivo Excel o CSV con requerimientos"
+            style={{ fontSize: '12.5px', padding: '0 12px', height: '36px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <span>📥 Importar Excel</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={openCreateModal}
+            className="ui-btn ui-btn--primary"
+            style={{ fontSize: '12.5px', padding: '0 14px', height: '36px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Icons.Plus size={16} />
+            <span>+ Nuevo Requerimiento</span>
+          </button>
+        </div>
       </div>
 
       {/* 3. Lista de Requerimientos */}
@@ -428,14 +764,35 @@ export function ProjectRequirementsTab({
               : 'Prueba ajustando los filtros de estado o el término de búsqueda.'}
           </p>
           {requirements.length === 0 && (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="ui-btn ui-btn--primary"
-              style={{ margin: '0 auto' }}
-            >
-              + Registrar Primer Requerimiento
-            </button>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="ui-btn ui-btn--primary"
+              >
+                + Registrar Primer Requerimiento
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setImportFile(null);
+                  setImportFileName('');
+                  setImportPreview([]);
+                  setImportError('');
+                  setIsImportModalOpen(true);
+                }}
+                className="ui-btn ui-btn--secondary"
+              >
+                📥 Importar desde Excel
+              </button>
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="ui-btn ui-btn--secondary"
+              >
+                📄 Descargar Plantilla
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -856,7 +1213,317 @@ export function ProjectRequirementsTab({
         </div>
       )}
 
-      {/* MODAL: CONVERTIR EN TAREA */}
+      {/* MODAL: IMPORTACIÓN MASIVA DESDE EXCEL */}
+      {isImportModalOpen && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 52, 70, 0.45)',
+          backdropFilter: 'blur(3px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100000,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: '#FFFFFF',
+            borderRadius: '12px',
+            width: '100%',
+            maxWidth: '780px',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid #E1E5E6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: '#FAFBFC'
+            }}>
+              <div>
+                <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#2A6F62', fontWeight: 700 }}>
+                  Carga Masiva de Requerimientos
+                </span>
+                <h3 style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: 600, color: '#1D2A33' }}>
+                  Importar Requerimientos desde Excel o CSV
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontSize: '18px', color: '#5F6B76' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Contenido con Scroll */}
+            <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Banner de plantilla */}
+              <div style={{
+                background: '#F0F9FF',
+                border: '1px solid #BAE6FD',
+                borderRadius: '8px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}>
+                <div style={{ fontSize: '12.5px', color: '#0369A1' }}>
+                  <strong>¿No tienes el formato?</strong> Descarga la plantilla oficial preconfigurada con validaciones y ejemplos.
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  className="ui-btn ui-btn--secondary"
+                  style={{
+                    fontSize: '12px',
+                    padding: '4px 10px',
+                    background: '#FFFFFF',
+                    borderColor: '#0284C7',
+                    color: '#0284C7'
+                  }}
+                >
+                  📄 Descargar Plantilla Excel
+                </button>
+              </div>
+
+              {/* Selector de Modo */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#1D2A33', marginBottom: '8px' }}>
+                  Modo de Importación
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: importMode === 'append' ? '2px solid #2A6F62' : '1px solid #DDE2E4',
+                    background: importMode === 'append' ? '#F2FAF7' : '#FFFFFF',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="radio"
+                      name="importMode"
+                      value="append"
+                      checked={importMode === 'append'}
+                      onChange={() => setImportMode('append')}
+                      style={{ marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1D2A33' }}>
+                        ➕ Agregar a los existentes
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#5F6B76', marginTop: '2px' }}>
+                        Conserva los requerimientos actuales y auto-numera los nuevos secuencialmente.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: importMode === 'replace' ? '2px solid #B91C1C' : '1px solid #DDE2E4',
+                    background: importMode === 'replace' ? '#FEF2F2' : '#FFFFFF',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="radio"
+                      name="importMode"
+                      value="replace"
+                      checked={importMode === 'replace'}
+                      onChange={() => setImportMode('replace')}
+                      style={{ marginTop: '2px' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#B91C1C' }}>
+                        ⚠️ Reemplazar todos
+                      </div>
+                      <div style={{ fontSize: '11.5px', color: '#5F6B76', marginTop: '2px' }}>
+                        Elimina los requerimientos de este proyecto y los sustituye por los del archivo.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Zona de Carga de Archivo */}
+              <div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".xlsx, .xls, .csv"
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                />
+
+                <div
+                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: isDragging ? '2px dashed #2A6F62' : '2px dashed #CBD5E1',
+                    borderRadius: '8px',
+                    padding: '24px 16px',
+                    textAlign: 'center',
+                    background: isDragging ? '#F2FAF7' : '#F8FAFC',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{ fontSize: '28px', display: 'block', marginBottom: '6px' }}>📁</span>
+                  <div style={{ fontSize: '13.5px', fontWeight: 600, color: '#1D2A33' }}>
+                    {importFileName ? importFileName : 'Haz clic para seleccionar o arrastra aquí tu archivo Excel o CSV'}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>
+                    Formatos admitidos: .xlsx, .xls, .csv
+                  </div>
+                </div>
+              </div>
+
+              {/* Error si ocurre */}
+              {importError && (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: '1px solid #FCA5A5',
+                  color: '#991B1B',
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12.5px'
+                }}>
+                  ⚠️ {importError}
+                </div>
+              )}
+
+              {/* Vista Previa de Filas Parseadas */}
+              {importPreview.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '12.5px', fontWeight: 600, color: '#1D2A33' }}>
+                      Vista previa de requerimientos detectados ({importPreview.length})
+                    </span>
+                    <div style={{ display: 'flex', gap: '8px', fontSize: '11.5px' }}>
+                      <span style={{ color: '#16A34A', fontWeight: 600 }}>
+                        ✓ {importPreview.filter((r) => r.isValid).length} listos
+                      </span>
+                      {importPreview.some((r) => !r.isValid) && (
+                        <span style={{ color: '#DC2626', fontWeight: 600 }}>
+                          ✕ {importPreview.filter((r) => !r.isValid).length} con error (se omitirán)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    border: '1px solid #E1E5E6',
+                    borderRadius: '6px',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    background: '#FFFFFF'
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                      <thead style={{ background: '#F1F5F9', position: 'sticky', top: 0, zIndex: 1 }}>
+                        <tr>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>#</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Código</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Título</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Tipo</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Prioridad</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Estado</th>
+                          <th style={{ padding: '6px 10px', borderBottom: '1px solid #E1E5E6' }}>Validación</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {importPreview.map((row, idx) => (
+                          <tr key={idx} style={{
+                            borderBottom: '1px solid #F1F5F9',
+                            background: row.isValid ? 'transparent' : '#FFF1F2'
+                          }}>
+                            <td style={{ padding: '6px 10px', color: '#64748B' }}>{row.rowNum}</td>
+                            <td style={{ padding: '6px 10px', fontWeight: 600 }}>{row.code || '(Auto)'}</td>
+                            <td style={{ padding: '6px 10px', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {row.title || <span style={{ color: '#DC2626', fontStyle: 'italic' }}>Sin título</span>}
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#F1F5F9' }}>
+                                {REQUIREMENT_TYPES[row.type]?.label || row.type}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#F1F5F9' }}>
+                                {REQUIREMENT_PRIORITIES[row.priority]?.label || row.priority}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              <span style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: '#F1F5F9' }}>
+                                {REQUIREMENT_STATUSES[row.status]?.label || row.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '6px 10px' }}>
+                              {row.isValid ? (
+                                <span style={{ color: '#16A34A', fontWeight: 600 }}>✓ Listo</span>
+                              ) : (
+                                <span style={{ color: '#DC2626', fontSize: '11px' }}>{row.error}</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '14px 20px',
+              borderTop: '1px solid #E1E5E6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              gap: '10px',
+              background: '#FAFBFC'
+            }}>
+              <button
+                type="button"
+                onClick={() => setIsImportModalOpen(false)}
+                className="ui-btn ui-btn--secondary"
+                disabled={isImporting}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleExecuteImport}
+                className="ui-btn ui-btn--primary"
+                disabled={isImporting || importPreview.filter((r) => r.isValid).length === 0}
+              >
+                {isImporting
+                  ? 'Importando...'
+                  : `📥 Importar ${importPreview.filter((r) => r.isValid).length} Requerimientos`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {convertingReq && (
         <div className="modal-overlay" style={{
           position: 'fixed',

@@ -1134,6 +1134,99 @@ app.delete('/api/projects/:id/requirements/:reqId', (req, res) => {
   return res.json({ ok: true, message: 'Requerimiento eliminado con éxito' });
 });
 
+// POST /api/projects/:id/requirements/batch (Importación masiva: append o replace)
+const batchRequirementItemSchema = z.object({
+  id: z.string().optional(),
+  code: z.string().optional(),
+  title: z.string().min(1, 'El título es obligatorio'),
+  description: z.string().optional().or(z.literal('')),
+  type: requirementTypeSchema.default('functional'),
+  priority: requirementPrioritySchema.default('medium'),
+  status: requirementStatusSchema.default('proposed'),
+  source: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+  linkedTaskIds: z.array(z.string()).optional()
+});
+
+const batchRequirementsSchema = z.object({
+  mode: z.enum(['append', 'replace']).default('append'),
+  items: z.array(batchRequirementItemSchema).min(1, 'Debe incluir al menos un requerimiento válido')
+});
+
+app.post('/api/projects/:id/requirements/batch', (req, res) => {
+  const user = getCurrentUser(req);
+  if (!user) return res.status(401).json({ message: 'No autorizado' });
+
+  const db = readDb();
+  const projectIndex = db.projects.findIndex((p) => p.id === req.params.id);
+  if (projectIndex === -1) return res.status(404).json({ message: 'Proyecto no encontrado' });
+  const project = db.projects[projectIndex];
+  if (!canManageProject(user, project)) {
+    return res.status(403).json({ message: 'No tienes permisos para modificar este proyecto' });
+  }
+
+  const parsed = batchRequirementsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ message: 'Datos de importación inválidos', errors: parsed.error.flatten() });
+  }
+
+  const { mode, items } = parsed.data;
+  if (!Array.isArray(project.requirements)) {
+    project.requirements = [];
+  }
+
+  const nowIso = new Date().toISOString();
+  let baseNumber = 0;
+  if (mode === 'append') {
+    project.requirements.forEach((r) => {
+      const match = (r.code || '').match(/REQ-(\d+)/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (!isNaN(num) && num > baseNumber) baseNumber = num;
+      }
+    });
+    if (baseNumber === 0) baseNumber = project.requirements.length;
+  }
+
+  const processedItems: ProjectRequirement[] = items.map((item, idx) => {
+    const codeNumber = mode === 'replace' ? idx + 1 : baseNumber + idx + 1;
+    const code = item.code?.trim() || `REQ-${String(codeNumber).padStart(2, '0')}`;
+    return {
+      id: item.id || `req-${Date.now()}-${idx}-${randomBytes(3).toString('hex')}`,
+      projectId: project.id,
+      code,
+      title: item.title.trim(),
+      description: item.description?.trim() || '',
+      type: item.type || 'functional',
+      priority: item.priority || 'medium',
+      status: item.status || 'proposed',
+      source: item.source?.trim() || '',
+      linkedTaskIds: Array.isArray(item.linkedTaskIds) ? item.linkedTaskIds : [],
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
+  });
+
+  if (mode === 'replace') {
+    project.requirements = processedItems;
+  } else {
+    // Append al final de la lista
+    project.requirements = [...project.requirements, ...processedItems];
+  }
+
+  db.projects[projectIndex] = project;
+  writeDb(db);
+
+  return res.json({
+    ok: true,
+    message: mode === 'replace'
+      ? `Se reemplazaron los requerimientos con ${processedItems.length} registros.`
+      : `Se agregaron ${processedItems.length} requerimientos con éxito.`,
+    count: processedItems.length,
+    requirements: project.requirements
+  });
+});
+
 // POST /api/projects/:id/requirements/:reqId/convert-to-task
 app.post('/api/projects/:id/requirements/:reqId/convert-to-task', (req, res) => {
   const user = getCurrentUser(req);
